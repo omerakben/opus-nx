@@ -75,7 +75,7 @@ const mockBranches: ForkBranchResult[] = [
     ],
     risks: ["May miss innovation opportunities", "Could fall behind competitors"],
     assumptions: ["Timeline is fixed", "Reliability is top priority"],
-    thinkingTokensUsed: 15000,
+    outputTokensUsed: 15000,
     durationMs: 8500,
   },
   {
@@ -90,7 +90,7 @@ const mockBranches: ForkBranchResult[] = [
     ],
     opportunities: ["Market differentiation", "10x improvement possible", "Attract top talent"],
     assumptions: ["Team can execute rapidly", "Failure is recoverable"],
-    thinkingTokensUsed: 18000,
+    outputTokensUsed: 18000,
     durationMs: 9200,
   },
   {
@@ -106,7 +106,7 @@ const mockBranches: ForkBranchResult[] = [
     risks: ["Complexity of hybrid approach"],
     opportunities: ["Best of both worlds", "Flexibility to pivot"],
     assumptions: ["Team has bandwidth for dual-track", "Leadership supports iteration"],
-    thinkingTokensUsed: 16500,
+    outputTokensUsed: 16500,
     durationMs: 8800,
   },
   {
@@ -121,7 +121,7 @@ const mockBranches: ForkBranchResult[] = [
     ],
     risks: ["Being too contrarian can backfire", "May alienate stakeholders"],
     assumptions: ["Questioning is valuable even if uncomfortable"],
-    thinkingTokensUsed: 14000,
+    outputTokensUsed: 14000,
     durationMs: 7500,
   },
 ];

@@ -40,8 +40,11 @@ export const ForkBranchResultSchema = z.object({
   risks: z.array(z.string()).optional(),
   opportunities: z.array(z.string()).optional(),
   assumptions: z.array(z.string()).optional(),
-  thinkingTokensUsed: z.number(),
+  /** Output tokens used (includes thinking + text + tool use) */
+  outputTokensUsed: z.number(),
   durationMs: z.number(),
+  /** Error message if branch execution failed */
+  error: z.string().optional(),
 });
 
 export type ForkBranchResult = z.infer<typeof ForkBranchResultSchema>;
@@ -80,7 +83,7 @@ export type DivergencePoint = z.infer<typeof DivergencePointSchema>;
 // ============================================================
 
 /**
- * Complete result from ThinkFork parallel analysis.
+ * Complete result from ThinkFork concurrent analysis.
  */
 export const ThinkForkResultSchema = z.object({
   query: z.string(),
@@ -95,6 +98,10 @@ export const ThinkForkResultSchema = z.object({
   }).optional(),
   totalTokensUsed: z.number(),
   totalDurationMs: z.number(),
+  /** Errors encountered during analysis */
+  errors: z.array(z.string()).optional(),
+  /** Styles that used fallback prompts instead of file-based prompts */
+  fallbackPromptsUsed: z.array(ForkStyleSchema).optional(),
 });
 
 export type ThinkForkResult = z.infer<typeof ThinkForkResultSchema>;
