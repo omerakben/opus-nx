@@ -145,25 +145,33 @@ export class Orchestrator {
     // Every reasoning session becomes a queryable graph node
     let thinkingNode: ThinkingNode | undefined;
     if (result.thinkingBlocks.length > 0) {
-      const graphResult = await this.thinkGraph.persistThinkingNode(
-        result.thinkingBlocks,
-        {
+      try {
+        const graphResult = await this.thinkGraph.persistThinkingNode(
+          result.thinkingBlocks,
+          {
+            sessionId: this.session.id,
+            parentNodeId: this.lastThinkingNodeId ?? undefined,
+            inputQuery: userMessage,
+            tokenUsage: result.usage,
+          }
+        );
+
+        thinkingNode = graphResult.node;
+        this.lastThinkingNodeId = graphResult.node.id;
+        this.onThinkingNodeCreated?.(graphResult.node);
+
+        logger.info("Persisted thinking node to ThinkGraph", {
+          nodeId: graphResult.node.id,
+          decisionPoints: graphResult.decisionPoints.length,
+          linkedToParent: graphResult.linkedToParent,
+        });
+      } catch (error) {
+        logger.error("Failed to persist thinking node (continuing without)", {
           sessionId: this.session.id,
-          parentNodeId: this.lastThinkingNodeId ?? undefined,
-          inputQuery: userMessage,
-          tokenUsage: result.usage,
-        }
-      );
-
-      thinkingNode = graphResult.node;
-      this.lastThinkingNodeId = graphResult.node.id;
-      this.onThinkingNodeCreated?.(graphResult.node);
-
-      logger.info("Persisted thinking node to ThinkGraph", {
-        nodeId: graphResult.node.id,
-        decisionPoints: graphResult.decisionPoints.length,
-        linkedToParent: graphResult.linkedToParent,
-      });
+          error: error instanceof Error ? error.message : String(error),
+        });
+        // Continue without thinkingNode - graceful degradation
+      }
     }
 
     // Parse the response to extract task plan

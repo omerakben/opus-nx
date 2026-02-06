@@ -167,7 +167,24 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 AS $$
+DECLARE
+  valid_edge_types TEXT[] := ARRAY['influences', 'contradicts', 'supports', 'supersedes', 'refines', 'branches_from'];
+  invalid_types TEXT[];
 BEGIN
+  -- Validate edge_types if provided
+  IF edge_types IS NOT NULL THEN
+    SELECT array_agg(et)
+    INTO invalid_types
+    FROM unnest(edge_types) et
+    WHERE et != ALL(valid_edge_types);
+
+    IF array_length(invalid_types, 1) > 0 THEN
+      RAISE EXCEPTION 'Invalid edge types: %. Valid types are: %',
+        array_to_string(invalid_types, ', '),
+        array_to_string(valid_edge_types, ', ');
+    END IF;
+  END IF;
+
   RETURN QUERY
   WITH RECURSIVE graph AS (
     -- Base case: direct edges from start node
@@ -176,7 +193,8 @@ BEGIN
       tn.reasoning,
       tn.confidence_score,
       re.edge_type,
-      1 AS hop_distance
+      1 AS hop_distance,
+      ARRAY[start_node_id, re.target_id] AS path  -- Track visited nodes
     FROM reasoning_edges re
     JOIN thinking_nodes tn ON tn.id = re.target_id
     WHERE re.source_id = start_node_id
@@ -184,20 +202,28 @@ BEGIN
 
     UNION ALL
 
-    -- Recursive case: follow edges up to max_depth
+    -- Recursive case: follow edges up to max_depth with cycle detection
     SELECT
       re.target_id,
       tn.reasoning,
       tn.confidence_score,
       re.edge_type,
-      g.hop_distance + 1
+      g.hop_distance + 1,
+      g.path || re.target_id  -- Append to path
     FROM graph g
     JOIN reasoning_edges re ON re.source_id = g.node_id
     JOIN thinking_nodes tn ON tn.id = re.target_id
     WHERE g.hop_distance < max_depth
       AND re.edge_type = ANY(edge_types)
+      AND re.target_id != ALL(g.path)  -- CYCLE DETECTION: skip already visited nodes
   )
-  SELECT DISTINCT ON (graph.node_id) * FROM graph
+  SELECT DISTINCT ON (graph.node_id)
+    graph.node_id,
+    graph.reasoning,
+    graph.confidence_score,
+    graph.edge_type,
+    graph.hop_distance
+  FROM graph
   ORDER BY graph.node_id, graph.hop_distance;
 END;
 $$;

@@ -1,8 +1,9 @@
 import { createLogger } from "@opus-nx/shared";
+import { z } from "zod";
 import {
   createThinkingNode,
   createReasoningEdge,
-  createDecisionPoints,
+  createDecisionPoint,
   getThinkingNode,
   getSessionThinkingNodes,
   getLatestThinkingNode,
@@ -33,6 +34,79 @@ import type {
 } from "./types/thinking.js";
 
 const logger = createLogger("ThinkGraph");
+
+// ============================================================
+// UUID Validation
+// ============================================================
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * Validate UUID format to catch malformed IDs before DB operations.
+ */
+function isValidUUID(id: string): boolean {
+  return UUID_REGEX.test(id);
+}
+
+// ============================================================
+// Zod Schemas for DB Response Validation
+// ============================================================
+
+/**
+ * Schema for structured reasoning that goes to DB.
+ * Validates the shape before database insertion.
+ */
+const StructuredReasoningDBSchema = z.object({
+  steps: z.array(z.object({
+    stepNumber: z.number(),
+    content: z.string(),
+    type: z.enum(["analysis", "hypothesis", "evaluation", "conclusion", "consideration"]),
+  })),
+  decisionPoints: z.array(z.unknown()),
+  alternativesConsidered: z.number(),
+  mainConclusion: z.string().optional(),
+  confidenceFactors: z.array(z.string()).optional(),
+}).passthrough();
+
+/**
+ * Schema for token usage that goes to DB.
+ */
+const TokenUsageDBSchema = z.object({
+  inputTokens: z.number().optional(),
+  outputTokens: z.number().optional(),
+  thinkingTokens: z.number().optional(),
+}).passthrough().nullable();
+
+/**
+ * Convert structured reasoning to DB format with validation.
+ */
+function toDBStructuredReasoning(data: unknown): Record<string, unknown> {
+  const result = StructuredReasoningDBSchema.safeParse(data);
+  if (!result.success) {
+    logger.warn("Structured reasoning validation failed, using raw data", {
+      errors: result.error.issues.slice(0, 3),
+    });
+    return data as Record<string, unknown>;
+  }
+  return result.data as Record<string, unknown>;
+}
+
+/**
+ * Convert token usage to DB format with validation.
+ */
+function toDBTokenUsage(data: unknown): Record<string, unknown> | undefined {
+  if (data === undefined || data === null) {
+    return undefined;
+  }
+  const result = TokenUsageDBSchema.safeParse(data);
+  if (!result.success) {
+    logger.warn("Token usage validation failed, using raw data", {
+      errors: result.error.issues.slice(0, 3),
+    });
+    return data as Record<string, unknown>;
+  }
+  return result.data as Record<string, unknown>;
+}
 
 // ============================================================
 // Types
@@ -312,13 +386,14 @@ export class ThinkGraph {
 
   /**
    * Extract the chosen path from a decision statement.
+   * Note: Patterns use length limits {1,500} to prevent ReDoS attacks.
    */
   private extractChosenPath(sentence: string, context: string): string | null {
-    // Look for explicit choice markers
+    // Look for explicit choice markers with length-limited capture groups
     const choicePatterns = [
-      /(?:I(?:'ll| will) (?:go with|choose|use|select)) ([^.]+)/i,
-      /(?:The best (?:approach|option|choice) is) ([^.]+)/i,
-      /(?:I(?:'ve| have) decided (?:to|on)) ([^.]+)/i,
+      /(?:I(?:'ll| will) (?:go with|choose|use|select)) ([^.]{1,500})/i,
+      /(?:The best (?:approach|option|choice) is) ([^.]{1,500})/i,
+      /(?:I(?:'ve| have) decided (?:to|on)) ([^.]{1,500})/i,
     ];
 
     for (const pattern of choicePatterns) {
@@ -333,17 +408,18 @@ export class ThinkGraph {
 
   /**
    * Extract alternatives that were considered and rejected.
+   * Note: Patterns use length limits {1,300} to prevent ReDoS attacks.
    */
   private extractAlternatives(
     context: string
   ): Array<{ path: string; reasonRejected: string }> {
     const alternatives: Array<{ path: string; reasonRejected: string }> = [];
 
-    // Pattern: "X, but Y" or "X, however Y"
+    // Pattern: "X, but Y" or "X, however Y" with length-limited capture groups
     const rejectionPatterns = [
-      /([^,]+),?\s*(?:but|however|although)\s+([^.]+)/gi,
-      /(?:rather than|instead of)\s+([^,]+),?\s+(?:because|since|as)\s+([^.]+)/gi,
-      /(?:ruled out|rejected)\s+([^,]+)\s+(?:because|since|as|due to)\s+([^.]+)/gi,
+      /([^,]{1,300}),?\s*(?:but|however|although)\s+([^.]{1,300})/gi,
+      /(?:rather than|instead of)\s+([^,]{1,300}),?\s+(?:because|since|as)\s+([^.]{1,300})/gi,
+      /(?:ruled out|rejected)\s+([^,]{1,300})\s+(?:because|since|as|due to)\s+([^.]{1,300})/gi,
     ];
 
     for (const pattern of rejectionPatterns) {
@@ -389,15 +465,16 @@ export class ThinkGraph {
 
   /**
    * Extract factors that influenced confidence.
+   * Note: Patterns use length limits {1,300} to prevent ReDoS attacks.
    */
   private extractConfidenceFactors(reasoning: string): string[] {
     const factors: string[] = [];
 
-    // Look for explicit confidence mentions
+    // Look for explicit confidence mentions with length-limited capture groups
     const patterns = [
-      /(?:confident because|sure because|certain that)\s+([^.]+)/gi,
-      /(?:based on|given|considering)\s+([^,]+)/gi,
-      /(?:evidence suggests|data shows|analysis indicates)\s+([^.]+)/gi,
+      /(?:confident because|sure because|certain that)\s+([^.]{1,300})/gi,
+      /(?:based on|given|considering)\s+([^,]{1,300})/gi,
+      /(?:evidence suggests|data shows|analysis indicates)\s+([^.]{1,300})/gi,
     ];
 
     for (const pattern of patterns) {
@@ -445,61 +522,86 @@ export class ThinkGraph {
     thinkingBlocks: (ThinkingBlock | RedactedThinkingBlock)[],
     options: PersistThinkingOptions
   ): Promise<ThinkGraphResult> {
+    // Validate parentNodeId if provided
+    let validatedOptions = options;
+    if (options.parentNodeId && !isValidUUID(options.parentNodeId)) {
+      logger.warn("Invalid parent node ID format, ignoring", {
+        parentNodeId: options.parentNodeId,
+      });
+      validatedOptions = { ...options, parentNodeId: undefined };
+    }
+
     const parsed = this.parseThinkingToNode(thinkingBlocks);
 
     // Get signature from thinking blocks if not provided
-    const signature = options.signature ||
+    const signature = validatedOptions.signature ||
       thinkingBlocks.find((b): b is ThinkingBlock => b.type === "thinking")?.signature;
 
-    // Create the thinking node
+    // Create the thinking node with validated data
     const nodeInput: CreateThinkingNodeInput = {
-      sessionId: options.sessionId,
-      parentNodeId: options.parentNodeId,
+      sessionId: validatedOptions.sessionId,
+      parentNodeId: validatedOptions.parentNodeId,
       reasoning: parsed.reasoning,
-      structuredReasoning: parsed.structuredReasoning as unknown as Record<string, unknown>,
+      structuredReasoning: toDBStructuredReasoning(parsed.structuredReasoning),
       confidenceScore: parsed.confidenceScore !== null ? parsed.confidenceScore : undefined,
-      thinkingBudget: options.thinkingBudget,
+      thinkingBudget: validatedOptions.thinkingBudget,
       signature,
-      inputQuery: options.inputQuery,
-      tokenUsage: options.tokenUsage as unknown as Record<string, unknown>,
+      inputQuery: validatedOptions.inputQuery,
+      tokenUsage: toDBTokenUsage(validatedOptions.tokenUsage),
     };
 
     const dbNode = await createThinkingNode(nodeInput);
     logger.info("Persisted thinking node", { nodeId: dbNode.id });
 
-    // Create decision points
-    let dbDecisionPoints: DecisionPoint[] = [];
+    // Create decision points with individual error handling
+    const dbDecisionPoints: DecisionPoint[] = [];
     if (parsed.decisionPoints.length > 0) {
-      const decisionInputs: CreateDecisionPointInput[] = parsed.decisionPoints.map(
-        (dp) => ({
-          thinkingNodeId: dbNode.id,
-          stepNumber: dp.stepNumber,
-          description: dp.description,
-          chosenPath: dp.chosenPath,
-          alternatives: dp.alternatives,
-          confidence: dp.confidence ?? undefined,
-          reasoningExcerpt: dp.reasoningExcerpt ?? undefined,
-        })
-      );
-
-      const createdPoints = await createDecisionPoints(decisionInputs);
-      dbDecisionPoints = createdPoints.map(this.mapDbDecisionPoint);
+      for (const dp of parsed.decisionPoints) {
+        try {
+          const input: CreateDecisionPointInput = {
+            thinkingNodeId: dbNode.id,
+            stepNumber: dp.stepNumber,
+            description: dp.description,
+            chosenPath: dp.chosenPath,
+            alternatives: dp.alternatives,
+            confidence: dp.confidence ?? undefined,
+            reasoningExcerpt: dp.reasoningExcerpt ?? undefined,
+          };
+          const createdPoint = await createDecisionPoint(input);
+          dbDecisionPoints.push(this.mapDbDecisionPoint(createdPoint));
+        } catch (error) {
+          logger.warn("Failed to persist decision point", {
+            nodeId: dbNode.id,
+            stepNumber: dp.stepNumber,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
       logger.debug("Created decision points", { count: dbDecisionPoints.length });
     }
 
-    // Link to parent if provided
+    // Link to parent if provided (with error isolation)
     let linkedToParent = false;
-    if (options.parentNodeId) {
-      const edgeInput: CreateReasoningEdgeInput = {
-        sourceId: options.parentNodeId,
-        targetId: dbNode.id,
-        edgeType: "influences",
-        weight: 1.0,
-      };
+    if (validatedOptions.parentNodeId) {
+      try {
+        const edgeInput: CreateReasoningEdgeInput = {
+          sourceId: validatedOptions.parentNodeId,
+          targetId: dbNode.id,
+          edgeType: "influences",
+          weight: 1.0,
+        };
 
-      await createReasoningEdge(edgeInput);
-      linkedToParent = true;
-      logger.debug("Linked to parent node", { parentId: options.parentNodeId });
+        await createReasoningEdge(edgeInput);
+        linkedToParent = true;
+        logger.debug("Linked to parent node", { parentId: validatedOptions.parentNodeId });
+      } catch (error) {
+        logger.warn("Failed to create reasoning edge", {
+          sourceId: validatedOptions.parentNodeId,
+          targetId: dbNode.id,
+          edgeType: "influences",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
 
     return {
@@ -551,7 +653,7 @@ export class ThinkGraph {
     options: { limit?: number; offset?: number } = {}
   ): Promise<ThinkingNode[]> {
     const dbNodes = await getSessionThinkingNodes(sessionId, options);
-    return dbNodes.map(this.mapDbThinkingNode);
+    return dbNodes.map((node) => this.mapDbThinkingNode(node));
   }
 
   /**
