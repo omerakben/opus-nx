@@ -1,6 +1,6 @@
 import { ChatAnthropic } from "@langchain/anthropic";
-import { createLogger } from "@opus-nx/shared";
 import type { AgentConfig, AgentResult } from "@opus-nx/core";
+import { createLogger } from "@opus-nx/shared";
 
 const logger = createLogger("BaseAgent");
 
@@ -52,7 +52,7 @@ export abstract class BaseAgent {
   abstract invoke(
     input: string,
     context?: string,
-    taskId?: string
+    taskId?: string,
   ): Promise<AgentResult>;
 
   /**
