@@ -1,6 +1,30 @@
 import { getSupabase } from "./client.js";
 
 // ============================================================
+// Error Handling Utilities
+// ============================================================
+
+/**
+ * Check if an error is a Supabase "not found" error (PGRST116)
+ */
+function isNotFoundError(error: unknown): boolean {
+  return (
+    error !== null &&
+    typeof error === "object" &&
+    "code" in error &&
+    (error as { code: string }).code === "PGRST116"
+  );
+}
+
+/**
+ * Handle Supabase errors with consistent formatting
+ */
+function handleSupabaseError(error: unknown, context: string): never {
+  const message = error instanceof Error ? error.message : String(error);
+  throw new Error(`${context}: ${message}`);
+}
+
+// ============================================================
 // Types
 // ============================================================
 
@@ -130,7 +154,7 @@ export async function createThinkingNode(
     .single();
 
   if (error) {
-    throw new Error(`Failed to create thinking node: ${error.message}`);
+    handleSupabaseError(error, "Failed to create thinking node");
   }
 
   return mapThinkingNode(data);
@@ -149,10 +173,10 @@ export async function getThinkingNode(id: string): Promise<ThinkingNode | null> 
     .single();
 
   if (error) {
-    if (error.code === "PGRST116") {
+    if (isNotFoundError(error)) {
       return null;
     }
-    throw new Error(`Failed to get thinking node: ${error.message}`);
+    handleSupabaseError(error, "Failed to get thinking node");
   }
 
   return mapThinkingNode(data);
@@ -176,7 +200,7 @@ export async function getSessionThinkingNodes(
     .range(offset, offset + limit - 1);
 
   if (error) {
-    throw new Error(`Failed to get session thinking nodes: ${error.message}`);
+    handleSupabaseError(error, "Failed to get session thinking nodes");
   }
 
   return (data ?? []).map(mapThinkingNode);
@@ -199,10 +223,10 @@ export async function getLatestThinkingNode(
     .single();
 
   if (error) {
-    if (error.code === "PGRST116") {
+    if (isNotFoundError(error)) {
       return null;
     }
-    throw new Error(`Failed to get latest thinking node: ${error.message}`);
+    handleSupabaseError(error, "Failed to get latest thinking node");
   }
 
   return mapThinkingNode(data);
@@ -233,7 +257,7 @@ export async function createReasoningEdge(
     .single();
 
   if (error) {
-    throw new Error(`Failed to create reasoning edge: ${error.message}`);
+    handleSupabaseError(error, "Failed to create reasoning edge");
   }
 
   return mapReasoningEdge(data);
@@ -253,7 +277,7 @@ export async function getEdgesFromNode(
     .eq("source_id", sourceId);
 
   if (error) {
-    throw new Error(`Failed to get edges from node: ${error.message}`);
+    handleSupabaseError(error, "Failed to get edges from node");
   }
 
   return (data ?? []).map(mapReasoningEdge);
@@ -273,7 +297,7 @@ export async function getEdgesToNode(
     .eq("target_id", targetId);
 
   if (error) {
-    throw new Error(`Failed to get edges to node: ${error.message}`);
+    handleSupabaseError(error, "Failed to get edges to node");
   }
 
   return (data ?? []).map(mapReasoningEdge);
@@ -306,7 +330,7 @@ export async function createDecisionPoint(
     .single();
 
   if (error) {
-    throw new Error(`Failed to create decision point: ${error.message}`);
+    handleSupabaseError(error, "Failed to create decision point");
   }
 
   return mapDecisionPoint(data);
@@ -327,7 +351,7 @@ export async function getDecisionPoints(
     .order("step_number", { ascending: true });
 
   if (error) {
-    throw new Error(`Failed to get decision points: ${error.message}`);
+    handleSupabaseError(error, "Failed to get decision points");
   }
 
   return (data ?? []).map(mapDecisionPoint);
@@ -359,7 +383,7 @@ export async function createDecisionPoints(
     .select();
 
   if (error) {
-    throw new Error(`Failed to create decision points: ${error.message}`);
+    handleSupabaseError(error, "Failed to create decision points");
   }
 
   return (data ?? []).map(mapDecisionPoint);
@@ -389,7 +413,7 @@ export async function traverseReasoningGraph(
   });
 
   if (error) {
-    throw new Error(`Failed to traverse reasoning graph: ${error.message}`);
+    handleSupabaseError(error, "Failed to traverse reasoning graph");
   }
 
   return (data ?? []).map((row: Record<string, unknown>) => ({
@@ -416,7 +440,7 @@ export async function getSessionReasoningContext(
   });
 
   if (error) {
-    throw new Error(`Failed to get session reasoning context: ${error.message}`);
+    handleSupabaseError(error, "Failed to get session reasoning context");
   }
 
   return (data ?? []).map((row: Record<string, unknown>) => ({
@@ -449,7 +473,7 @@ export async function searchReasoningNodes(
   });
 
   if (error) {
-    throw new Error(`Failed to search reasoning nodes: ${error.message}`);
+    handleSupabaseError(error, "Failed to search reasoning nodes");
   }
 
   return (data ?? []).map((row: Record<string, unknown>) => ({
@@ -473,7 +497,7 @@ export async function getReasoningChain(
   });
 
   if (error) {
-    throw new Error(`Failed to get reasoning chain: ${error.message}`);
+    handleSupabaseError(error, "Failed to get reasoning chain");
   }
 
   return (data ?? []).map((row: Record<string, unknown>) => ({

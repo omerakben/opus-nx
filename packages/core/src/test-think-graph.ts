@@ -15,7 +15,7 @@ import type { ThinkingBlock, RedactedThinkingBlock } from "./types/orchestrator.
 function assert(condition: boolean, message: string): void {
   if (!condition) {
     console.error(`❌ FAIL: ${message}`);
-    process.exitCode = 1;
+    throw new Error(`Assertion failed: ${message}`);
   } else {
     console.log(`✅ PASS: ${message}`);
   }
