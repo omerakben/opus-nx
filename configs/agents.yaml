@@ -1,0 +1,60 @@
+agents:
+  research:
+    name: Research Agent
+    model: claude-sonnet-4-5-20250929
+    maxTokens: 8192
+    temperature: 0.7
+    description: "Web search, paper analysis, competitive research, and fact verification specialist"
+    tools:
+      - web_search
+      - paper_analysis
+      - fact_verification
+    systemPromptPath: prompts/research.md
+
+  code:
+    name: Code Agent
+    model: claude-sonnet-4-5-20250929
+    maxTokens: 16384
+    temperature: 0.3
+    description: "Code generation, debugging, refactoring, and repository management specialist"
+    tools:
+      - code_generation
+      - repo_management
+      - debugging
+    systemPromptPath: prompts/code.md
+
+  knowledge:
+    name: Knowledge Agent
+    model: claude-haiku-4-5-20251001
+    maxTokens: 4096
+    temperature: 0.5
+    description: "Auto-categorization, cross-referencing, memory retrieval, and context building specialist"
+    tools:
+      - categorization
+      - cross_reference
+      - retrieval
+    systemPromptPath: prompts/knowledge.md
+
+  planning:
+    name: Planning Agent
+    model: claude-sonnet-4-5-20250929
+    maxTokens: 8192
+    temperature: 0.5
+    description: "Task decomposition, scheduling, dependency mapping, and priority management specialist"
+    tools:
+      - task_decomposition
+      - scheduling
+      - dependency_analysis
+    systemPromptPath: prompts/planning.md
+
+  communication:
+    name: Communication Agent
+    model: claude-haiku-4-5-20251001
+    maxTokens: 4096
+    temperature: 0.7
+    description: "Email drafting, message formatting, report generation, and notifications specialist"
+    tools:
+      - email_draft
+      - message_format
+      - report_generation
+    systemPromptPath: prompts/communication.md

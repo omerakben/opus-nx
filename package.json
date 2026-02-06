@@ -1,0 +1,25 @@
+{
+  "name": "opus-nx",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Persistent, peer-level AI orchestrator powered by Claude Opus 4.6",
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "clean": "turbo clean && rm -rf node_modules",
+    "db:migrate": "pnpm --filter @opus-nx/db migrate",
+    "db:generate": "pnpm --filter @opus-nx/db generate",
+    "test": "turbo test"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "turbo": "^2.3.0",
+    "typescript": "^5.7.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

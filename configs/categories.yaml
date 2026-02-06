@@ -1,0 +1,79 @@
+categories:
+  technology:
+    name: Technology
+    description: Software, hardware, AI/ML, and technical topics
+    subcategories:
+      - ai_ml
+      - web_development
+      - infrastructure
+      - security
+      - data_engineering
+    autoTags:
+      - code
+      - api
+      - framework
+      - library
+      - algorithm
+
+  research:
+    name: Research
+    description: Academic papers, studies, and research findings
+    subcategories:
+      - academic_papers
+      - industry_reports
+      - case_studies
+      - benchmarks
+    autoTags:
+      - study
+      - paper
+      - research
+      - findings
+      - analysis
+
+  business:
+    name: Business
+    description: Business strategy, operations, and management
+    subcategories:
+      - strategy
+      - operations
+      - finance
+      - marketing
+      - hiring
+    autoTags:
+      - revenue
+      - growth
+      - market
+      - competition
+      - metrics
+
+  personal:
+    name: Personal
+    description: Personal notes, goals, preferences, and references
+    subcategories:
+      - ideas
+      - bookmarks
+      - notes
+      - goals
+      - preferences
+    autoTags:
+      - remember
+      - idea
+      - todo
+      - note
+      - preference
+
+  projects:
+    name: Projects
+    description: Project-specific knowledge and documentation
+    subcategories:
+      - requirements
+      - architecture
+      - decisions
+      - lessons_learned
+      - blockers
+    autoTags:
+      - project
+      - feature
+      - requirement
+      - decision
+      - milestone
