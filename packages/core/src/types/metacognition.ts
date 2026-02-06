@@ -144,9 +144,8 @@ export const MetacognitionResultSchema = z.object({
   insights: z.array(MetacognitiveInsightSchema),
   nodesAnalyzed: z.number(),
   analysisTokensUsed: z.number().optional(),
-  thinkingTokensUsed: z.number().optional(),
   summary: z.string().optional(),
-  errors: z.array(z.string()).optional(), // Track any errors during analysis
+  errors: z.array(z.string()).optional(),
 });
 
 export type MetacognitionResult = z.infer<typeof MetacognitionResultSchema>;
@@ -157,17 +156,18 @@ export type MetacognitionResult = z.infer<typeof MetacognitionResultSchema>;
 
 /**
  * Schema for the record_insight tool that Claude uses to output insights.
- * This ensures structured, validated output from the analysis.
+ * Uses relaxed validation (no UUID check on nodeId) since LLM output may vary.
+ * Stricter validation and normalization happens in parseAndPersistInsights().
  */
 export const RecordInsightToolInputSchema = z.object({
   insight_type: InsightTypeSchema,
-  insight: z.string(),
+  insight: z.string().min(1),
   evidence: z.array(z.object({
-    nodeId: z.string(),
-    excerpt: z.string(),
-    relevance: z.number(),
+    nodeId: z.string().min(1),
+    excerpt: z.string().max(1000),
+    relevance: z.number().min(0).max(1),
   })),
-  confidence: z.number(),
+  confidence: z.number().min(0).max(1),
 });
 
 export type RecordInsightToolInput = z.infer<typeof RecordInsightToolInputSchema>;

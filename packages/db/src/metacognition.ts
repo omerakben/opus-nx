@@ -302,7 +302,12 @@ export async function searchInsights(
   const { data, error } = await dbQuery;
 
   if (error) {
-    // Fall back to ilike search if full-text search fails
+    // Full-text search may fail if tsvector index is missing or query syntax is invalid
+    // Fall back to ILIKE which is slower but always works
+    console.warn(
+      `[metacognition-db] Full-text search failed (${error.message}), falling back to ILIKE`
+    );
+
     let fallbackQuery = supabase
       .from("metacognitive_insights")
       .select("*")
@@ -316,7 +321,10 @@ export async function searchInsights(
 
     const fallbackResult = await fallbackQuery;
     if (fallbackResult.error) {
-      handleSupabaseError(fallbackResult.error, "Failed to search insights");
+      handleSupabaseError(
+        fallbackResult.error,
+        "Failed to search insights (both full-text and ILIKE failed)"
+      );
     }
     return (fallbackResult.data ?? []).map(mapMetacognitiveInsight);
   }

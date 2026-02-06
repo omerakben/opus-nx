@@ -68,7 +68,7 @@ For each insight you discover, use the `record_insight` tool with:
 3. **Be actionable**: Insights should suggest concrete improvements
 4. **Balance critique with recognition**: Note both weaknesses AND strengths
 5. **Acknowledge uncertainty**: If evidence is limited, say so
-6. **Think deeply**: Use your full reasoning capacity - this is why you have 50k thinking tokens
+6. **Think deeply**: Use your full extended thinking capacity for thorough analysis
 
 ## What Makes a Good Insight
 

@@ -25,11 +25,20 @@ const logger = createLogger("MetacognitionEngine");
 // Constants
 // ============================================================
 
-/** Maximum chars for reasoning context (~25k tokens) */
+/** Maximum chars for reasoning context (roughly 20-30k tokens depending on content structure) */
 const MAX_REASONING_CHARS = 100_000;
 
 /** Maximum chars per individual node's reasoning */
 const MAX_NODE_REASONING_CHARS = 5_000;
+
+/** Focus area descriptions for building analysis prompts */
+const FOCUS_AREA_DESCRIPTIONS: Record<string, string> = {
+  decision_quality: "Evaluate the quality of decisions and whether alternatives were properly considered",
+  reasoning_patterns: "Identify recurring structures in how reasoning is organized",
+  confidence_calibration: "Assess whether stated confidence levels match the depth of reasoning",
+  alternative_exploration: "Examine how thoroughly alternatives are explored before concluding",
+  bias_detection: "Look for systematic biases (anchoring, confirmation, availability, etc.)",
+};
 
 /** The tool Claude uses to record insights */
 const INSIGHT_EXTRACTION_TOOL = {
@@ -79,6 +88,17 @@ const INSIGHT_EXTRACTION_TOOL = {
 };
 
 // ============================================================
+// Internal Types
+// ============================================================
+
+interface ParseInsightsResult {
+  persisted: MetacognitiveInsight[];
+  failed: Array<{ input: unknown; error: string }>;
+  validationErrors: string[];
+  invalidNodeRefs: string[];
+}
+
+// ============================================================
 // Options
 // ============================================================
 
@@ -91,6 +111,8 @@ export interface MetacognitionEngineOptions {
   onThinkingStream?: (thinking: string) => void;
   /** Callback for streaming text output */
   onTextStream?: (text: string) => void;
+  /** Allow fallback to embedded prompt if file not found (default: true for default path only) */
+  allowPromptFallback?: boolean;
 }
 
 // ============================================================
@@ -104,9 +126,9 @@ export interface MetacognitionEngineOptions {
  * unique 50k thinking token budget to analyze its own reasoning patterns.
  *
  * The engine:
- * 1. Gathers recent reasoning from ThinkGraph
+ * 1. Gathers recent reasoning from the database (thinking_nodes table)
  * 2. Formats it for analysis within token limits
- * 3. Uses deep thinking (50k tokens) to find patterns
+ * 3. Uses extended thinking to find patterns
  * 4. Extracts structured insights via tool_use
  * 5. Persists insights for future reference
  */
@@ -116,15 +138,14 @@ export class MetacognitionEngine {
   private onInsightExtracted?: (insight: MetacognitiveInsight) => void;
 
   constructor(options: MetacognitionEngineOptions = {}) {
-    // Configure ThinkingEngine with max budget for deep analysis
     const config: OrchestratorConfig = {
       model: "claude-opus-4-6-20260101",
       thinking: {
         type: "enabled",
-        effort: "max", // 50k thinking tokens - the full power
+        effort: "max",
       },
       streaming: true,
-      maxTokens: 16384, // Generous output for multiple insights
+      maxTokens: 16384,
     };
 
     this.thinkingEngine = new ThinkingEngine({
@@ -134,10 +155,12 @@ export class MetacognitionEngine {
     });
 
     this.onInsightExtracted = options.onInsightExtracted;
-    this.systemPrompt = this.loadSystemPrompt(options.systemPromptPath);
+    this.systemPrompt = this.loadSystemPrompt(
+      options.systemPromptPath,
+      options.allowPromptFallback ?? !options.systemPromptPath
+    );
 
     logger.debug("MetacognitionEngine initialized", {
-      thinkingBudget: "50k (max)",
       hasStreamCallbacks: !!(options.onThinkingStream || options.onTextStream),
     });
   }
@@ -146,7 +169,7 @@ export class MetacognitionEngine {
    * Perform metacognitive analysis on reasoning history.
    *
    * This is the main entry point. It gathers reasoning context,
-   * uses 50k thinking tokens to deeply analyze patterns, and
+   * uses extended thinking to deeply analyze patterns, and
    * returns structured insights with evidence.
    */
   async analyze(options: Partial<MetacognitionOptions> = {}): Promise<MetacognitionResult> {
@@ -166,7 +189,7 @@ export class MetacognitionEngine {
 
     const errors: string[] = [];
 
-    // 1. Gather reasoning context
+    // 1. Gather reasoning context from database
     const { context, error: gatherError } = await this.gatherReasoningContext(sessionId, nodeLimit);
 
     if (gatherError) {
@@ -174,11 +197,20 @@ export class MetacognitionEngine {
     }
 
     if (context.length === 0) {
-      logger.warn("No reasoning nodes found for analysis");
+      // Distinguish between "no data" vs "failed to fetch"
+      const summary = gatherError
+        ? `Failed to retrieve reasoning history: ${gatherError}. Check database connectivity.`
+        : "No reasoning history available. Run the orchestrator first to generate reasoning nodes.";
+
+      logger.warn(gatherError ? "Failed to gather reasoning context" : "No reasoning nodes found", {
+        sessionId,
+        hadError: !!gatherError,
+      });
+
       return {
         insights: [],
         nodesAnalyzed: 0,
-        summary: "No reasoning history available for analysis.",
+        summary,
         errors: errors.length > 0 ? errors : undefined,
       };
     }
@@ -195,13 +227,42 @@ export class MetacognitionEngine {
     // 3. Build analysis prompt
     const analysisPrompt = this.buildAnalysisPrompt(formattedContext, focusAreas);
 
-    // 4. Execute deep thinking analysis with 50k token budget
+    // 4. Execute extended thinking analysis with error handling
     const startTime = Date.now();
-    const result = await this.thinkingEngine.think(
-      this.systemPrompt,
-      [{ role: "user", content: analysisPrompt }],
-      [INSIGHT_EXTRACTION_TOOL]
-    );
+    let result;
+    try {
+      result = await this.thinkingEngine.think(
+        this.systemPrompt,
+        [{ role: "user", content: analysisPrompt }],
+        [INSIGHT_EXTRACTION_TOOL]
+      );
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error("Thinking engine analysis failed", {
+        sessionId,
+        nodesIncluded: context.length,
+        error: errorMessage,
+      });
+
+      // Provide actionable error messages based on error type
+      let userMessage = `Analysis failed: ${errorMessage}`;
+      if (errorMessage.includes("rate limit") || errorMessage.includes("429")) {
+        userMessage = "Analysis failed: API rate limit exceeded. Please wait and retry.";
+      } else if (errorMessage.includes("401") || errorMessage.includes("authentication")) {
+        userMessage = "Analysis failed: Invalid API key. Check ANTHROPIC_API_KEY.";
+      } else if (errorMessage.includes("timeout") || errorMessage.includes("ETIMEDOUT")) {
+        userMessage = "Analysis failed: Request timed out. Try reducing nodeLimit.";
+      }
+
+      errors.push(userMessage);
+
+      return {
+        insights: [],
+        nodesAnalyzed: context.length,
+        summary: undefined,
+        errors,
+      };
+    }
     const analysisTime = Date.now() - startTime;
 
     logger.info("Thinking analysis completed", {
@@ -210,31 +271,44 @@ export class MetacognitionEngine {
       thinkingBlocks: result.thinkingBlocks.length,
     });
 
-    // 5. Parse and persist insights
-    const insights = await this.parseAndPersistInsights(
+    // 5. Parse and persist insights with comprehensive error tracking
+    const parseResult = await this.parseAndPersistInsights(
       result.toolUseBlocks,
       sessionId ?? null,
       nodeIds
     );
 
+    // Track all types of failures
+    if (parseResult.failed.length > 0) {
+      errors.push(`${parseResult.failed.length} insight(s) failed to persist to database`);
+    }
+    if (parseResult.validationErrors.length > 0) {
+      errors.push(`${parseResult.validationErrors.length} insight(s) had invalid schema`);
+    }
+    if (parseResult.invalidNodeRefs.length > 0) {
+      logger.warn("Evidence referenced unknown node IDs (possible hallucination)", {
+        invalidNodeIds: parseResult.invalidNodeRefs,
+      });
+    }
+
     // 6. Extract summary from text response
     const summary = result.textBlocks.map((b) => b.text).join("\n").slice(0, 2000) || undefined;
 
     const analysisResult: MetacognitionResult = {
-      insights,
+      insights: parseResult.persisted,
       nodesAnalyzed: context.length,
       analysisTokensUsed: result.usage.outputTokens,
-      thinkingTokensUsed: result.usage.inputTokens, // Approximate
       summary,
       errors: errors.length > 0 ? errors : undefined,
     };
 
     logger.info("Metacognitive analysis complete", {
-      insightsGenerated: insights.length,
+      insightsGenerated: parseResult.persisted.length,
+      insightsFailed: parseResult.failed.length,
       nodesAnalyzed: context.length,
-      biasDetections: insights.filter((i) => i.insightType === "bias_detection").length,
-      patterns: insights.filter((i) => i.insightType === "pattern").length,
-      improvements: insights.filter((i) => i.insightType === "improvement_hypothesis").length,
+      biasDetections: parseResult.persisted.filter((i) => i.insightType === "bias_detection").length,
+      patterns: parseResult.persisted.filter((i) => i.insightType === "pattern").length,
+      improvements: parseResult.persisted.filter((i) => i.insightType === "improvement_hypothesis").length,
     });
 
     return analysisResult;
@@ -242,7 +316,7 @@ export class MetacognitionEngine {
 
   /**
    * Gather reasoning context from database.
-   * Returns context and any errors encountered.
+   * Returns context and any errors encountered (not silently swallowed).
    */
   private async gatherReasoningContext(
     sessionId: string | undefined,
@@ -250,7 +324,7 @@ export class MetacognitionEngine {
   ): Promise<{ context: SessionReasoningContext[]; error?: string }> {
     if (!sessionId) {
       logger.warn("No sessionId provided, analysis requires a session");
-      return { context: [], error: "No sessionId provided" };
+      return { context: [], error: "No sessionId provided - analysis requires a session ID" };
     }
 
     try {
@@ -297,7 +371,6 @@ export class MetacognitionEngine {
    * Format a single reasoning node for the prompt.
    */
   private formatSingleNode(node: SessionReasoningContext): string {
-    // Truncate long reasoning to stay within limits
     let reasoning = node.reasoning;
     if (reasoning.length > MAX_NODE_REASONING_CHARS) {
       reasoning = reasoning.slice(0, MAX_NODE_REASONING_CHARS) + "\n\n[...truncated...]";
@@ -328,29 +401,18 @@ ${reasoning}
 
   /**
    * Build the analysis prompt with focus area instructions.
+   * Uses object lookup instead of switch for cleaner code.
    */
   private buildAnalysisPrompt(formattedContext: string, focusAreas: string[]): string {
     const focusInstructions = focusAreas
+      .filter((area) => area in FOCUS_AREA_DESCRIPTIONS)
       .map((area) => {
-        switch (area) {
-          case "decision_quality":
-            return "- **Decision Quality**: Evaluate the quality of decisions and whether alternatives were properly considered";
-          case "reasoning_patterns":
-            return "- **Reasoning Patterns**: Identify recurring structures in how reasoning is organized";
-          case "confidence_calibration":
-            return "- **Confidence Calibration**: Assess whether stated confidence levels match the depth of reasoning";
-          case "alternative_exploration":
-            return "- **Alternative Exploration**: Examine how thoroughly alternatives are explored before concluding";
-          case "bias_detection":
-            return "- **Bias Detection**: Look for systematic biases (anchoring, confirmation, availability, etc.)";
-          default:
-            return "";
-        }
+        const title = area.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+        return `- **${title}**: ${FOCUS_AREA_DESCRIPTIONS[area]}`;
       })
-      .filter(Boolean)
       .join("\n");
 
-    // Replace placeholder in system prompt
+    // Inject formatted context into system prompt placeholder
     const promptWithContext = this.systemPrompt.replace("{REASONING_CONTEXT}", formattedContext);
 
     return `## Focus Areas for This Analysis
@@ -372,13 +434,20 @@ After recording all insights, provide a brief summary of your overall observatio
 
   /**
    * Parse tool_use blocks and persist insights to database.
+   * Tracks all types of failures for full visibility.
    */
   private async parseAndPersistInsights(
     toolUseBlocks: ToolUseBlock[],
     sessionId: string | null,
     nodeIdsAnalyzed: string[]
-  ): Promise<MetacognitiveInsight[]> {
-    const insights: MetacognitiveInsight[] = [];
+  ): Promise<ParseInsightsResult> {
+    const persisted: MetacognitiveInsight[] = [];
+    const failed: Array<{ input: unknown; error: string }> = [];
+    const validationErrors: string[] = [];
+    const invalidNodeRefs: string[] = [];
+
+    // Use Set for O(1) lookups (per project conventions)
+    const validNodeIds = new Set(nodeIdsAnalyzed);
 
     for (const toolUse of toolUseBlocks) {
       if (toolUse.name !== "record_insight") {
@@ -386,92 +455,127 @@ After recording all insights, provide a brief summary of your overall observatio
         continue;
       }
 
-      try {
-        // Validate tool input with Zod schema
-        const parseResult = RecordInsightToolInputSchema.safeParse(toolUse.input);
-        if (!parseResult.success) {
-          logger.warn("Invalid tool input schema", {
-            errors: parseResult.error.errors.map((e) => e.message),
-          });
+      // Validate tool input with Zod schema
+      const parseResult = RecordInsightToolInputSchema.safeParse(toolUse.input);
+      if (!parseResult.success) {
+        const errorDetails = parseResult.error.errors
+          .map((e) => `${e.path.join(".")}: ${e.message}`)
+          .join("; ");
+        logger.warn("Invalid tool input schema", {
+          errors: parseResult.error.errors,
+          rawInput: JSON.stringify(toolUse.input).slice(0, 500),
+        });
+        validationErrors.push(errorDetails);
+        failed.push({
+          input: toolUse.input,
+          error: `Schema validation failed: ${errorDetails}`,
+        });
+        continue;
+      }
+      const input = parseResult.data;
+
+      // Build evidence array with validation and tracking
+      const validEvidence: EvidenceItem[] = [];
+      for (const e of input.evidence || []) {
+        if (!validNodeIds.has(e.nodeId)) {
+          invalidNodeRefs.push(e.nodeId);
           continue;
         }
-        const input = parseResult.data;
+        validEvidence.push({
+          nodeId: e.nodeId,
+          excerpt: String(e.excerpt).slice(0, 500),
+          relevance: Math.min(1, Math.max(0, Number(e.relevance) || 0.5)),
+        });
+      }
 
-        // Build evidence array with validation
-        const evidence: EvidenceItem[] = (input.evidence || [])
-          .filter((e) => {
-            // Only include evidence referencing nodes we actually analyzed
-            const isValid = nodeIdsAnalyzed.includes(e.nodeId);
-            if (!isValid) {
-              logger.debug("Filtering evidence with unknown nodeId", { nodeId: e.nodeId });
-            }
-            return isValid;
-          })
-          .map((e) => ({
-            nodeId: e.nodeId,
-            excerpt: String(e.excerpt).slice(0, 500),
-            relevance: Math.min(1, Math.max(0, Number(e.relevance) || 0.5)),
-          }));
-
+      try {
         const createInput: CreateMetacognitiveInsightInput = {
           sessionId,
           thinkingNodesAnalyzed: nodeIdsAnalyzed,
           insightType: input.insight_type as InsightType,
           insight: String(input.insight),
-          evidence,
+          evidence: validEvidence,
           confidence: Math.min(1, Math.max(0, Number(input.confidence) || 0.5)),
         };
 
-        const persisted = await createMetacognitiveInsight(createInput);
-        insights.push(persisted);
-
-        // Notify callback if provided
-        this.onInsightExtracted?.(persisted);
+        const insight = await createMetacognitiveInsight(createInput);
+        persisted.push(insight);
+        this.onInsightExtracted?.(insight);
 
         logger.debug("Persisted insight", {
-          id: persisted.id,
-          type: persisted.insightType,
-          confidence: persisted.confidence,
-          evidenceCount: persisted.evidence.length,
+          id: insight.id,
+          type: insight.insightType,
+          confidence: insight.confidence,
+          evidenceCount: insight.evidence.length,
         });
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         logger.error("Failed to persist insight", {
-          error: error instanceof Error ? error.message : String(error),
+          error: errorMessage,
           toolInput: JSON.stringify(toolUse.input).slice(0, 200),
         });
-        // Continue processing other insights
+        failed.push({
+          input: toolUse.input,
+          error: `Database persistence failed: ${errorMessage}`,
+        });
       }
     }
 
-    return insights;
+    if (failed.length > 0) {
+      logger.warn(`${failed.length} insight(s) failed to process`, {
+        persistedCount: persisted.length,
+        failedCount: failed.length,
+        validationErrorCount: validationErrors.length,
+      });
+    }
+
+    return { persisted, failed, validationErrors, invalidNodeRefs };
   }
 
   /**
-   * Load system prompt from file.
+   * Load system prompt from file with explicit error handling.
+   * Fallback is only used for missing default file, not for custom paths or other errors.
    */
-  private loadSystemPrompt(customPath?: string): string {
+  private loadSystemPrompt(customPath?: string, allowFallback = true): string {
+    const __dirname = dirname(fileURLToPath(import.meta.url));
+    const promptPath = customPath ?? join(__dirname, "..", "..", "..", "configs", "prompts", "metacognition.md");
+
     try {
-      // Determine the prompt path
-      let promptPath: string;
-
-      if (customPath) {
-        promptPath = customPath;
-      } else {
-        // Navigate from packages/core/src to configs/prompts
-        const __dirname = dirname(fileURLToPath(import.meta.url));
-        promptPath = join(__dirname, "..", "..", "..", "configs", "prompts", "metacognition.md");
-      }
-
       const prompt = readFileSync(promptPath, "utf-8");
+      if (prompt.trim().length === 0) {
+        throw new Error(`System prompt file is empty: ${promptPath}`);
+      }
       logger.debug("Loaded system prompt", { path: promptPath, length: prompt.length });
       return prompt;
     } catch (error) {
-      logger.warn("Could not load system prompt from file, using embedded fallback", {
-        error: error instanceof Error ? error.message : String(error),
-      });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const isFileNotFound = error instanceof Error &&
+        (error as NodeJS.ErrnoException).code === "ENOENT";
 
-      // Fallback embedded prompt
-      return `You are performing metacognitive analysis - examining reasoning patterns to identify biases, recurring patterns, and opportunities for improvement.
+      // Only allow fallback for missing default file (not custom paths, not other errors)
+      if (allowFallback && isFileNotFound && !customPath) {
+        logger.warn("Default system prompt not found, using embedded fallback", {
+          path: promptPath,
+          error: errorMessage,
+        });
+        return this.getEmbeddedPrompt();
+      }
+
+      // For custom paths or non-ENOENT errors, throw to surface the problem
+      logger.error("Failed to load system prompt", {
+        path: promptPath,
+        error: errorMessage,
+        isCustomPath: !!customPath,
+      });
+      throw new Error(`Failed to load system prompt from ${promptPath}: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * Embedded fallback prompt for when default file is missing.
+   */
+  private getEmbeddedPrompt(): string {
+    return `You are performing metacognitive analysis - examining reasoning patterns to identify biases, recurring patterns, and opportunities for improvement.
 
 For each insight, use the record_insight tool with:
 - insight_type: "bias_detection", "pattern", or "improvement_hypothesis"
@@ -482,7 +586,6 @@ For each insight, use the record_insight tool with:
 Focus on patterns that appear multiple times. Be specific and cite node IDs.
 
 {REASONING_CONTEXT}`;
-    }
   }
 
   /**
