@@ -2,6 +2,7 @@ import { createLogger } from "@opus-nx/shared";
 import { createSession, updateSessionPlan } from "@opus-nx/db";
 import { ThinkingEngine } from "./thinking-engine.js";
 import { MemoryManager } from "./memory-manager.js";
+import { ThinkGraph, type ThinkGraphResult } from "./think-graph.js";
 import type {
   OrchestratorConfig,
   OrchestratorSession,
@@ -11,6 +12,7 @@ import type {
   ToolUseBlock,
   AgentsConfig,
   ThinkingBlock,
+  ThinkingNode,
 } from "./types/index.js";
 
 const logger = createLogger("Orchestrator");
@@ -38,6 +40,8 @@ export interface OrchestratorResult {
   plan?: TaskPlan;
   thinkingBlocks: ThinkingBlock[];
   knowledgeContext?: string;
+  /** The persisted thinking node from ThinkGraph */
+  thinkingNode?: ThinkingNode;
 }
 
 // ============================================================
@@ -56,11 +60,14 @@ export interface OrchestratorResult {
 export class Orchestrator {
   private thinkingEngine: ThinkingEngine;
   private memoryManager: MemoryManager;
+  private thinkGraph: ThinkGraph;
   private agentsConfig: AgentsConfig;
   private systemPrompt: string;
   private session: OrchestratorSession | null = null;
+  private lastThinkingNodeId: string | null = null;
   private onTaskUpdate?: (task: Task) => void;
   private onPlanUpdate?: (plan: TaskPlan) => void;
+  private onThinkingNodeCreated?: (node: ThinkingNode) => void;
 
   constructor(options: OrchestratorOptions) {
     this.thinkingEngine = new ThinkingEngine({
@@ -69,6 +76,7 @@ export class Orchestrator {
       onTextStream: options.onTextStream,
     });
     this.memoryManager = new MemoryManager();
+    this.thinkGraph = new ThinkGraph();
     this.agentsConfig = options.agentsConfig;
     this.systemPrompt = options.systemPrompt;
     this.onTaskUpdate = options.onTaskUpdate;
@@ -133,6 +141,31 @@ export class Orchestrator {
     );
     this.session.thinkingHistory.push(...thinkingBlocks);
 
+    // Persist thinking to ThinkGraph - this is the core innovation!
+    // Every reasoning session becomes a queryable graph node
+    let thinkingNode: ThinkingNode | undefined;
+    if (result.thinkingBlocks.length > 0) {
+      const graphResult = await this.thinkGraph.persistThinkingNode(
+        result.thinkingBlocks,
+        {
+          sessionId: this.session.id,
+          parentNodeId: this.lastThinkingNodeId ?? undefined,
+          inputQuery: userMessage,
+          tokenUsage: result.usage,
+        }
+      );
+
+      thinkingNode = graphResult.node;
+      this.lastThinkingNodeId = graphResult.node.id;
+      this.onThinkingNodeCreated?.(graphResult.node);
+
+      logger.info("Persisted thinking node to ThinkGraph", {
+        nodeId: graphResult.node.id,
+        decisionPoints: graphResult.decisionPoints.length,
+        linkedToParent: graphResult.linkedToParent,
+      });
+    }
+
     // Parse the response to extract task plan
     const plan = this.parseTaskPlan(result.content);
     if (plan) {
@@ -153,6 +186,7 @@ export class Orchestrator {
       plan: plan ?? undefined,
       thinkingBlocks,
       knowledgeContext: knowledgeContext || undefined,
+      thinkingNode,
     };
   }
 
@@ -320,6 +354,7 @@ Think carefully about the optimal approach. Consider:
     onTextStream?: (text: string) => void;
     onTaskUpdate?: (task: Task) => void;
     onPlanUpdate?: (plan: TaskPlan) => void;
+    onThinkingNodeCreated?: (node: ThinkingNode) => void;
   }): void {
     this.thinkingEngine.setCallbacks({
       onThinkingStream: callbacks.onThinkingStream,
@@ -327,5 +362,26 @@ Think carefully about the optimal approach. Consider:
     });
     this.onTaskUpdate = callbacks.onTaskUpdate;
     this.onPlanUpdate = callbacks.onPlanUpdate;
+    this.onThinkingNodeCreated = callbacks.onThinkingNodeCreated;
+  }
+
+  /**
+   * Get the ThinkGraph instance for direct graph operations.
+   *
+   * Use this for:
+   * - Querying past reasoning
+   * - Traversing the reasoning graph
+   * - Searching reasoning nodes
+   */
+  getThinkGraph(): ThinkGraph {
+    return this.thinkGraph;
+  }
+
+  /**
+   * Get the ID of the last thinking node created.
+   * Useful for linking new reasoning to existing chains.
+   */
+  getLastThinkingNodeId(): string | null {
+    return this.lastThinkingNodeId;
   }
 }

@@ -15,7 +15,7 @@
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
-    "test": "node --experimental-strip-types src/test-thinking.ts"
+    "test": "node --experimental-strip-types src/test-think-graph.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.73.0",
