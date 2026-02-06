@@ -1,59 +1,125 @@
-# Opus Nx
+# Opus Nx: Cognitive Architect
 
-> **A persistent, peer-level AI orchestrator powered by Claude Opus 4.6**
+> **The first AI system where reasoning is persistent, queryable, and evolving**
 
-Built for the [Cerebral Valley "Built with Opus 4.6" Hackathon](https://cerebralvalley.ai/e/claude-code-hackathon) (Feb 10-16, 2026)
+Built for the [Cerebral Valley "Built with Opus 4.6" Hackathon](https://cv.inc/e/claude-code-hackathon) (Feb 10-16, 2026)
 
-## What is Opus Nx?
+---
 
-Opus Nx is a single Opus 4.6 brain that acts as your personal command center. It:
+## The Innovation
 
-- **Decomposes complex goals** using extended thinking
-- **Delegates to specialized sub-agents** (research, coding, scheduling, knowledge management)
-- **Synthesizes everything** through one coherent interface
-- **Remembers persistently** across sessions via a knowledge graph
+While everyone else uses extended thinking as a black box to improve response quality, **Opus Nx transforms reasoning itself into a first-class, persistent, navigable data structure**.
 
-## Why Opus 4.6?
+| What Others Do | What Opus Nx Does |
+|----------------|-------------------|
+| Extended thinking improves responses | Extended thinking becomes **queryable history** |
+| AI conversations are stateless | Every reasoning chain is **persistent** |
+| "The AI said X" | "The AI reasoned A → B → C to conclude X" |
+| Black box decisions | **Transparent decision archaeology** |
 
-The orchestrator leverages **deep reasoning and extended thinking** to plan before acting—analyzing task dependencies, selecting optimal agent strategies, and self-reflecting on execution quality. This is work only Opus can do.
+---
+
+## Core Features
+
+### ThinkGraph - Reasoning as Data Structure
+
+Every extended thinking session creates a persistent graph node:
+- Navigate reasoning chains visually
+- See decision points with alternatives considered
+- Query past reasoning with natural language
+- Trace how conclusions were reached
+
+### Metacognitive Self-Audit
+
+Using Opus 4.6's 50k thinking token budget, the system **analyzes its own reasoning patterns**:
+- Detect systematic biases
+- Identify recurring strategies
+- Generate self-improvement hypotheses
+- *"Watch the AI think about how it thinks"*
+
+### ThinkFork - Parallel Reasoning Branches
+
+Complex decisions spawn 2-3 parallel reasoning branches:
+```
+Branch A (Conservative): 87% confidence
+Branch B (Aggressive): 72% confidence
+Branch C (Balanced): 81% confidence
+[Compare reasoning paths side-by-side]
+```
+
+### Contradiction Resolution Engine
+
+When new information conflicts with existing knowledge:
+- Deep reasoning to analyze the contradiction
+- Explicit resolution with full audit trail
+- Knowledge graph updated with provenance
+
+---
+
+## Why Only Opus 4.6?
+
+| Capability | Requirement | Opus 4.6 |
+|------------|-------------|----------|
+| Metacognition | 50k thinking tokens | Only model with this budget |
+| Multi-session analysis | 200k context window | Largest context |
+| Complex meta-prompts | Superior instruction following | Best in class |
+| Deep reasoning | Extended thinking native | Uniquely suited |
+
+---
 
 ## Architecture
 
 ```
-You ←→ Opus Core (Opus 4.6) ←→ Sub-Agents ←→ Supabase + GitHub
-              ↓
-    [Extended Thinking Engine]
-    [Memory Manager]
-    [Agent Router (LangGraph Supervisor)]
+┌─────────────────────────────────────────────────────────────────┐
+│                       Next.js Dashboard                          │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌────────────┐ │
+│  │  Reasoning  │ │  ThinkFork  │ │  Metacog    │ │  Thinking  │ │
+│  │    Tree     │ │   Viewer    │ │  Insights   │ │   Stream   │ │
+│  └──────┬──────┘ └──────┬──────┘ └──────┬──────┘ └─────┬──────┘ │
+└─────────┼───────────────┼───────────────┼──────────────┼────────┘
+          │               │               │              │
+          ▼               ▼               ▼              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                         @opus-nx/core                            │
+│  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌──────────────┐  │
+│  │  Thinking  │ │ ThinkGraph │ │ Metacog    │ │ Contradiction│  │
+│  │  Engine    │ │            │ │ Engine     │ │  Resolver    │  │
+│  └────────────┘ └────────────┘ └────────────┘ └──────────────┘  │
+│  ┌────────────┐ ┌────────────────────────────────────────────┐  │
+│  │ ThinkFork  │ │           Memory Manager                   │  │
+│  └────────────┘ └────────────────────────────────────────────┘  │
+└──────────────────────────────┬──────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              Supabase (PostgreSQL + pgvector)                    │
+│  thinking_nodes │ reasoning_edges │ decision_points │ insights  │
+└─────────────────────────────────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Claude Opus 4.6  │  Voyage AI Embeddings  │  Tavily Search     │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Sub-Agents
-
-| Agent | Model | Specialization |
-|-------|-------|----------------|
-| **Research** | Sonnet 4.5 | Web search, paper analysis, fact verification |
-| **Code** | Sonnet 4.5 | Code generation, debugging, repo management |
-| **Knowledge** | Haiku 4.5 | Auto-categorization, cross-referencing, retrieval |
-| **Planning** | Sonnet 4.5 | Task decomposition, scheduling, dependencies |
-| **Communication** | Haiku 4.5 | Email drafting, message formatting, reports |
-
-### Cost Strategy
-
-- **Opus 4.6**: Orchestration + complex reasoning (~30% of budget)
-- **Sonnet 4.5**: Execution-heavy agents (~50%)
-- **Haiku 4.5**: High-volume, simple tasks (~20%)
+---
 
 ## Tech Stack
 
-- **Monorepo**: Turborepo + pnpm workspaces
-- **Core**: TypeScript, Anthropic SDK
-- **Agents**: LangGraph, LangChain
-- **Database**: Supabase (PostgreSQL + pgvector)
-- **Embeddings**: Voyage AI (voyage-3)
-- **Search**: Tavily
-- **Dashboard**: Next.js 16
+| Layer | Technology |
+|-------|------------|
+| **LLM** | Claude Opus 4.6 (extended thinking) |
+| **Monorepo** | Turborepo + pnpm |
+| **Core** | TypeScript 5.7+, Anthropic SDK |
+| **Agents** | LangGraph, LangChain |
+| **Database** | Supabase (PostgreSQL + pgvector) |
+| **Embeddings** | Voyage AI (voyage-3, 1024-dim) |
+| **Dashboard** | Next.js 16, React 19, Tailwind, shadcn/ui |
+| **Visualization** | react-flow, D3.js |
 
-## Getting Started
+---
+
+## Quick Start
 
 ### Prerequisites
 
@@ -73,14 +139,17 @@ cd opus-nx
 pnpm install
 
 # Copy environment template
-cp .env.example .env.local
+cp .env.example .env
 # Fill in your API keys
+
+# Run database migrations
+pnpm db:migrate
 
 # Build all packages
 pnpm build
 
-# Run database migrations
-pnpm db:migrate
+# Start the dashboard
+pnpm --filter @opus-nx/web dev
 ```
 
 ### Environment Variables
@@ -94,52 +163,87 @@ VOYAGE_API_KEY=pa-...
 TAVILY_API_KEY=tvly-...
 ```
 
+---
+
 ## Project Structure
 
 ```
 opus-nx/
 ├── apps/
-│   └── dashboard/           # Next.js 16 dashboard (Day 5)
+│   └── web/                    # Next.js 16 dashboard
 ├── packages/
-│   ├── core/                # Orchestrator, ThinkingEngine, MemoryManager
-│   ├── agents/              # Specialized sub-agents
-│   ├── db/                  # Supabase client and queries
-│   └── shared/              # Shared utilities
+│   ├── core/                   # ThinkingEngine, ThinkGraph, Metacognition
+│   │   └── src/
+│   │       ├── thinking-engine.ts
+│   │       ├── think-graph.ts
+│   │       ├── metacognition.ts
+│   │       ├── think-fork.ts
+│   │       └── contradiction-resolver.ts
+│   ├── agents/                 # Specialized sub-agents
+│   ├── db/                     # Supabase client and queries
+│   │   └── migrations/
+│   │       ├── 001_initial_schema.sql
+│   │       └── 002_thinking_graph.sql
+│   └── shared/                 # Shared utilities
 ├── configs/
-│   ├── agents.yaml          # Agent definitions
-│   ├── categories.yaml      # Knowledge taxonomy
-│   └── prompts/             # System prompts for each agent
-├── turbo.json
-└── package.json
+│   ├── agents.yaml             # Agent definitions
+│   ├── categories.yaml         # Knowledge taxonomy
+│   └── prompts/                # System prompts
+│       ├── orchestrator.md
+│       └── metacognition.md
+├── PRD.md                      # Product Requirements
+├── ROADMAP.md                  # 5-Day Development Plan
+├── ARCHITECTURE.md             # Technical Design
+└── README.md
 ```
+
+---
 
 ## Development Roadmap
 
-- [x] **Day 1**: Foundation (monorepo, Supabase schema, ThinkingEngine)
-- [ ] **Day 2**: Knowledge Layer (semantic search, auto-categorization)
-- [ ] **Day 3**: Agent Framework (LangGraph, Research + Code agents)
-- [ ] **Day 4**: Remaining Agents + Memory persistence
-- [ ] **Day 5**: Dashboard (real-time visualization)
-- [ ] **Day 6**: Integration + Demo flow
-- [ ] **Day 7**: Polish + Submit
+| Day | Focus | Status |
+|-----|-------|--------|
+| 1 | ThinkGraph Foundation | Pending |
+| 2 | Metacognition Engine | Pending |
+| 3 | ThinkFork + Contradiction Resolution | Pending |
+| 4 | Dashboard UI | Pending |
+| 5 | Polish + Demo | Pending |
 
-## Demo Scenario
+See [ROADMAP.md](./ROADMAP.md) for detailed task breakdown.
 
-**"Help me prepare for an Anthropic interview"**
+---
 
-This meta demo showcases Opus Nx orchestrating your own interview prep:
+## Demo Flow
 
-1. **Opus 4.6 thinks**: Decomposes the goal with visible extended thinking
-2. **Research Agent**: Gathers info on Anthropic's mission, recent papers
-3. **Knowledge Agent**: Categorizes and cross-references findings
-4. **Planning Agent**: Creates a study timeline with milestones
-5. **Code Agent**: Generates practice coding challenges
-6. **Communication Agent**: Drafts thank-you email templates
-7. **Dashboard**: Shows real-time progress, task pipeline, knowledge graph
+### Scene 1: Reasoning Archaeology (2 min)
+*"Every time Opus thinks, we capture the reasoning as a navigable graph node..."*
 
-## Contributing
+### Scene 2: Metacognitive Self-Audit (2 min)
+*"Using 50k thinking tokens, watch the AI analyze its own reasoning patterns..."*
 
-This is a hackathon project, but contributions are welcome after the event!
+### Scene 3: ThinkFork Branches (2 min)
+*"Instead of one answer, see three parallel reasoning paths with different assumptions..."*
+
+### Scene 4: Contradiction Resolution (1 min)
+*"Watch it reason through conflicting information with full audit trail..."*
+
+---
+
+## Prize Target
+
+**"Most Creative Opus 4.6 Exploration"**
+
+No one else is treating extended thinking as a first-class, persistent, queryable artifact. This is genuine innovation that only Opus 4.6 can power.
+
+---
+
+## Documentation
+
+- [PRD.md](./PRD.md) - Product Requirements Document
+- [ROADMAP.md](./ROADMAP.md) - Detailed 5-Day Development Plan
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - Technical Architecture
+
+---
 
 ## License
 
@@ -148,3 +252,5 @@ MIT
 ---
 
 Built with Claude Code for the Cerebral Valley Hackathon
+
+*Ozzy - AI Engineer & Full-Stack Developer*
