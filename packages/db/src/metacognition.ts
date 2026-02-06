@@ -1,6 +1,18 @@
 import { getSupabase } from "./client.js";
 
 // ============================================================
+// String Utilities
+// ============================================================
+
+/**
+ * Escape SQL LIKE pattern special characters to prevent injection
+ * Characters: % (wildcard), _ (single char), \ (escape)
+ */
+function escapeLikePattern(str: string): string {
+  return str.replace(/[%_\\]/g, "\\$&");
+}
+
+// ============================================================
 // Error Handling Utilities
 // ============================================================
 
@@ -294,7 +306,7 @@ export async function searchInsights(
     let fallbackQuery = supabase
       .from("metacognitive_insights")
       .select("*")
-      .ilike("insight", `%${query}%`)
+      .ilike("insight", `%${escapeLikePattern(query)}%`)
       .order("created_at", { ascending: false })
       .limit(limit);
 

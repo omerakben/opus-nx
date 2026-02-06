@@ -1,6 +1,15 @@
 import { z } from "zod";
 
 // ============================================================
+// Note on Type Layering
+// ============================================================
+// These Zod schemas define the canonical validation layer for metacognition.
+// The @opus-nx/db package has corresponding TypeScript interfaces for the
+// database layer. This is intentional: Zod provides runtime validation,
+// while db interfaces define the persistence contract.
+// ============================================================
+
+// ============================================================
 // Insight Types
 // ============================================================
 
@@ -137,6 +146,7 @@ export const MetacognitionResultSchema = z.object({
   analysisTokensUsed: z.number().optional(),
   thinkingTokensUsed: z.number().optional(),
   summary: z.string().optional(),
+  errors: z.array(z.string()).optional(), // Track any errors during analysis
 });
 
 export type MetacognitionResult = z.infer<typeof MetacognitionResultSchema>;

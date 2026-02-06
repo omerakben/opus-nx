@@ -8,14 +8,14 @@ import {
   type SessionReasoningContext,
 } from "@opus-nx/db";
 import { ThinkingEngine } from "./thinking-engine.js";
-import type {
-  MetacognitionOptions,
-  MetacognitionResult,
-  MetacognitiveInsight,
-  CreateMetacognitiveInsightInput,
-  InsightType,
-  EvidenceItem,
-  RecordInsightToolInput,
+import {
+  RecordInsightToolInputSchema,
+  type MetacognitionOptions,
+  type MetacognitionResult,
+  type MetacognitiveInsight,
+  type CreateMetacognitiveInsightInput,
+  type InsightType,
+  type EvidenceItem,
 } from "./types/metacognition.js";
 import type { OrchestratorConfig, ToolUseBlock } from "./types/orchestrator.js";
 
@@ -164,8 +164,14 @@ export class MetacognitionEngine {
       focusAreas,
     });
 
+    const errors: string[] = [];
+
     // 1. Gather reasoning context
-    const context = await this.gatherReasoningContext(sessionId, nodeLimit);
+    const { context, error: gatherError } = await this.gatherReasoningContext(sessionId, nodeLimit);
+
+    if (gatherError) {
+      errors.push(gatherError);
+    }
 
     if (context.length === 0) {
       logger.warn("No reasoning nodes found for analysis");
@@ -173,6 +179,7 @@ export class MetacognitionEngine {
         insights: [],
         nodesAnalyzed: 0,
         summary: "No reasoning history available for analysis.",
+        errors: errors.length > 0 ? errors : undefined,
       };
     }
 
@@ -219,6 +226,7 @@ export class MetacognitionEngine {
       analysisTokensUsed: result.usage.outputTokens,
       thinkingTokensUsed: result.usage.inputTokens, // Approximate
       summary,
+      errors: errors.length > 0 ? errors : undefined,
     };
 
     logger.info("Metacognitive analysis complete", {
@@ -234,25 +242,27 @@ export class MetacognitionEngine {
 
   /**
    * Gather reasoning context from database.
+   * Returns context and any errors encountered.
    */
   private async gatherReasoningContext(
     sessionId: string | undefined,
     limit: number
-  ): Promise<SessionReasoningContext[]> {
+  ): Promise<{ context: SessionReasoningContext[]; error?: string }> {
     if (!sessionId) {
       logger.warn("No sessionId provided, analysis requires a session");
-      return [];
+      return { context: [], error: "No sessionId provided" };
     }
 
     try {
       const context = await getSessionReasoningContext(sessionId, limit);
-      return context;
+      return { context };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       logger.error("Failed to gather reasoning context", {
         sessionId,
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage,
       });
-      return [];
+      return { context: [], error: `Database error: ${errorMessage}` };
     }
   }
 
@@ -377,13 +387,15 @@ After recording all insights, provide a brief summary of your overall observatio
       }
 
       try {
-        const input = toolUse.input as RecordInsightToolInput;
-
-        // Validate insight type
-        if (!["bias_detection", "pattern", "improvement_hypothesis"].includes(input.insight_type)) {
-          logger.warn("Invalid insight type, skipping", { type: input.insight_type });
+        // Validate tool input with Zod schema
+        const parseResult = RecordInsightToolInputSchema.safeParse(toolUse.input);
+        if (!parseResult.success) {
+          logger.warn("Invalid tool input schema", {
+            errors: parseResult.error.errors.map((e) => e.message),
+          });
           continue;
         }
+        const input = parseResult.data;
 
         // Build evidence array with validation
         const evidence: EvidenceItem[] = (input.evidence || [])
