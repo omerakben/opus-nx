@@ -1,0 +1,219 @@
+/**
+ * Client-side API helpers for the Opus Nx dashboard.
+ */
+
+// ============================================================
+// Types
+// ============================================================
+
+export interface ApiError {
+  message: string;
+  code?: string;
+}
+
+export interface ApiResponse<T> {
+  data?: T;
+  error?: ApiError;
+}
+
+// ============================================================
+// Fetch Helpers
+// ============================================================
+
+async function fetchApi<T>(
+  url: string,
+  options?: RequestInit
+): Promise<ApiResponse<T>> {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+      },
+      ...options,
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      let errorMessage = `HTTP ${response.status}`;
+      try {
+        const parsed = JSON.parse(errorBody);
+        errorMessage = parsed.error?.message ?? parsed.message ?? errorMessage;
+      } catch {
+        errorMessage = errorBody || errorMessage;
+      }
+      return { error: { message: errorMessage, code: String(response.status) } };
+    }
+
+    const data = await response.json();
+    return { data };
+  } catch (err) {
+    return {
+      error: {
+        message: err instanceof Error ? err.message : "Network error",
+        code: "NETWORK_ERROR",
+      },
+    };
+  }
+}
+
+// ============================================================
+// Sessions API
+// ============================================================
+
+export interface Session {
+  id: string;
+  userId?: string;
+  status: "active" | "completed" | "archived";
+  currentPlan?: Record<string, unknown>;
+  knowledgeContext?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getSessions(): Promise<ApiResponse<Session[]>> {
+  return fetchApi<Session[]>("/api/sessions");
+}
+
+export async function createSession(): Promise<ApiResponse<Session>> {
+  return fetchApi<Session>("/api/sessions", {
+    method: "POST",
+  });
+}
+
+// ============================================================
+// Thinking API
+// ============================================================
+
+export interface ThinkingRequest {
+  query: string;
+  sessionId?: string;
+  effort?: "low" | "medium" | "high" | "max";
+}
+
+export interface ThinkingResponse {
+  sessionId: string;
+  nodeId: string;
+  thinking: string;
+  response: string;
+  tokenUsage: {
+    inputTokens: number;
+    outputTokens: number;
+    thinkingTokens: number;
+  };
+}
+
+export async function startThinking(
+  request: ThinkingRequest
+): Promise<ApiResponse<ThinkingResponse>> {
+  return fetchApi<ThinkingResponse>("/api/thinking", {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
+}
+
+// ============================================================
+// ThinkFork API
+// ============================================================
+
+export interface ForkRequest {
+  query: string;
+  sessionId?: string;
+  styles?: string[];
+  effort?: "low" | "medium" | "high" | "max";
+}
+
+export interface ForkBranch {
+  style: string;
+  conclusion: string;
+  confidence: number;
+  keyInsights: string[];
+  risks?: string[];
+  opportunities?: string[];
+}
+
+export interface ForkResponse {
+  branches: ForkBranch[];
+  convergencePoints: Array<{
+    topic: string;
+    agreementLevel: "full" | "partial" | "none";
+    styles: string[];
+    summary: string;
+  }>;
+  divergencePoints: Array<{
+    topic: string;
+    positions: Array<{ style: string; position: string; confidence: number }>;
+    significance: "high" | "medium" | "low";
+  }>;
+  metaInsight: string;
+  recommendedApproach?: {
+    style: string;
+    rationale: string;
+    confidence: number;
+  };
+}
+
+export async function runForkAnalysis(
+  request: ForkRequest
+): Promise<ApiResponse<ForkResponse>> {
+  return fetchApi<ForkResponse>("/api/fork", {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
+}
+
+// ============================================================
+// Insights API
+// ============================================================
+
+export interface Insight {
+  id: string;
+  sessionId: string | null;
+  insightType: "bias_detection" | "pattern" | "improvement_hypothesis";
+  insight: string;
+  evidence: Array<{
+    nodeId: string;
+    excerpt: string;
+    relevance: number;
+  }>;
+  confidence: number;
+  createdAt: string;
+}
+
+export async function getSessionInsights(
+  sessionId: string
+): Promise<ApiResponse<Insight[]>> {
+  return fetchApi<Insight[]>(`/api/insights?sessionId=${sessionId}`);
+}
+
+// ============================================================
+// Thinking Nodes API
+// ============================================================
+
+export interface ThinkingNode {
+  id: string;
+  sessionId: string;
+  parentNodeId: string | null;
+  reasoning: string;
+  structuredReasoning: Record<string, unknown>;
+  confidenceScore: number | null;
+  tokenUsage: Record<string, unknown>;
+  inputQuery: string | null;
+  createdAt: string;
+}
+
+export interface ReasoningEdge {
+  id: string;
+  sourceId: string;
+  targetId: string;
+  edgeType: string;
+  weight: number;
+}
+
+export async function getSessionNodes(
+  sessionId: string
+): Promise<ApiResponse<{ nodes: ThinkingNode[]; edges: ReasoningEdge[] }>> {
+  return fetchApi<{ nodes: ThinkingNode[]; edges: ReasoningEdge[] }>(
+    `/api/sessions/${sessionId}/nodes`
+  );
+}

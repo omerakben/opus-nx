@@ -1,0 +1,128 @@
+"use client";
+
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui";
+import { formatNumber } from "@/lib/utils";
+import type { GraphNode } from "@/lib/graph-utils";
+import { groupNodesByConfidence, calculateTotalTokens } from "@/lib/graph-utils";
+import { AlertTriangle, Brain, TrendingUp, Zap } from "lucide-react";
+
+interface SessionStatsProps {
+  nodes: GraphNode[];
+}
+
+export function SessionStats({ nodes }: SessionStatsProps) {
+  const confidenceGroups = groupNodesByConfidence(nodes);
+  const tokenTotals = calculateTotalTokens(nodes);
+
+  const stats = [
+    {
+      label: "Thinking Nodes",
+      value: nodes.length,
+      icon: Brain,
+      color: "text-blue-500",
+    },
+    {
+      label: "Total Tokens",
+      value: formatNumber(tokenTotals.total),
+      icon: Zap,
+      color: "text-yellow-500",
+    },
+    {
+      label: "High Confidence",
+      value: confidenceGroups.high,
+      icon: TrendingUp,
+      color: "text-green-500",
+    },
+    {
+      label: "Low Confidence",
+      value: confidenceGroups.low,
+      icon: AlertTriangle,
+      color: "text-red-500",
+    },
+  ];
+
+  return (
+    <Card>
+      <CardHeader className="py-3 px-4">
+        <CardTitle className="text-sm font-medium">Session Stats</CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        <div className="grid grid-cols-2 gap-3">
+          {stats.map((stat) => (
+            <div
+              key={stat.label}
+              className="p-2 rounded-md bg-[var(--muted)]"
+            >
+              <div className="flex items-center gap-1.5 mb-1">
+                <stat.icon className={`w-3 h-3 ${stat.color}`} />
+                <span className="text-[10px] text-[var(--muted-foreground)]">
+                  {stat.label}
+                </span>
+              </div>
+              <div className="text-lg font-semibold text-[var(--foreground)]">
+                {stat.value}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Token breakdown */}
+        {tokenTotals.total > 0 && (
+          <div className="mt-3 pt-3 border-t border-[var(--border)]">
+            <div className="text-[10px] text-[var(--muted-foreground)] mb-2">
+              Token Breakdown
+            </div>
+            <div className="space-y-1.5">
+              <TokenBar
+                label="Thinking"
+                value={tokenTotals.thinking}
+                total={tokenTotals.total}
+                color="bg-green-500"
+              />
+              <TokenBar
+                label="Input"
+                value={tokenTotals.input}
+                total={tokenTotals.total}
+                color="bg-blue-500"
+              />
+              <TokenBar
+                label="Output"
+                value={tokenTotals.output}
+                total={tokenTotals.total}
+                color="bg-purple-500"
+              />
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+interface TokenBarProps {
+  label: string;
+  value: number;
+  total: number;
+  color: string;
+}
+
+function TokenBar({ label, value, total, color }: TokenBarProps) {
+  const percent = total > 0 ? (value / total) * 100 : 0;
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-[10px] text-[var(--muted-foreground)] w-14">
+        {label}
+      </span>
+      <div className="flex-1 h-1.5 rounded-full bg-[var(--border)] overflow-hidden">
+        <div
+          className={`h-full rounded-full ${color}`}
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+      <span className="text-[10px] text-[var(--foreground)] w-12 text-right font-mono">
+        {formatNumber(value)}
+      </span>
+    </div>
+  );
+}
