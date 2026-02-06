@@ -138,10 +138,11 @@ export class MetacognitionEngine {
   private onInsightExtracted?: (insight: MetacognitiveInsight) => void;
 
   constructor(options: MetacognitionEngineOptions = {}) {
+    // Use adaptive thinking (Claude 4.6 recommended mode)
     const config: OrchestratorConfig = {
-      model: "claude-opus-4-6-20260101",
+      model: "claude-opus-4-6",
       thinking: {
-        type: "enabled",
+        type: "adaptive",
         effort: "max",
       },
       streaming: true,

@@ -533,8 +533,8 @@ ${b.assumptions?.length ? `**Assumptions**:\n${b.assumptions.map((a) => `- ${a}`
    */
   private createThinkingConfig(effort: "low" | "medium" | "high" | "max"): OrchestratorConfig {
     return {
-      model: "claude-opus-4-6-20260101",
-      thinking: { type: "enabled", effort },
+      model: "claude-opus-4-6",
+      thinking: { type: "adaptive", effort },
       streaming: true,
       maxTokens: 8192,
     };

@@ -84,8 +84,6 @@ export class ThinkingEngine {
     messages: Anthropic.MessageParam[],
     tools: Anthropic.Tool[] | undefined
   ): Promise<ThinkingResult> {
-    const thinkingBudget = this.getThinkingBudget();
-
     // Build request with extended thinking
     const requestParams: Record<string, unknown> = {
       model: this.config.model,
@@ -93,12 +91,21 @@ export class ThinkingEngine {
       system: systemPrompt,
       messages,
       stream: true,
-      // Extended thinking configuration
-      thinking: {
-        type: "enabled",
-        budget_tokens: thinkingBudget,
-      },
     };
+
+    // Configure thinking based on type (adaptive is recommended for Opus 4.6)
+    if (this.config.thinking.type === "adaptive") {
+      // New adaptive thinking mode - Claude decides when/how much to think
+      requestParams.thinking = { type: "adaptive" };
+      // Effort is now set via output_config (GA in Claude 4.6)
+      requestParams.output_config = { effort: this.config.thinking.effort };
+    } else {
+      // Legacy enabled mode with budget_tokens (deprecated on Opus 4.6)
+      requestParams.thinking = {
+        type: "enabled",
+        budget_tokens: this.getThinkingBudget(),
+      };
+    }
 
     if (tools && tools.length > 0) {
       requestParams.tools = tools;
@@ -136,20 +143,27 @@ export class ThinkingEngine {
     messages: Anthropic.MessageParam[],
     tools: Anthropic.Tool[] | undefined
   ): Promise<ThinkingResult> {
-    const thinkingBudget = this.getThinkingBudget();
-
     // Build request with extended thinking
     const requestParams: Record<string, unknown> = {
       model: this.config.model,
       max_tokens: this.config.maxTokens,
       system: systemPrompt,
       messages,
-      // Extended thinking configuration
-      thinking: {
-        type: "enabled",
-        budget_tokens: thinkingBudget,
-      },
     };
+
+    // Configure thinking based on type (adaptive is recommended for Opus 4.6)
+    if (this.config.thinking.type === "adaptive") {
+      // New adaptive thinking mode - Claude decides when/how much to think
+      requestParams.thinking = { type: "adaptive" };
+      // Effort is now set via output_config (GA in Claude 4.6)
+      requestParams.output_config = { effort: this.config.thinking.effort };
+    } else {
+      // Legacy enabled mode with budget_tokens (deprecated on Opus 4.6)
+      requestParams.thinking = {
+        type: "enabled",
+        budget_tokens: this.getThinkingBudget(),
+      };
+    }
 
     if (tools && tools.length > 0) {
       requestParams.tools = tools;
@@ -234,7 +248,9 @@ export class ThinkingEngine {
   }
 
   /**
-   * Get the thinking budget based on effort level
+   * Get the thinking budget based on effort level.
+   * Only used for legacy "enabled" mode - deprecated on Opus 4.6.
+   * Use adaptive thinking with effort parameter instead.
    */
   private getThinkingBudget(): number {
     if (this.config.thinking.budgetTokens) {
