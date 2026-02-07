@@ -9,12 +9,16 @@ import {
   FORK_STYLE_DESCRIPTIONS,
   ForkStyleSchema,
   ThinkForkOptionsSchema,
+  BranchSteeringActionSchema,
   type ForkStyle,
   type ForkBranchResult,
   type ThinkForkResult,
   type ThinkForkOptions,
   type ConvergencePoint,
   type DivergencePoint,
+  type BranchGuidance,
+  type BranchSteeringAction,
+  type SteeringResult,
 } from "./types/thinkfork.js";
 import type { OrchestratorConfig, ToolUseBlock } from "./types/orchestrator.js";
 
@@ -104,6 +108,7 @@ export class ThinkForkEngine {
       effort = "high",
       analyzeConvergence = true,
       additionalContext,
+      branchGuidance,
     } = parseResult.data;
 
     logger.info("Starting ThinkFork analysis", {
@@ -115,9 +120,20 @@ export class ThinkForkEngine {
     const startTime = Date.now();
     const errors: string[] = [];
 
-    // 1. Execute all branches concurrently
+    // Build guidance map for quick lookup
+    const guidanceMap = new Map<ForkStyle, string>();
+    if (branchGuidance) {
+      for (const g of branchGuidance) {
+        guidanceMap.set(g.style, g.guidance);
+      }
+      logger.info("Human guidance applied", {
+        guidedStyles: Array.from(guidanceMap.keys()),
+      });
+    }
+
+    // 1. Execute all branches concurrently (with per-branch human guidance)
     const branchPromises = styles.map((style) =>
-      this.executeBranch(style, query, effort, additionalContext)
+      this.executeBranch(style, query, effort, additionalContext, guidanceMap.get(style))
     );
 
     const branches = await Promise.all(branchPromises);
@@ -175,6 +191,7 @@ export class ThinkForkEngine {
       fallbackPromptsUsed: this.fallbackPromptsUsed.size > 0
         ? Array.from(this.fallbackPromptsUsed)
         : undefined,
+      appliedGuidance: branchGuidance,
     };
 
     logger.info("ThinkFork analysis complete", {
@@ -201,12 +218,13 @@ export class ThinkForkEngine {
     style: ForkStyle,
     query: string,
     effort: "low" | "medium" | "high" | "max",
-    additionalContext?: string
+    additionalContext?: string,
+    humanGuidance?: string
   ): Promise<ForkBranchResult> {
     const startTime = Date.now();
 
     this.options.onBranchStart?.(style);
-    logger.debug(`Starting ${style} branch`, { effort });
+    logger.debug(`Starting ${style} branch`, { effort, hasGuidance: !!humanGuidance });
 
     const systemPrompt = this.prompts.get(style);
     if (!systemPrompt) {
@@ -215,9 +233,14 @@ export class ThinkForkEngine {
       return this.createFailedBranchResult(style, error, Date.now() - startTime);
     }
 
-    const userMessage = additionalContext
-      ? `${additionalContext}\n\n---\n\n${query}`
-      : query;
+    // Build user message with optional context and human guidance
+    let userMessage = query;
+    if (additionalContext) {
+      userMessage = `${additionalContext}\n\n---\n\n${userMessage}`;
+    }
+    if (humanGuidance) {
+      userMessage = `## Human Guidance for Your Analysis\n\nA human collaborator has provided the following direction for your ${style} perspective:\n\n> ${humanGuidance}\n\nPlease incorporate this guidance into your analysis while maintaining your ${style} reasoning style.\n\n---\n\n${userMessage}`;
+    }
 
     try {
       const engine = new ThinkingEngine({
@@ -526,6 +549,202 @@ ${b.assumptions?.length ? `**Assumptions**:\n${b.assumptions.map((a) => `- ${a}`
       return "All approaches show low confidence, indicating significant uncertainty in this problem.";
     }
     return `Mixed confidence across approaches (avg: ${(avgConfidence * 100).toFixed(0)}%). Consider exploring the divergence.`;
+  }
+
+  // ============================================================
+  // Steering Methods (Post-Analysis Human Actions)
+  // ============================================================
+
+  /**
+   * Steer a fork analysis based on human feedback.
+   *
+   * Supports four actions:
+   * - expand: Deeper analysis of a specific branch
+   * - merge: Synthesize multiple branches into a unified approach
+   * - challenge: Challenge a branch's conclusion with a counter-argument
+   * - refork: Re-run all branches with new context
+   */
+  async steer(
+    originalResult: ThinkForkResult,
+    action: BranchSteeringAction
+  ): Promise<SteeringResult> {
+    const parseResult = BranchSteeringActionSchema.safeParse(action);
+    if (!parseResult.success) {
+      throw new Error(`Invalid steering action: ${parseResult.error.message}`);
+    }
+
+    const startTime = Date.now();
+    logger.info("Executing steering action", { action: action.action });
+
+    switch (action.action) {
+      case "expand":
+        return this.executeExpand(originalResult, action.style, action.direction);
+      case "merge":
+        return this.executeMerge(originalResult, action.styles, action.focusArea);
+      case "challenge":
+        return this.executeChallenge(originalResult, action.style, action.challenge);
+      case "refork": {
+        // Re-run with new context
+        const reforkResult = await this.fork(originalResult.query, {
+          additionalContext: action.newContext,
+          effort: "high",
+        });
+        return {
+          action: "refork",
+          result: reforkResult.metaInsight,
+          confidence: reforkResult.recommendedApproach?.confidence ?? 0.5,
+          keyInsights: reforkResult.branches.flatMap((b) => b.keyInsights.slice(0, 2)),
+          tokensUsed: reforkResult.totalTokensUsed,
+          durationMs: Date.now() - startTime,
+        };
+      }
+    }
+  }
+
+  /**
+   * Expand a specific branch with deeper analysis.
+   */
+  private async executeExpand(
+    originalResult: ThinkForkResult,
+    style: ForkStyle,
+    direction?: string
+  ): Promise<SteeringResult> {
+    const startTime = Date.now();
+    const branch = originalResult.branches.find((b) => b.style === style);
+    if (!branch) {
+      throw new Error(`Branch not found: ${style}`);
+    }
+
+    const expandPrompt = `You previously analyzed a problem with a ${style} perspective and reached this conclusion:
+
+"${branch.conclusion}"
+
+Key insights: ${branch.keyInsights.join("; ")}
+
+${direction ? `The human collaborator wants you to explore further: "${direction}"` : "Please provide a deeper, more detailed analysis."}
+
+Expand on your reasoning with additional detail, evidence, and implications. Use the record_conclusion tool to capture your expanded analysis.`;
+
+    const engine = new ThinkingEngine({
+      config: this.createThinkingConfig("max"),
+    });
+
+    const result = await engine.think(
+      this.prompts.get(style) ?? this.getFallbackPrompt(style),
+      [{ role: "user", content: expandPrompt }],
+      [BRANCH_CONCLUSION_TOOL]
+    );
+
+    const parsed = this.parseBranchResult(style, result.toolUseBlocks, result.usage.outputTokens);
+
+    return {
+      action: "expand",
+      result: parsed.conclusion,
+      confidence: parsed.confidence,
+      keyInsights: parsed.keyInsights,
+      expandedAnalysis: parsed.conclusion,
+      tokensUsed: result.usage.outputTokens,
+      durationMs: Date.now() - startTime,
+    };
+  }
+
+  /**
+   * Merge multiple branches into a unified approach.
+   */
+  private async executeMerge(
+    originalResult: ThinkForkResult,
+    styles: ForkStyle[],
+    focusArea?: string
+  ): Promise<SteeringResult> {
+    const startTime = Date.now();
+    const selectedBranches = originalResult.branches.filter((b) =>
+      styles.includes(b.style as ForkStyle)
+    );
+
+    if (selectedBranches.length < 2) {
+      throw new Error("Need at least 2 branches to merge");
+    }
+
+    const branchSummaries = selectedBranches
+      .map((b) => `**${b.style}** (${Math.round(b.confidence * 100)}%): ${b.conclusion}\nInsights: ${b.keyInsights.join("; ")}`)
+      .join("\n\n");
+
+    const mergePrompt = `Multiple reasoning perspectives have been applied to this problem:
+
+${branchSummaries}
+
+${focusArea ? `Focus area for synthesis: "${focusArea}"` : ""}
+
+Synthesize these perspectives into a unified, actionable approach that takes the best elements from each. Use the record_conclusion tool to capture the merged analysis.`;
+
+    const engine = new ThinkingEngine({
+      config: this.createThinkingConfig("high"),
+    });
+
+    const result = await engine.think(
+      "You are a synthesis expert. Merge multiple reasoning perspectives into a coherent unified approach.",
+      [{ role: "user", content: mergePrompt }],
+      [BRANCH_CONCLUSION_TOOL]
+    );
+
+    const parsed = this.parseBranchResult("balanced", result.toolUseBlocks, result.usage.outputTokens);
+
+    return {
+      action: "merge",
+      result: parsed.conclusion,
+      confidence: parsed.confidence,
+      keyInsights: parsed.keyInsights,
+      synthesizedApproach: parsed.conclusion,
+      tokensUsed: result.usage.outputTokens,
+      durationMs: Date.now() - startTime,
+    };
+  }
+
+  /**
+   * Challenge a branch's conclusion with a counter-argument.
+   */
+  private async executeChallenge(
+    originalResult: ThinkForkResult,
+    style: ForkStyle,
+    challenge: string
+  ): Promise<SteeringResult> {
+    const startTime = Date.now();
+    const branch = originalResult.branches.find((b) => b.style === style);
+    if (!branch) {
+      throw new Error(`Branch not found: ${style}`);
+    }
+
+    const challengePrompt = `Your ${style} analysis concluded:
+
+"${branch.conclusion}"
+
+A human collaborator challenges this conclusion:
+
+"${challenge}"
+
+Respond to this challenge. If the challenge has merit, revise your conclusion. If not, defend your position with stronger arguments. Use the record_conclusion tool to capture your response.`;
+
+    const engine = new ThinkingEngine({
+      config: this.createThinkingConfig("high"),
+    });
+
+    const result = await engine.think(
+      this.prompts.get(style) ?? this.getFallbackPrompt(style),
+      [{ role: "user", content: challengePrompt }],
+      [BRANCH_CONCLUSION_TOOL]
+    );
+
+    const parsed = this.parseBranchResult(style, result.toolUseBlocks, result.usage.outputTokens);
+
+    return {
+      action: "challenge",
+      result: parsed.conclusion,
+      confidence: parsed.confidence,
+      keyInsights: parsed.keyInsights,
+      challengeResponse: parsed.conclusion,
+      tokensUsed: result.usage.outputTokens,
+      durationMs: Date.now() - startTime,
+    };
   }
 
   /**

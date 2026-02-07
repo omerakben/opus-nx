@@ -10,7 +10,7 @@ import {
 } from "@/lib/colors";
 import { formatNumber, truncate, formatRelativeTime } from "@/lib/utils";
 import type { GraphNode } from "@/lib/graph-utils";
-import { Brain, MessageSquare, Zap } from "lucide-react";
+import { Brain, MessageSquare, Zap, Database, GitFork, User } from "lucide-react";
 
 interface ThinkingNodeData {
   id: string;
@@ -26,6 +26,49 @@ interface ThinkingNodeData {
   createdAt: Date;
   isSelected: boolean;
   decisionCount?: number;
+  nodeType?: string;
+}
+
+/** Get icon and styles based on node type */
+function getNodeTypeConfig(nodeType?: string) {
+  switch (nodeType) {
+    case "compaction":
+      return {
+        Icon: Database,
+        label: "Memory Consolidation",
+        borderClass: "border-amber-500",
+        bgClass: "bg-amber-500/10",
+        textClass: "text-amber-500",
+        glowClass: "shadow-amber-500/20",
+      };
+    case "fork_branch":
+      return {
+        Icon: GitFork,
+        label: "Fork Branch",
+        borderClass: "border-violet-500",
+        bgClass: "bg-violet-500/10",
+        textClass: "text-violet-500",
+        glowClass: "shadow-violet-500/20",
+      };
+    case "human_annotation":
+      return {
+        Icon: User,
+        label: "Human Note",
+        borderClass: "border-cyan-500",
+        bgClass: "bg-cyan-500/10",
+        textClass: "text-cyan-500",
+        glowClass: "shadow-cyan-500/20",
+      };
+    default:
+      return {
+        Icon: Brain,
+        label: "Thinking",
+        borderClass: "",
+        bgClass: "",
+        textClass: "",
+        glowClass: "",
+      };
+  }
 }
 
 export const ThinkingNode = memo(function ThinkingNode({
@@ -40,9 +83,12 @@ export const ThinkingNode = memo(function ThinkingNode({
     createdAt,
     isSelected,
     decisionCount,
+    nodeType,
   } = nodeData;
 
-  const confidenceColor = getConfidenceColor(confidence);
+  const isSpecialNode = nodeType && nodeType !== "thinking";
+  const typeConfig = getNodeTypeConfig(nodeType);
+  const confidenceColor = isSpecialNode ? undefined : getConfidenceColor(confidence);
   const confidencePercent = Math.round(confidence * 100);
 
   // Get display text
@@ -62,9 +108,12 @@ export const ThinkingNode = memo(function ThinkingNode({
           "min-w-[240px] max-w-[320px] rounded-lg border-2 bg-[var(--card)] shadow-lg transition-all",
           isSelected
             ? "ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--background)]"
-            : "hover:shadow-xl"
+            : "hover:shadow-xl",
+          isSpecialNode && typeConfig.borderClass,
+          isSpecialNode && typeConfig.glowClass,
+          nodeType === "compaction" && "border-dashed"
         )}
-        style={{ borderColor: confidenceColor }}
+        style={!isSpecialNode ? { borderColor: confidenceColor } : undefined}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-3 border-b border-[var(--border)]">
@@ -72,24 +121,42 @@ export const ThinkingNode = memo(function ThinkingNode({
             <div
               className={cn(
                 "p-1.5 rounded-md",
-                getConfidenceBgClass(confidence)
+                isSpecialNode ? typeConfig.bgClass : getConfidenceBgClass(confidence)
               )}
             >
-              <Brain className={cn("w-4 h-4", getConfidenceTextClass(confidence))} />
+              <typeConfig.Icon
+                className={cn(
+                  "w-4 h-4",
+                  isSpecialNode ? typeConfig.textClass : getConfidenceTextClass(confidence)
+                )}
+              />
             </div>
-            <span className="text-xs text-[var(--muted-foreground)]">
-              {formatRelativeTime(createdAt)}
-            </span>
-          </div>
-          <div
-            className={cn(
-              "text-xs font-semibold px-2 py-0.5 rounded-full",
-              getConfidenceBgClass(confidence),
-              getConfidenceTextClass(confidence)
+            {isSpecialNode ? (
+              <span className={cn("text-xs font-medium", typeConfig.textClass)}>
+                {typeConfig.label}
+              </span>
+            ) : (
+              <span className="text-xs text-[var(--muted-foreground)]">
+                {formatRelativeTime(createdAt)}
+              </span>
             )}
-          >
-            {confidencePercent}%
           </div>
+          {!isSpecialNode && (
+            <div
+              className={cn(
+                "text-xs font-semibold px-2 py-0.5 rounded-full",
+                getConfidenceBgClass(confidence),
+                getConfidenceTextClass(confidence)
+              )}
+            >
+              {confidencePercent}%
+            </div>
+          )}
+          {nodeType === "compaction" && (
+            <div className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500">
+              Compacted
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -113,9 +180,16 @@ export const ThinkingNode = memo(function ThinkingNode({
               </div>
             )}
           </div>
-          <span className="text-[10px] opacity-50">
-            {formatNumber(tokenUsage.inputTokens + tokenUsage.outputTokens)} total
-          </span>
+          {!isSpecialNode && (
+            <span className="text-[10px] opacity-50">
+              {formatNumber(tokenUsage.inputTokens + tokenUsage.outputTokens)} total
+            </span>
+          )}
+          {isSpecialNode && (
+            <span className="text-[10px] opacity-50">
+              {formatRelativeTime(createdAt)}
+            </span>
+          )}
         </div>
       </div>
 

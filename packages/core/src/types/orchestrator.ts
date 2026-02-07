@@ -27,11 +27,18 @@ export const ToolUseBlockSchema = z.object({
   input: z.record(z.unknown()),
 });
 
+// Compaction block - returned when context compaction is triggered (Opus 4.6 beta)
+export const CompactionBlockSchema = z.object({
+  type: z.literal("compaction"),
+  content: z.string(),
+});
+
 export type ThinkingBlock = z.infer<typeof ThinkingBlockSchema>;
 export type RedactedThinkingBlock = z.infer<typeof RedactedThinkingBlockSchema>;
 export type TextBlock = z.infer<typeof TextBlockSchema>;
 export type ToolUseBlock = z.infer<typeof ToolUseBlockSchema>;
-export type ContentBlock = ThinkingBlock | RedactedThinkingBlock | TextBlock | ToolUseBlock;
+export type CompactionBlock = z.infer<typeof CompactionBlockSchema>;
+export type ContentBlock = ThinkingBlock | RedactedThinkingBlock | TextBlock | ToolUseBlock | CompactionBlock;
 
 // ============================================================
 // Task Types
@@ -82,14 +89,30 @@ export const ThinkingConfigSchema = z.object({
   budgetTokens: z.number().optional(),
 });
 
+// Compaction configuration for infinite reasoning sessions (Opus 4.6 beta)
+export const CompactionConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  /** Token threshold to trigger compaction (min 50000) */
+  triggerTokens: z.number().min(50000).default(150000),
+  /** Whether to pause after compaction for human review */
+  pauseAfterCompaction: z.boolean().default(false),
+  /** Custom summarization instructions for compaction */
+  instructions: z.string().optional(),
+});
+
 export const OrchestratorConfigSchema = z.object({
   model: z.string().default("claude-opus-4-6"),
-  maxTokens: z.number().default(128000),
+  maxTokens: z.number().default(16384),
   thinking: ThinkingConfigSchema.default({}),
   streaming: z.boolean().default(true),
+  /** Data residency: "global" (default) or "us" for US-only inference */
+  inferenceGeo: z.enum(["global", "us"]).default("global").optional(),
+  /** Context compaction for infinite reasoning sessions (Opus 4.6 beta) */
+  compaction: CompactionConfigSchema.optional(),
 });
 
 export type ThinkingConfig = z.infer<typeof ThinkingConfigSchema>;
+export type CompactionConfig = z.infer<typeof CompactionConfigSchema>;
 export type OrchestratorConfig = z.infer<typeof OrchestratorConfigSchema>;
 
 // ============================================================
@@ -103,6 +126,10 @@ export interface OrchestratorSession {
   thinkingHistory: ThinkingBlock[];
   currentPlan: TaskPlan | null;
   knowledgeContext: string[];
+  /** Number of context compactions performed in this session */
+  compactionCount: number;
+  /** Last compaction summary (for continuity) */
+  lastCompactionSummary?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -124,5 +151,10 @@ export interface ThinkingResult {
   thinkingBlocks: (ThinkingBlock | RedactedThinkingBlock)[];
   textBlocks: TextBlock[];
   toolUseBlocks: ToolUseBlock[];
+  compactionBlocks: CompactionBlock[];
   usage: TokenUsage;
+  /** Whether compaction was triggered during this request */
+  compacted: boolean;
+  /** Stop reason from the API */
+  stopReason?: string;
 }

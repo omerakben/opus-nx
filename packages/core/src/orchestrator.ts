@@ -10,6 +10,7 @@ import type {
   Task,
   ContentBlock,
   ToolUseBlock,
+  CompactionBlock,
   AgentsConfig,
   ThinkingBlock,
   ThinkingNode,
@@ -27,6 +28,7 @@ export interface OrchestratorOptions {
   systemPrompt: string;
   onThinkingStream?: (thinking: string) => void;
   onTextStream?: (text: string) => void;
+  onCompactionStream?: (summary: string) => void;
   onTaskUpdate?: (task: Task) => void;
   onPlanUpdate?: (plan: TaskPlan) => void;
 }
@@ -42,6 +44,10 @@ export interface OrchestratorResult {
   knowledgeContext?: string;
   /** The persisted thinking node from ThinkGraph */
   thinkingNode?: ThinkingNode;
+  /** Whether context compaction occurred during this request */
+  compacted: boolean;
+  /** Compaction summary if compaction occurred */
+  compactionSummary?: string;
 }
 
 // ============================================================
@@ -74,6 +80,7 @@ export class Orchestrator {
       config: options.config,
       onThinkingStream: options.onThinkingStream,
       onTextStream: options.onTextStream,
+      onCompactionStream: options.onCompactionStream,
     });
     this.memoryManager = new MemoryManager();
     this.thinkGraph = new ThinkGraph();
@@ -99,6 +106,7 @@ export class Orchestrator {
       thinkingHistory: [],
       currentPlan: null,
       knowledgeContext: [],
+      compactionCount: 0,
       createdAt: dbSession.createdAt,
       updatedAt: dbSession.updatedAt,
     };
@@ -184,6 +192,42 @@ export class Orchestrator {
       await updateSessionPlan(this.session.id, plan as unknown as Record<string, unknown>);
     }
 
+    // Handle compaction events - persist as special graph nodes
+    let compactionSummary: string | undefined;
+    if (result.compacted && result.compactionBlocks.length > 0) {
+      compactionSummary = result.compactionBlocks.map((b) => b.content).join("\n");
+      this.session.compactionCount++;
+      this.session.lastCompactionSummary = compactionSummary;
+
+      // Create a compaction node in the graph for visualization
+      try {
+        const compactionGraphResult = await this.thinkGraph.persistThinkingNode(
+          [{
+            type: "thinking" as const,
+            thinking: `[MEMORY CONSOLIDATION #${this.session.compactionCount}]\n\n${compactionSummary}`,
+            signature: "compaction",
+          }],
+          {
+            sessionId: this.session.id,
+            parentNodeId: this.lastThinkingNodeId ?? undefined,
+            inputQuery: `[Compaction #${this.session.compactionCount}] Context compacted at ${new Date().toISOString()}`,
+            tokenUsage: result.usage,
+          }
+        );
+
+        this.lastThinkingNodeId = compactionGraphResult.node.id;
+        logger.info("Compaction node persisted to ThinkGraph", {
+          nodeId: compactionGraphResult.node.id,
+          compactionNumber: this.session.compactionCount,
+          summaryLength: compactionSummary.length,
+        });
+      } catch (error) {
+        logger.warn("Failed to persist compaction node", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
     // Get the text response
     const textResponse = result.textBlocks.map((b) => b.text).join("\n");
 
@@ -195,6 +239,8 @@ export class Orchestrator {
       thinkingBlocks,
       knowledgeContext: knowledgeContext || undefined,
       thinkingNode,
+      compacted: result.compacted,
+      compactionSummary,
     };
   }
 
@@ -360,6 +406,7 @@ Think carefully about the optimal approach. Consider:
   setCallbacks(callbacks: {
     onThinkingStream?: (thinking: string) => void;
     onTextStream?: (text: string) => void;
+    onCompactionStream?: (summary: string) => void;
     onTaskUpdate?: (task: Task) => void;
     onPlanUpdate?: (plan: TaskPlan) => void;
     onThinkingNodeCreated?: (node: ThinkingNode) => void;
@@ -367,6 +414,7 @@ Think carefully about the optimal approach. Consider:
     this.thinkingEngine.setCallbacks({
       onThinkingStream: callbacks.onThinkingStream,
       onTextStream: callbacks.onTextStream,
+      onCompactionStream: callbacks.onCompactionStream,
     });
     this.onTaskUpdate = callbacks.onTaskUpdate;
     this.onPlanUpdate = callbacks.onPlanUpdate;
