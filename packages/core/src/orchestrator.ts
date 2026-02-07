@@ -261,6 +261,10 @@ export class Orchestrator {
         (b): b is ThinkingBlock => b.type === "thinking"
       );
       this.session.thinkingHistory.push(...thinkingBlocks);
+      // Cap thinking history to prevent unbounded memory growth
+      if (this.session.thinkingHistory.length > 50) {
+        this.session.thinkingHistory = this.session.thinkingHistory.slice(-50);
+      }
 
       // Persist thinking to ThinkGraph - this is the core innovation!
       // Every reasoning session becomes a queryable graph node

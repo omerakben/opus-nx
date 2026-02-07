@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { getSessions, createSession, type Session } from "@/lib/api";
 
 interface UseSessionReturn {
@@ -18,6 +18,11 @@ export function useSession(): UseSessionReturn {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const activeSessionIdRef = useRef(activeSessionId);
+
+  useEffect(() => {
+    activeSessionIdRef.current = activeSessionId;
+  }, [activeSessionId]);
 
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null;
 
@@ -33,13 +38,13 @@ export function useSession(): UseSessionReturn {
     } else if (response.data) {
       setSessions(response.data);
       // Auto-select first session if none selected
-      if (!activeSessionId && response.data.length > 0) {
+      if (!activeSessionIdRef.current && response.data.length > 0) {
         setActiveSessionId(response.data[0].id);
       }
     }
 
     setIsLoading(false);
-  }, [activeSessionId]);
+  }, []);
 
   const selectSession = useCallback((sessionId: string) => {
     setActiveSessionId(sessionId);

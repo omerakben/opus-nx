@@ -16,7 +16,7 @@ export function GraphLegend() {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
-    <div className="absolute bottom-4 left-4 z-10">
+    <div className="absolute bottom-14 left-4 z-10" data-tour="graph-legend">
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
         aria-expanded={!isCollapsed}

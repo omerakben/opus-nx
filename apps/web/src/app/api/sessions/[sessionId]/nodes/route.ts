@@ -1,4 +1,4 @@
-import { getSessionThinkingNodes, getEdgesFromNode } from "@/lib/db";
+import { getSessionThinkingNodes, getEdgesForNodes } from "@/lib/db";
 import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
 
 interface RouteParams {
@@ -18,18 +18,9 @@ export async function GET(request: Request, { params }: RouteParams) {
     // Get all thinking nodes for the session.
     const nodes = await getSessionThinkingNodes(sessionId, { limit: 100 });
 
-    // Get edges for each node.
-    const allEdges = await Promise.all(nodes.map((node) => getEdgesFromNode(node.id)));
-
-    // Flatten and deduplicate edges.
-    const edgeMap = new Map<string, typeof allEdges[0][0]>();
-    for (const edges of allEdges) {
-      for (const edge of edges) {
-        edgeMap.set(edge.id, edge);
-      }
-    }
-
-    const edges = Array.from(edgeMap.values());
+    // Get all edges in a single batch query instead of N+1 per-node queries.
+    const nodeIds = nodes.map((node) => node.id);
+    const edges = await getEdgesForNodes(nodeIds);
 
     const serializedNodes = nodes.map((node) => ({
       ...node,

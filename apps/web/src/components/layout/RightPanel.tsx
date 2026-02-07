@@ -62,11 +62,11 @@ export function RightPanel({
     <div className="w-80 border-l border-[var(--border)] bg-[var(--card)] flex flex-col h-full overflow-hidden">
       <Tabs defaultValue="insights" className="flex-1 flex flex-col">
         <TabsList className="mx-4 mt-3 justify-start">
-          <TabsTrigger value="insights" className="text-xs">
+          <TabsTrigger value="insights" className="text-xs" data-tour="insights-tab">
             <Lightbulb className="w-3 h-3 mr-1" />
             Insights
           </TabsTrigger>
-          <TabsTrigger value="fork" className="text-xs">
+          <TabsTrigger value="fork" className="text-xs" data-tour="fork-tab">
             <GitFork className="w-3 h-3 mr-1" />
             ThinkFork
           </TabsTrigger>

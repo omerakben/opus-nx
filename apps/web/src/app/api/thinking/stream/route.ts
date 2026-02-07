@@ -127,7 +127,7 @@ export async function POST(request: Request) {
             const latestNode = await getLatestThinkingNode(sessionId);
             if (latestNode) {
               parentNodeId = latestNode.id;
-              parentLinkStatus = "persist_failed";
+              parentLinkStatus = "pending";
             }
           } catch (e) {
             parentLinkStatus = "lookup_failed";
@@ -160,8 +160,8 @@ export async function POST(request: Request) {
               },
             }
           );
-          if (parentNodeId && graphResult.linkedToParent) {
-            parentLinkStatus = "linked";
+          if (parentNodeId) {
+            parentLinkStatus = graphResult.linkedToParent ? "linked" : "persist_failed";
           }
 
           // If compaction occurred, persist a compaction node

@@ -12,6 +12,7 @@ import {
 import "@xyflow/react/dist/style.css";
 
 import { ThinkingNode } from "./ThinkingNode";
+import { StreamingNode } from "./StreamingNode";
 import { edgeTypes } from "./EdgeTypes";
 import { GraphControls } from "./GraphControls";
 import { GraphLegend } from "./GraphLegend";
@@ -22,6 +23,7 @@ import { Skeleton } from "@/components/ui";
 // Node types for React Flow
 const nodeTypes = {
   thinking: ThinkingNode,
+  streaming: StreamingNode,
 };
 
 interface ThinkingGraphProps {
@@ -32,6 +34,7 @@ interface ThinkingGraphProps {
   onEdgesChange?: OnEdgesChange<GraphEdge>;
   isLoading?: boolean;
   isMobile?: boolean;
+  onSeedDemo?: () => void;
 }
 
 export function ThinkingGraph({
@@ -42,6 +45,7 @@ export function ThinkingGraph({
   onEdgesChange,
   isLoading,
   isMobile,
+  onSeedDemo,
 }: ThinkingGraphProps) {
   // Handle node click
   const handleNodeClick: NodeMouseHandler<GraphNode> = useCallback(
@@ -106,7 +110,15 @@ export function ThinkingGraph({
               ? "Start a thinking session to see the reasoning graph."
               : "Start a thinking session to visualize the reasoning graph. Each node is a step in Claude\u2019s extended thinking."}
           </p>
-          <div className="flex items-center justify-center gap-4 text-[10px] text-[var(--muted-foreground)]">
+          {onSeedDemo && (
+            <button
+              onClick={onSeedDemo}
+              className="mt-4 px-4 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-violet-500 text-white text-sm font-medium hover:opacity-90 transition-opacity"
+            >
+              Load Demo Session
+            </button>
+          )}
+          <div className="flex items-center justify-center gap-4 text-[10px] text-[var(--muted-foreground)] mt-4">
             <span className="flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-green-500/50" /> Supports
             </span>

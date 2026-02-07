@@ -55,7 +55,18 @@ export function Tooltip({
       },
     };
 
-    setPosition(positions[side]);
+    // Clamp to viewport to prevent overflow
+    const pos = positions[side];
+    const left = Math.max(8, Math.min(
+      pos.left as number,
+      window.innerWidth - tooltipRect.width - 8
+    ));
+    const top = Math.max(8, Math.min(
+      pos.top as number,
+      window.innerHeight - tooltipRect.height - 8
+    ));
+
+    setPosition({ left, top });
   };
 
   const showTooltip = () => {

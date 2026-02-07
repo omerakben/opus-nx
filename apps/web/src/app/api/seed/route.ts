@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import {
   createSession,
   updateSessionPlan,
@@ -15,6 +16,19 @@ import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
  */
 export async function POST(request: Request) {
   const correlationId = getCorrelationId(request);
+
+  // Verify authentication
+  const cookieStore = await cookies();
+  const authCookie = cookieStore.get("opus-nx-auth");
+  if (!authCookie?.value) {
+    return jsonError({
+      status: 401,
+      code: "UNAUTHORIZED",
+      message: "Authentication required",
+      correlationId,
+    });
+  }
+
   try {
     // 1. Create the demo session and mark it with demo metadata
     const session = await createSession();

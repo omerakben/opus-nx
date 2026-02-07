@@ -79,7 +79,8 @@ class Logger {
 }
 
 export function createLogger(name: string, minLevel?: LogLevel): Logger {
-  return new Logger(name, minLevel);
+  const envLevel = (typeof process !== "undefined" ? process.env?.LOG_LEVEL : undefined) as LogLevel | undefined;
+  return new Logger(name, minLevel ?? envLevel ?? "info");
 }
 
 export type { Logger, LogLevel, LogEntry };
