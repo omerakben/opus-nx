@@ -1,8 +1,17 @@
 "use client";
 
-import { Brain, GithubIcon } from "lucide-react";
+import { Brain, GithubIcon, LogOut } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export function Header() {
+  const router = useRouter();
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
+  }
+
   return (
     <header className="h-14 border-b border-[var(--border)] bg-[var(--card)] px-4 flex items-center justify-between">
       <div className="flex items-center gap-3">
@@ -32,6 +41,13 @@ export function Header() {
         >
           <GithubIcon className="w-4 h-4" />
         </a>
+        <button
+          onClick={handleLogout}
+          className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-[var(--muted)] transition-colors"
+          title="Log out"
+        >
+          <LogOut className="w-4 h-4" />
+        </button>
       </div>
     </header>
   );
