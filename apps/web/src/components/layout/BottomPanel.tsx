@@ -15,6 +15,7 @@ interface BottomPanelProps {
   compactionCount?: number;
   compactionSummary?: string | null;
   elapsedMs?: number;
+  isMobile?: boolean;
 }
 
 export function BottomPanel({
@@ -30,7 +31,30 @@ export function BottomPanel({
   compactionCount,
   compactionSummary,
   elapsedMs,
+  isMobile,
 }: BottomPanelProps) {
+  if (isMobile) {
+    return (
+      <div className="h-full">
+        <ThinkingStream
+          thinking={thinking}
+          tokenCount={tokenCount}
+          isStreaming={isStreaming}
+          error={error}
+          sessionId={sessionId}
+          onStart={onStart}
+          onStop={onStop}
+          onClear={onClear}
+          phase={phase}
+          compactionCount={compactionCount}
+          compactionSummary={compactionSummary}
+          elapsedMs={elapsedMs}
+          isMobile
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="h-64 border-t border-[var(--border)]">
       <ThinkingStream

@@ -31,6 +31,7 @@ interface ThinkingGraphProps {
   onNodesChange?: OnNodesChange<GraphNode>;
   onEdgesChange?: OnEdgesChange<GraphEdge>;
   isLoading?: boolean;
+  isMobile?: boolean;
 }
 
 export function ThinkingGraph({
@@ -40,6 +41,7 @@ export function ThinkingGraph({
   onNodesChange,
   onEdgesChange,
   isLoading,
+  isMobile,
 }: ThinkingGraphProps) {
   // Handle node click
   const handleNodeClick: NodeMouseHandler<GraphNode> = useCallback(
@@ -57,8 +59,8 @@ export function ThinkingGraph({
 
   // Default viewport
   const defaultViewport = useMemo(
-    () => ({ x: 0, y: 0, zoom: 0.8 }),
-    []
+    () => ({ x: 0, y: 0, zoom: isMobile ? 0.6 : 0.8 }),
+    [isMobile]
   );
 
   if (isLoading) {
@@ -100,8 +102,9 @@ export function ThinkingGraph({
             Reasoning Graph
           </h3>
           <p className="text-sm text-[var(--muted-foreground)] max-w-sm mb-4">
-            Start a thinking session to visualize the reasoning graph.
-            Each node is a step in Claude&apos;s extended thinking.
+            {isMobile
+              ? "Start a thinking session to see the reasoning graph."
+              : "Start a thinking session to visualize the reasoning graph. Each node is a step in Claude\u2019s extended thinking."}
           </p>
           <div className="flex items-center justify-center gap-4 text-[10px] text-[var(--muted-foreground)]">
             <span className="flex items-center gap-1">
@@ -130,7 +133,7 @@ export function ThinkingGraph({
       onNodeClick={handleNodeClick}
       defaultViewport={defaultViewport}
       fitView
-      fitViewOptions={{ padding: 0.2 }}
+      fitViewOptions={{ padding: isMobile ? 0.3 : 0.2 }}
       minZoom={0.1}
       maxZoom={2}
       proOptions={{ hideAttribution: true }}
@@ -141,16 +144,18 @@ export function ThinkingGraph({
         gap={24}
         size={1}
       />
-      <MiniMap
-        nodeColor={nodeColor}
-        maskColor="rgba(0, 0, 0, 0.7)"
-        className="!bg-[var(--card)] !border-[var(--border)]"
-        position="bottom-right"
-        pannable
-        zoomable
-      />
+      {!isMobile && (
+        <MiniMap
+          nodeColor={nodeColor}
+          maskColor="rgba(0, 0, 0, 0.7)"
+          className="!bg-[var(--card)] !border-[var(--border)]"
+          position="bottom-right"
+          pannable
+          zoomable
+        />
+      )}
       <GraphControls />
-      <GraphLegend />
+      {!isMobile && <GraphLegend />}
     </ReactFlow>
   );
 }

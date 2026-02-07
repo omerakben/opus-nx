@@ -12,6 +12,7 @@ interface LeftPanelProps {
   onSelectSession: (sessionId: string) => void;
   onCreateSession: () => void;
   onRefresh: () => void;
+  isMobile?: boolean;
 }
 
 export function LeftPanel({
@@ -22,7 +23,31 @@ export function LeftPanel({
   onSelectSession,
   onCreateSession,
   onRefresh,
+  isMobile,
 }: LeftPanelProps) {
+  if (isMobile) {
+    return (
+      <div className="h-full bg-[var(--background)] flex flex-col overflow-hidden">
+        <div className="flex-1 p-4 overflow-y-auto pb-4">
+          <SessionList
+            sessions={sessions}
+            activeSessionId={activeSessionId}
+            isLoading={isLoading}
+            onSelectSession={onSelectSession}
+            onCreateSession={onCreateSession}
+            onRefresh={onRefresh}
+          />
+
+          {nodes.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-[var(--border)]">
+              <SessionStats nodes={nodes} />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-64 border-r border-[var(--border)] bg-[var(--card)] flex flex-col h-full overflow-hidden">
       {/* Sessions */}

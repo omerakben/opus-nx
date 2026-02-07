@@ -43,6 +43,7 @@ interface ThinkingStreamProps {
   compactionCount?: number;
   compactionSummary?: string | null;
   elapsedMs?: number;
+  isMobile?: boolean;
 }
 
 function formatElapsed(ms: number): string {
@@ -66,6 +67,7 @@ export function ThinkingStream({
   compactionCount = 0,
   compactionSummary,
   elapsedMs = 0,
+  isMobile,
 }: ThinkingStreamProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [effort, setEffort] = useState<string>("high");
@@ -88,8 +90,11 @@ export function ThinkingStream({
   const PhaseIcon = phaseConfig?.icon ?? Brain;
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="flex-row items-center justify-between py-2 px-4 border-b border-[var(--border)]">
+    <Card className={cn("h-full flex flex-col", isMobile && "rounded-none border-0")}>
+      <CardHeader className={cn(
+        "flex-row items-center justify-between py-2 px-4 border-b border-[var(--border)]",
+        isMobile && "px-3"
+      )}>
         <div className="flex items-center gap-2">
           {isStreaming && phaseConfig ? (
             <div className={cn("flex items-center gap-1.5", phaseConfig.color)}>
@@ -103,7 +108,10 @@ export function ThinkingStream({
             </div>
           )}
           {isStreaming && (
-            <div className="flex items-center gap-2 text-[10px] text-[var(--muted-foreground)]">
+            <div className={cn(
+              "flex items-center gap-2 text-[10px] text-[var(--muted-foreground)]",
+              isMobile && "hidden"
+            )}>
               <span className="flex items-center gap-0.5">
                 <Clock className="w-3 h-3" />
                 {formatElapsed(elapsedMs)}
@@ -128,6 +136,7 @@ export function ThinkingStream({
                   onClick={() => setEffort(e)}
                   className={cn(
                     "px-1.5 py-0.5 text-[10px] transition-colors",
+                    isMobile && "px-2 py-1 text-xs",
                     effort === e
                       ? "bg-[var(--accent)] text-white"
                       : "hover:bg-[var(--muted)] text-[var(--muted-foreground)]"
@@ -145,7 +154,7 @@ export function ThinkingStream({
             </div>
           )}
           {isStreaming && (
-            <Button variant="outline" size="sm" onClick={onStop} className="h-6 px-2 text-xs">
+            <Button variant="outline" size="sm" onClick={onStop} className={cn("h-6 px-2 text-xs", isMobile && "h-8 px-3")}>
               <Square className="w-3 h-3 mr-1" />
               Stop
             </Button>
@@ -155,16 +164,21 @@ export function ThinkingStream({
               Clear
             </Button>
           )}
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="h-6 w-6 flex items-center justify-center rounded hover:bg-[var(--muted)] transition-colors"
-          >
-            {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
-          </button>
+          {!isMobile && (
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="h-6 w-6 flex items-center justify-center rounded hover:bg-[var(--muted)] transition-colors"
+            >
+              {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+            </button>
+          )}
         </div>
       </CardHeader>
 
-      <CardContent className={cn("flex-1 flex flex-col p-0 overflow-hidden", isExpanded && "max-h-[50vh]")}>
+      <CardContent className={cn(
+        "flex-1 flex flex-col p-0 overflow-hidden",
+        !isMobile && isExpanded && "max-h-[50vh]"
+      )}>
         {/* Compaction banner */}
         {compactionSummary && (
           <div className="px-4 py-1.5 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2">
@@ -178,7 +192,10 @@ export function ThinkingStream({
         {/* Stream display */}
         <div
           ref={containerRef}
-          className="flex-1 overflow-y-auto p-4 font-mono text-sm leading-relaxed bg-gray-900/50"
+          className={cn(
+            "flex-1 overflow-y-auto p-4 font-mono text-sm leading-relaxed bg-gray-900/50",
+            isMobile && "text-xs p-3"
+          )}
         >
           {error ? (
             <div className="text-red-400">Error: {error}</div>
@@ -230,14 +247,36 @@ export function ThinkingStream({
           </div>
         )}
 
+        {/* Mobile streaming stats inline */}
+        {isMobile && isStreaming && (
+          <div className="px-3 py-1.5 border-t border-[var(--border)] flex items-center gap-3 text-[10px] text-[var(--muted-foreground)] bg-[var(--card)]">
+            <span className="flex items-center gap-0.5">
+              <Clock className="w-3 h-3" />
+              {formatElapsed(elapsedMs)}
+            </span>
+            {compactionCount > 0 && (
+              <span className="flex items-center gap-0.5 text-amber-400">
+                <Database className="w-3 h-3" />
+                {compactionCount}x
+              </span>
+            )}
+            <span className="flex items-center gap-0.5">
+              <Gauge className="w-3 h-3" />
+              {formatNumber(tokenCount)}
+            </span>
+          </div>
+        )}
+
         {/* Input */}
-        <div className="p-3 border-t border-[var(--border)]">
+        <div className={cn("p-3 border-t border-[var(--border)]", isMobile && "pb-4")}>
           <ThinkingInput
             onSubmit={handleSubmit}
             isLoading={isStreaming}
             placeholder={
               sessionId
-                ? "Ask a complex question for deep reasoning..."
+                ? isMobile
+                  ? "Ask a question for deep reasoning..."
+                  : "Ask a complex question for deep reasoning..."
                 : "Select a session first"
             }
           />
