@@ -22,12 +22,12 @@ import { Button } from "@/components/ui";
 
 type ThinkingPhase = "analyzing" | "reasoning" | "deciding" | "concluding" | "compacting" | null;
 
-const PHASE_CONFIG: Record<string, { icon: typeof Brain; label: string; color: string }> = {
-  analyzing: { icon: Search, label: "Analyzing", color: "text-blue-400" },
-  reasoning: { icon: Brain, label: "Reasoning", color: "text-violet-400" },
-  deciding: { icon: Scale, label: "Deciding", color: "text-amber-400" },
-  concluding: { icon: CheckCircle, label: "Concluding", color: "text-green-400" },
-  compacting: { icon: Database, label: "Compacting", color: "text-amber-400" },
+const PHASE_CONFIG: Record<string, { icon: typeof Brain; label: string; color: string; bgColor: string }> = {
+  analyzing: { icon: Search, label: "Analyzing", color: "text-blue-400", bgColor: "bg-blue-400" },
+  reasoning: { icon: Brain, label: "Reasoning", color: "text-violet-400", bgColor: "bg-violet-400" },
+  deciding: { icon: Scale, label: "Deciding", color: "text-amber-400", bgColor: "bg-amber-400" },
+  concluding: { icon: CheckCircle, label: "Concluding", color: "text-green-400", bgColor: "bg-green-400" },
+  compacting: { icon: Database, label: "Compacting", color: "text-amber-400", bgColor: "bg-amber-400" },
 };
 
 interface ThinkingStreamProps {
@@ -199,7 +199,7 @@ export function ThinkingStream({
                         isActive && "animate-pulse",
                         (isActive || isPast) ? "" : "bg-[var(--border)]",
                       )} style={(isActive || isPast) ? { backgroundColor: isActive ? undefined : "currentColor", background: isActive ? `linear-gradient(90deg, currentColor, transparent)` : undefined } : undefined}>
-                        {(isActive || isPast) && <div className={cn("h-full rounded-full", cfg.color.replace("text-", "bg-"))} style={{ width: isActive ? "70%" : "100%" }} />}
+                        {(isActive || isPast) && <div className={cn("h-full rounded-full", cfg.bgColor)} style={{ width: isActive ? "70%" : "100%" }} />}
                       </div>
                     </div>
                     <div className={cn(

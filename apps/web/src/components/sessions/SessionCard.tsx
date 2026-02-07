@@ -16,7 +16,7 @@ interface SessionCardProps {
 
 export function SessionCard({ session, isActive, onClick, displayName }: SessionCardProps) {
   const name = displayName || "New Session";
-  const isDemo = name === "AI Consciousness Deep Dive";
+  const isDemo = session.isDemo === true;
 
   return (
     <button

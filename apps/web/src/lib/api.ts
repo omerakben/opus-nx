@@ -76,6 +76,8 @@ export interface Session {
   updatedAt: string;
   /** Display name derived from first thinking query */
   displayName?: string | null;
+  /** Whether this is a demo session seeded for showcase */
+  isDemo?: boolean;
 }
 
 export async function getSessions(): Promise<ApiResponse<Session[]>> {

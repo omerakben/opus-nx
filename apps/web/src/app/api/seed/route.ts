@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   createSession,
+  updateSessionPlan,
   createThinkingNode,
   createReasoningEdge,
   createDecisionPoint,
@@ -14,8 +15,12 @@ import {
  */
 export async function POST() {
   try {
-    // 1. Create the demo session
+    // 1. Create the demo session and mark it with demo metadata
     const session = await createSession();
+    await updateSessionPlan(session.id, {
+      isDemo: true,
+      displayName: "AI Consciousness Deep Dive",
+    });
 
     // 2. Create thinking nodes with varied confidence and rich content
     const node1 = await createThinkingNode({

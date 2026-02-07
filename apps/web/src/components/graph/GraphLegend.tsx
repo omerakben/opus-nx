@@ -19,19 +19,21 @@ export function GraphLegend() {
     <div className="absolute bottom-4 left-4 z-10">
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
+        aria-expanded={!isCollapsed}
+        aria-controls="graph-legend-content"
         className="flex items-center gap-1.5 p-2 rounded-lg border border-[var(--border)] bg-[var(--card)]/95 backdrop-blur-sm shadow-sm hover:bg-[var(--muted)] transition-colors"
       >
         <span className="text-xs font-medium text-[var(--muted-foreground)]">
           Edge Types
         </span>
         {isCollapsed ? (
-          <ChevronUp className="w-3 h-3 text-[var(--muted-foreground)]" />
-        ) : (
           <ChevronDown className="w-3 h-3 text-[var(--muted-foreground)]" />
+        ) : (
+          <ChevronUp className="w-3 h-3 text-[var(--muted-foreground)]" />
         )}
       </button>
       {!isCollapsed && (
-        <div className="mt-1 p-2.5 rounded-lg border border-[var(--border)] bg-[var(--card)]/95 backdrop-blur-sm shadow-sm">
+        <div id="graph-legend-content" className="mt-1 p-2.5 rounded-lg border border-[var(--border)] bg-[var(--card)]/95 backdrop-blur-sm shadow-sm">
           <div className="space-y-1.5">
             {edgeTypes.map((type) => (
               <div key={type} className="flex items-center gap-2">

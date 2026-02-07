@@ -37,15 +37,23 @@ export function InsightsPanel({
     setIsAnalyzing(true);
     setAnalyzeError(null);
 
-    const response = await runInsightsAnalysis(sessionId);
+    try {
+      const response = await runInsightsAnalysis(sessionId);
 
-    if (response.error) {
-      setAnalyzeError(response.error.message);
-    } else if (response.data) {
-      onInsightsGenerated?.(response.data);
+      if (response.error) {
+        setAnalyzeError(response.error.message);
+      } else if (response.data) {
+        // API returns { insights, nodesAnalyzed, summary, errors }
+        const insights = Array.isArray(response.data)
+          ? response.data
+          : (response.data as unknown as { insights: Insight[] }).insights ?? [];
+        onInsightsGenerated?.(insights);
+      }
+    } catch (err) {
+      setAnalyzeError(err instanceof Error ? err.message : "Analysis failed");
+    } finally {
+      setIsAnalyzing(false);
     }
-
-    setIsAnalyzing(false);
   }, [sessionId, isAnalyzing, onInsightsGenerated]);
 
   if (isLoading) {
@@ -139,32 +147,37 @@ export function InsightsPanel({
                 </TabsTrigger>
                 <TabsTrigger value="bias" className="text-xs">
                   <AlertTriangle className="w-3 h-3 mr-1" />
-                  ({biasInsights.length})
+                  Bias ({biasInsights.length})
                 </TabsTrigger>
                 <TabsTrigger value="pattern" className="text-xs">
                   <Search className="w-3 h-3 mr-1" />
-                  ({patternInsights.length})
+                  Pattern ({patternInsights.length})
                 </TabsTrigger>
                 <TabsTrigger value="hypothesis" className="text-xs">
                   <Lightbulb className="w-3 h-3 mr-1" />
-                  ({hypothesisInsights.length})
+                  Ideas ({hypothesisInsights.length})
                 </TabsTrigger>
               </TabsList>
               {sessionId && (
-                <Button
-                  onClick={handleRunAnalysis}
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs text-amber-400 hover:text-amber-300 shrink-0"
-                  disabled={isAnalyzing}
-                >
-                  {isAnalyzing ? (
-                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                  ) : (
-                    <Brain className="w-3 h-3 mr-1" />
+                <div className="flex flex-col items-end shrink-0">
+                  <Button
+                    onClick={handleRunAnalysis}
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-amber-400 hover:text-amber-300"
+                    disabled={isAnalyzing}
+                  >
+                    {isAnalyzing ? (
+                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    ) : (
+                      <Brain className="w-3 h-3 mr-1" />
+                    )}
+                    Re-analyze
+                  </Button>
+                  {analyzeError && (
+                    <p className="text-[10px] text-red-400 mt-0.5 max-w-[160px] text-right">{analyzeError}</p>
                   )}
-                  Re-analyze
-                </Button>
+                </div>
               )}
             </div>
 

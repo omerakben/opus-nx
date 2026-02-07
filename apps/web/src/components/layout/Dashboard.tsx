@@ -89,10 +89,10 @@ export function Dashboard() {
     [activeSession?.id, startStream, isMobile]
   );
 
-  // Handle new insights from metacognitive analysis
+  // Handle new insights from metacognitive analysis (full replacement to prevent duplicates)
   const handleInsightsGenerated = useCallback(
     (newInsights: Insight[]) => {
-      setInsights((prev) => [...newInsights, ...prev]);
+      setInsights(newInsights);
     },
     []
   );

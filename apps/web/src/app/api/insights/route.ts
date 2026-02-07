@@ -43,8 +43,21 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { sessionId } = body;
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: { message: "Invalid JSON in request body" } },
+        { status: 400 }
+      );
+    }
+
+    const { sessionId, nodeLimit, focusAreas } = body as {
+      sessionId?: string;
+      nodeLimit?: number;
+      focusAreas?: string[];
+    };
 
     if (!sessionId) {
       return NextResponse.json(
@@ -58,16 +71,21 @@ export async function POST(request: Request) {
 
     const engine = new MetacognitionEngine();
 
+    type FocusArea = "bias_detection" | "decision_quality" | "reasoning_patterns" | "confidence_calibration" | "alternative_exploration";
+    const defaultAreas: FocusArea[] = [
+      "reasoning_patterns",
+      "bias_detection",
+      "confidence_calibration",
+      "alternative_exploration",
+    ];
+
     const result = await engine.analyze({
       sessionId,
-      nodeLimit: 20,
+      nodeLimit: typeof nodeLimit === "number" ? nodeLimit : 20,
       analysisScope: "session",
-      focusAreas: [
-        "reasoning_patterns",
-        "bias_detection",
-        "confidence_calibration",
-        "alternative_exploration",
-      ],
+      focusAreas: Array.isArray(focusAreas)
+        ? (focusAreas as FocusArea[])
+        : defaultAreas,
     });
 
     // Serialize dates in insights
@@ -76,7 +94,12 @@ export async function POST(request: Request) {
       createdAt: insight.createdAt.toISOString(),
     }));
 
-    return NextResponse.json(serializedInsights);
+    return NextResponse.json({
+      insights: serializedInsights,
+      nodesAnalyzed: result.nodesAnalyzed ?? 0,
+      summary: result.summary ?? null,
+      errors: result.errors ?? [],
+    });
   } catch (error) {
     console.error("[API] Failed to run metacognitive analysis:", error);
     return NextResponse.json(

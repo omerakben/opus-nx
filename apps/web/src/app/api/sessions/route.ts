@@ -1,34 +1,37 @@
 import { NextResponse } from "next/server";
-import { getActiveSessions, createSession, getSessionThinkingNodes } from "@/lib/db";
+import { getActiveSessions, createSession, getFirstNodePerSessions } from "@/lib/db";
 
 /**
  * GET /api/sessions
- * Retrieve all active sessions with display names from first query
+ * Retrieve all active sessions with display names from first query.
+ * Uses a single batch query for first nodes to avoid N+1.
  */
 export async function GET() {
   try {
     const sessions = await getActiveSessions();
 
-    // Fetch first node's input_query for each session to derive display name
-    const sessionsWithNames = await Promise.all(
-      sessions.map(async (session) => {
-        let displayName: string | null = null;
-        try {
-          const nodes = await getSessionThinkingNodes(session.id, { limit: 1 });
-          if (nodes.length > 0 && nodes[0].inputQuery) {
-            displayName = nodes[0].inputQuery;
-          }
-        } catch {
-          // Ignore — display name is optional
-        }
-        return {
-          ...session,
-          createdAt: session.createdAt.toISOString(),
-          updatedAt: session.updatedAt.toISOString(),
-          displayName,
-        };
-      })
-    );
+    // Batch-fetch the first (earliest) node per session in a single query
+    const sessionIds = sessions.map((s) => s.id);
+    let firstNodeMap = new Map<string, { inputQuery: string | null }>();
+    try {
+      firstNodeMap = await getFirstNodePerSessions(sessionIds);
+    } catch {
+      // Non-critical — display names are optional
+    }
+
+    const sessionsWithNames = sessions.map((session) => {
+      const firstNode = firstNodeMap.get(session.id);
+      const displayName = firstNode?.inputQuery ?? null;
+      // Use currentPlan metadata for demo flag if set by seed route
+      const plan = session.currentPlan as Record<string, unknown> | undefined;
+      return {
+        ...session,
+        createdAt: session.createdAt.toISOString(),
+        updatedAt: session.updatedAt.toISOString(),
+        displayName: displayName ?? (plan?.displayName as string | undefined) ?? null,
+        isDemo: plan?.isDemo === true,
+      };
+    });
 
     return NextResponse.json(sessionsWithNames);
   } catch (error) {

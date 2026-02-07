@@ -193,6 +193,14 @@ const CONFIDENCE_INDICATORS = {
   ],
 };
 
+// Pre-built global regex variants for performance (avoid re-creating per invocation)
+// String.prototype.match() with /g always starts from index 0, so shared instances are safe.
+const CONFIDENCE_GLOBAL = {
+  high: CONFIDENCE_INDICATORS.high.map((p) => new RegExp(p.source, "gi")),
+  medium: CONFIDENCE_INDICATORS.medium.map((p) => new RegExp(p.source, "gi")),
+  low: CONFIDENCE_INDICATORS.low.map((p) => new RegExp(p.source, "gi")),
+};
+
 // ============================================================
 // ThinkGraph Class
 // ============================================================
@@ -504,20 +512,17 @@ export class ThinkGraph {
     let mediumCount = 0;
     let lowCount = 0;
 
-    // Count ALL occurrences globally, not just first match per pattern
-    for (const pattern of CONFIDENCE_INDICATORS.high) {
-      const globalPattern = new RegExp(pattern.source, "gi");
-      const matches = text.match(globalPattern);
+    // Count ALL occurrences globally using pre-built regex (no per-call allocation)
+    for (const pattern of CONFIDENCE_GLOBAL.high) {
+      const matches = text.match(pattern);
       if (matches) highCount += matches.length;
     }
-    for (const pattern of CONFIDENCE_INDICATORS.medium) {
-      const globalPattern = new RegExp(pattern.source, "gi");
-      const matches = text.match(globalPattern);
+    for (const pattern of CONFIDENCE_GLOBAL.medium) {
+      const matches = text.match(pattern);
       if (matches) mediumCount += matches.length;
     }
-    for (const pattern of CONFIDENCE_INDICATORS.low) {
-      const globalPattern = new RegExp(pattern.source, "gi");
-      const matches = text.match(globalPattern);
+    for (const pattern of CONFIDENCE_GLOBAL.low) {
+      const matches = text.match(pattern);
       if (matches) lowCount += matches.length;
     }
 
