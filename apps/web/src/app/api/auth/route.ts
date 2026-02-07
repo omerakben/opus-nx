@@ -1,12 +1,6 @@
-import { createHmac, timingSafeEqual } from "crypto";
+import { timingSafeEqual } from "crypto";
 import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
-
-/**
- * Generate an HMAC-SHA256 signature for the auth cookie value
- */
-export function generateAuthSignature(secret: string): string {
-  return createHmac("sha256", secret).update("opus-nx-authenticated").digest("hex");
-}
+import { generateAuthSignature } from "@/lib/auth";
 
 /**
  * POST /api/auth

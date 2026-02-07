@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       async start(controller) {
         try {
           let thinkingTokens = 0;
-          let parentLinkStatus: "linked" | "not_applicable" | "lookup_failed" | "persist_failed" = "not_applicable";
+          let parentLinkStatus: "linked" | "not_applicable" | "lookup_failed" | "persist_failed" | "pending" = "not_applicable";
           let compactionPersistStatus: "not_applicable" | "persisted" | "failed" = "not_applicable";
           const streamWarnings: string[] = [];
 

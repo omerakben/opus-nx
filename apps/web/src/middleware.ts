@@ -2,11 +2,25 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 /**
- * Verify the HMAC-signed auth cookie using Web Crypto API (Edge-compatible)
+ * Verify the HMAC-signed auth cookie using Web Crypto API (Edge-compatible).
+ * Uses crypto.subtle.verify() for timing-safe comparison.
  */
 async function verifyAuthCookie(cookieValue: string): Promise<boolean> {
   const secret = process.env.AUTH_SECRET;
   if (!secret) return false;
+
+  // Decode the hex-encoded HMAC from the cookie
+  if (cookieValue.length === 0 || cookieValue.length % 2 !== 0) {
+    return false;
+  }
+  const signatureBytes = new Uint8Array(cookieValue.length / 2);
+  for (let i = 0; i < cookieValue.length; i += 2) {
+    const byte = Number.parseInt(cookieValue.slice(i, i + 2), 16);
+    if (Number.isNaN(byte)) {
+      return false;
+    }
+    signatureBytes[i / 2] = byte;
+  }
 
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
@@ -14,14 +28,16 @@ async function verifyAuthCookie(cookieValue: string): Promise<boolean> {
     encoder.encode(secret),
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign"]
+    ["verify"]
   );
-  const sig = await crypto.subtle.sign("HMAC", key, encoder.encode("opus-nx-authenticated"));
-  const expected = Array.from(new Uint8Array(sig))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
 
-  return cookieValue === expected;
+  // Let WebCrypto perform timing-safe MAC verification
+  return crypto.subtle.verify(
+    "HMAC",
+    key,
+    signatureBytes,
+    encoder.encode("opus-nx-authenticated")
+  );
 }
 
 /**

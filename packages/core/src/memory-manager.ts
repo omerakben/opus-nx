@@ -156,7 +156,9 @@ export class MemoryManager {
       const relatedResults = await Promise.all(
         results.map((r) => getRelatedKnowledge(r.id, relatedDepth))
       );
-      results.forEach((r, i) => relatedMap.set(r.id, relatedResults[i]));
+      results.forEach((r, i) => {
+        relatedMap.set(r.id, relatedResults[i]);
+      });
     }
 
     for (const result of results) {

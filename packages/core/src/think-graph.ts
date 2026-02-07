@@ -685,6 +685,7 @@ export class ThinkGraph {
           reasoningExcerpt: dp.reasoningExcerpt ?? undefined,
         }));
         const createdPoints = await createDecisionPoints(inputs);
+        createdPoints.sort((a, b) => a.stepNumber - b.stepNumber);
         dbDecisionPoints.push(...createdPoints.map((p) => this.mapDbDecisionPoint(p)));
         logger.debug("Created decision points", { count: dbDecisionPoints.length });
       } catch (error) {

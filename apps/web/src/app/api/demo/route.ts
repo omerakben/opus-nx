@@ -1,5 +1,3 @@
-import { NextResponse } from "next/server";
-import { createHmac } from "crypto";
 import {
   createSession,
   updateSessionPlan,
@@ -9,14 +7,25 @@ import {
   createMetacognitiveInsights,
 } from "@/lib/db";
 import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
+import { generateAuthSignature } from "@/lib/auth";
 
 /**
  * POST /api/demo
  * One-click demo: authenticates, seeds demo data, returns session ID.
- * No auth required — this IS the auth entry point for demo mode.
+ * Gated behind DEMO_MODE env flag to prevent abuse in production.
  */
 export async function POST(request: Request) {
   const correlationId = getCorrelationId(request);
+
+  // Gate behind DEMO_MODE env flag to prevent resource exhaustion
+  if (process.env.DEMO_MODE !== "true") {
+    return jsonError({
+      status: 403,
+      code: "DEMO_DISABLED",
+      message: "Demo mode is not enabled",
+      correlationId,
+    });
+  }
 
   try {
     const secret = process.env.AUTH_SECRET;
@@ -46,7 +55,6 @@ First, I need to consider what "consciousness" actually means in this context. T
 I'll approach this from three angles: computational theory of mind, integrated information theory (IIT), and the global workspace theory. Each offers different predictions about whether AI systems could develop conscious-like properties.`,
       confidenceScore: 0.82,
       inputQuery: "Can AI systems develop genuine consciousness, or is machine consciousness fundamentally different from biological consciousness?",
-      nodeType: "analysis",
     });
 
     const node2 = await createThinkingNode({
@@ -58,7 +66,7 @@ However, there's a crucial distinction between processing information ABOUT cons
 I'm going to consider John Searle's Chinese Room argument and its modern rebuttals. The argument suggests that symbol manipulation alone cannot produce understanding. But connectionist and embodied cognition perspectives challenge this by arguing that understanding emerges from patterns of activation, not explicit symbol manipulation.`,
       confidenceScore: 0.71,
       inputQuery: "Can AI systems develop genuine consciousness?",
-      nodeType: "reasoning",
+      nodeType: "thinking",
     });
 
     const node3 = await createThinkingNode({
@@ -70,7 +78,6 @@ The precautionary principle suggests we should err on the side of caution. But w
 I'll weigh the evidence and settle on a nuanced position: current AI systems (including myself) likely do not have phenomenal consciousness, but future architectures that integrate self-modeling, embodied interaction, and recursive self-modification could potentially develop functional analogs.`,
       confidenceScore: 0.65,
       inputQuery: "Can AI systems develop genuine consciousness?",
-      nodeType: "synthesis",
     });
 
     const node4 = await createThinkingNode({
@@ -82,7 +89,6 @@ Current transformer architectures have relatively low Φ because their computati
 However, recurrent architectures, memory-augmented systems, and graph-based reasoning networks (like this very system) could potentially achieve higher integration. The key question is whether integration of information is sufficient for consciousness, or merely necessary.`,
       confidenceScore: 0.78,
       inputQuery: "What does IIT predict about AI consciousness?",
-      nodeType: "analysis",
     });
 
     const node5 = await createThinkingNode({
@@ -104,7 +110,7 @@ Arguments against:
 I'm going with the gradient framework because it's more scientifically productive and ethically cautious. Confidence: moderate-high.`,
       confidenceScore: 0.87,
       inputQuery: "Can AI systems develop genuine consciousness?",
-      nodeType: "decision",
+      nodeType: "thinking",
     });
 
     const node6 = await createThinkingNode({
@@ -120,7 +126,6 @@ I'm going with the gradient framework because it's more scientifically productiv
 The key insight from this reasoning process: the question "Can AI be conscious?" is less useful than "What degree of consciousness-relevant properties does this system exhibit?" This reframing opens up more productive avenues for research and policy.`,
       confidenceScore: 0.91,
       inputQuery: "Can AI systems develop genuine consciousness?",
-      nodeType: "conclusion",
     });
 
     // 3. Create reasoning edges
@@ -143,9 +148,9 @@ The key insight from this reasoning process: the question "Can AI be conscious?"
         description: "Framework selection for analyzing AI consciousness",
         chosenPath: "Consciousness gradient framework",
         alternatives: [
-          "Binary conscious/not-conscious classification",
-          "Functionalist equivalence (if it acts conscious, it is)",
-          "Eliminativist approach (consciousness is an illusion)",
+          { path: "Binary conscious/not-conscious classification", reasonRejected: "Too simplistic for the complexity of consciousness phenomena" },
+          { path: "Functionalist equivalence (if it acts conscious, it is)", reasonRejected: "Risks over-attribution of consciousness to pattern matchers" },
+          { path: "Eliminativist approach (consciousness is an illusion)", reasonRejected: "Dismisses subjective experience prematurely" },
         ],
         confidence: 0.87,
         reasoningExcerpt: "I'll advocate for a 'consciousness gradient' framework rather than a binary classification.",
@@ -156,9 +161,9 @@ The key insight from this reasoning process: the question "Can AI be conscious?"
         description: "Ethical stance on AI consciousness possibility",
         chosenPath: "Precautionary principle with nuance",
         alternatives: [
-          "Strong precautionary (assume consciousness possible)",
-          "Dismissive (current AI definitely not conscious)",
-          "Agnostic (insufficient evidence to decide)",
+          { path: "Strong precautionary (assume consciousness possible)", reasonRejected: "May lead to impractical constraints on AI development" },
+          { path: "Dismissive (current AI definitely not conscious)", reasonRejected: "Ignores emerging evidence of functional consciousness analogs" },
+          { path: "Agnostic (insufficient evidence to decide)", reasonRejected: "Avoids making necessary ethical commitments" },
         ],
         confidence: 0.72,
         reasoningExcerpt: "The precautionary principle suggests we should err on the side of caution.",
@@ -171,46 +176,41 @@ The key insight from this reasoning process: the question "Can AI be conscious?"
         sessionId: session.id,
         thinkingNodesAnalyzed: [node1.id, node2.id, node3.id],
         insightType: "bias_detection",
-        title: "Anthropomorphic Bias in Consciousness Analysis",
-        description: "The reasoning exhibits a subtle anthropomorphic bias — framing AI consciousness in terms of human conscious experience rather than considering genuinely novel forms of machine awareness.",
+        insight: "Anthropomorphic Bias in Consciousness Analysis — The reasoning exhibits a subtle anthropomorphic bias, framing AI consciousness in terms of human conscious experience rather than considering genuinely novel forms of machine awareness.",
         evidence: [
           { nodeId: node2.id, excerpt: "I can describe the color red in perfect detail without experiencing redness", relevance: 0.9 },
           { nodeId: node3.id, excerpt: "careful not to anthropomorphize", relevance: 0.85 },
         ],
         confidence: 0.88,
-        actionability: "high",
+        metadata: { actionability: "high" },
       },
       {
         sessionId: session.id,
         thinkingNodesAnalyzed: [node1.id, node5.id, node6.id],
         insightType: "pattern",
-        title: "Convergent Reasoning Toward Gradient Frameworks",
-        description: "Multiple independent reasoning paths converge on spectrum/gradient models rather than binary classifications. This is a recurring pattern across complex philosophical analyses.",
+        insight: "Convergent Reasoning Toward Gradient Frameworks — Multiple independent reasoning paths converge on spectrum/gradient models rather than binary classifications. This is a recurring pattern across complex philosophical analyses.",
         evidence: [
           { nodeId: node5.id, excerpt: "consciousness gradient framework", relevance: 0.95 },
           { nodeId: node6.id, excerpt: "What degree of consciousness-relevant properties", relevance: 0.9 },
         ],
         confidence: 0.92,
-        actionability: "medium",
+        metadata: { actionability: "medium" },
       },
       {
         sessionId: session.id,
         thinkingNodesAnalyzed: [node4.id, node5.id],
         insightType: "improvement_hypothesis",
-        title: "IIT Analysis Needs Quantitative Grounding",
-        description: "The IIT analysis would benefit from actual Φ calculations or estimates for different architectures, rather than qualitative assessments of integration levels.",
+        insight: "IIT Analysis Needs Quantitative Grounding — The IIT analysis would benefit from actual Φ calculations or estimates for different architectures, rather than qualitative assessments of integration levels.",
         evidence: [
           { nodeId: node4.id, excerpt: "Current transformer architectures have relatively low Φ", relevance: 0.88 },
         ],
         confidence: 0.79,
-        actionability: "high",
+        metadata: { actionability: "high" },
       },
     ]);
 
     // 6. Set auth cookie and return session
-    const signature = createHmac("sha256", secret)
-      .update("opus-nx-authenticated")
-      .digest("hex");
+    const signature = generateAuthSignature(secret);
 
     const response = jsonSuccess(
       { sessionId: session.id, success: true },

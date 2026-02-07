@@ -17,7 +17,17 @@ import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
 export async function POST(request: Request) {
   const correlationId = getCorrelationId(request);
 
-  // Verify authentication
+  // Verify authentication — validate HMAC signature, not just cookie presence
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) {
+    return jsonError({
+      status: 500,
+      code: "AUTH_MISCONFIGURED",
+      message: "Server misconfiguration",
+      correlationId,
+    });
+  }
+
   const cookieStore = await cookies();
   const authCookie = cookieStore.get("opus-nx-auth");
   if (!authCookie?.value) {
@@ -25,6 +35,17 @@ export async function POST(request: Request) {
       status: 401,
       code: "UNAUTHORIZED",
       message: "Authentication required",
+      correlationId,
+    });
+  }
+
+  // Verify the HMAC signature is valid
+  const { verifyAuthSignature } = await import("@/lib/auth");
+  if (!verifyAuthSignature(authCookie.value, secret)) {
+    return jsonError({
+      status: 401,
+      code: "INVALID_AUTH",
+      message: "Invalid authentication",
       correlationId,
     });
   }

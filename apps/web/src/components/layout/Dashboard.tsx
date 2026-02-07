@@ -151,8 +151,8 @@ export function Dashboard() {
         await refreshSessions();
         refreshGraph();
       }
-    } catch {
-      // Silently fail — user can retry
+    } catch (error) {
+      console.error("Demo seed failed:", error);
     }
   }, [refreshSessions, refreshGraph]);
 
@@ -167,13 +167,14 @@ export function Dashboard() {
   }, [isStreaming, thinking, refreshGraph]);
 
   // Auto-start tour when graph has nodes loaded (e.g., after demo seed)
+  const hasNodes = nodes.length > 0;
   useEffect(() => {
-    if (nodes.length > 0 && !isLoadingGraph && !isStreaming) {
+    if (hasNodes && !isLoadingGraph && !isStreaming) {
       // Small delay to let the graph render before tour starts
       const timeout = setTimeout(() => startTour(), 800);
       return () => clearTimeout(timeout);
     }
-  }, [nodes.length > 0, isLoadingGraph, isStreaming]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [hasNodes, isLoadingGraph, isStreaming, startTour]);
 
   // Mobile layout
   if (isMobile) {

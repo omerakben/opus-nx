@@ -141,7 +141,7 @@ export default function LoginPage() {
         {/* Demo Button */}
         <button
           onClick={handleLaunchDemo}
-          disabled={demoLoading}
+          disabled={demoLoading || loading}
           className="w-full mb-4 py-3 rounded-xl bg-gradient-to-r from-blue-500 via-violet-500 to-blue-500 bg-[length:200%_auto] text-white font-semibold hover:bg-right transition-[background-position] duration-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-violet-500/20"
         >
           {demoLoading ? (
@@ -180,7 +180,7 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={loading || !password}
+            disabled={loading || demoLoading || !password}
             className="w-full py-2.5 rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] font-medium hover:bg-[var(--muted)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "Verifying..." : "Continue"}

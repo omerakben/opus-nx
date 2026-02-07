@@ -24,7 +24,8 @@ export async function GET() {
   const isHealthy =
     checks.database === "connected" &&
     checks.anthropicKey === "configured" &&
-    checks.supabaseUrl === "configured";
+    checks.supabaseUrl === "configured" &&
+    checks.authSecret === "configured";
 
   return Response.json(
     {

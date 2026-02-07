@@ -61,7 +61,7 @@ export function DemoTour({
 
     // Position tooltip based on placement
     const tooltipWidth = 320;
-    const tooltipHeight = 180;
+    const tooltipHeight = tooltipRef.current?.getBoundingClientRect().height ?? 180;
     const gap = 12;
 
     let top = 0;
