@@ -89,6 +89,14 @@ export function Dashboard() {
     [activeSession?.id, startStream, isMobile]
   );
 
+  // Handle new insights from metacognitive analysis
+  const handleInsightsGenerated = useCallback(
+    (newInsights: Insight[]) => {
+      setInsights((prev) => [...newInsights, ...prev]);
+    },
+    []
+  );
+
   // Handle evidence click from insights (highlight node)
   const handleEvidenceClick = useCallback(
     (nodeId: string) => {
@@ -198,6 +206,7 @@ export function Dashboard() {
                 isLoadingInsights={isLoadingInsights}
                 sessionId={activeSession?.id ?? null}
                 onEvidenceClick={handleEvidenceClick}
+                onInsightsGenerated={handleInsightsGenerated}
                 isMobile
               />
             </div>
@@ -281,6 +290,7 @@ export function Dashboard() {
           isLoadingInsights={isLoadingInsights}
           sessionId={activeSession?.id ?? null}
           onEvidenceClick={handleEvidenceClick}
+          onInsightsGenerated={handleInsightsGenerated}
         />
       </div>
     </div>

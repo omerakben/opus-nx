@@ -76,6 +76,7 @@ export function SessionList({
               session={session}
               isActive={session.id === activeSessionId}
               onClick={() => onSelectSession(session.id)}
+              displayName={session.displayName ?? undefined}
             />
           ))
         )}

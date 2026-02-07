@@ -179,6 +179,43 @@ export function ThinkingStream({
         "flex-1 flex flex-col p-0 overflow-hidden",
         !isMobile && isExpanded && "max-h-[50vh]"
       )}>
+        {/* Phase progress bar */}
+        {isStreaming && phase && (
+          <div className="px-4 py-1.5 border-b border-[var(--border)] bg-[var(--card)]">
+            <div className="flex items-center gap-1.5">
+              {(["analyzing", "reasoning", "deciding", "concluding"] as const).map((p) => {
+                const cfg = PHASE_CONFIG[p];
+                const PhIcon = cfg.icon;
+                const phases = ["analyzing", "reasoning", "deciding", "concluding"] as const;
+                const currentIdx = phases.indexOf(phase as typeof phases[number]);
+                const thisIdx = phases.indexOf(p);
+                const isActive = phase === p;
+                const isPast = currentIdx > thisIdx;
+                return (
+                  <div key={p} className="flex-1 flex flex-col items-center gap-0.5">
+                    <div className="flex items-center gap-1 w-full">
+                      <div className={cn(
+                        "h-1 flex-1 rounded-full transition-all duration-500",
+                        isActive && "animate-pulse",
+                        (isActive || isPast) ? "" : "bg-[var(--border)]",
+                      )} style={(isActive || isPast) ? { backgroundColor: isActive ? undefined : "currentColor", background: isActive ? `linear-gradient(90deg, currentColor, transparent)` : undefined } : undefined}>
+                        {(isActive || isPast) && <div className={cn("h-full rounded-full", cfg.color.replace("text-", "bg-"))} style={{ width: isActive ? "70%" : "100%" }} />}
+                      </div>
+                    </div>
+                    <div className={cn(
+                      "flex items-center gap-0.5 transition-colors",
+                      isActive ? cfg.color : isPast ? "text-[var(--muted-foreground)]" : "text-[var(--muted-foreground)] opacity-30"
+                    )}>
+                      <PhIcon className={cn("w-2.5 h-2.5", isActive && "animate-pulse")} />
+                      <span className="text-[8px] font-medium">{cfg.label}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Compaction banner */}
         {compactionSummary && (
           <div className="px-4 py-1.5 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2">
@@ -193,17 +230,17 @@ export function ThinkingStream({
         <div
           ref={containerRef}
           className={cn(
-            "flex-1 overflow-y-auto p-4 font-mono text-sm leading-relaxed bg-gray-900/50",
+            "flex-1 overflow-y-auto p-4 font-mono text-sm leading-relaxed bg-gray-950/60 border-l-2 border-green-500/20",
             isMobile && "text-xs p-3"
           )}
         >
           {error ? (
             <div className="text-red-400">Error: {error}</div>
           ) : thinking ? (
-            <div className="text-green-400 whitespace-pre-wrap">
+            <div className="text-green-300 whitespace-pre-wrap leading-relaxed">
               {thinking}
               {isStreaming && (
-                <span className="inline-block w-2 h-4 bg-green-400 animate-pulse ml-0.5" />
+                <span className="inline-block w-1.5 h-4 bg-green-400 animate-pulse ml-0.5 rounded-sm" />
               )}
             </div>
           ) : (

@@ -74,6 +74,8 @@ export interface Session {
   knowledgeContext?: string[];
   createdAt: string;
   updatedAt: string;
+  /** Display name derived from first thinking query */
+  displayName?: string | null;
 }
 
 export async function getSessions(): Promise<ApiResponse<Session[]>> {
@@ -229,6 +231,18 @@ export async function getSessionInsights(
   sessionId: string
 ): Promise<ApiResponse<Insight[]>> {
   return fetchApi<Insight[]>(`/api/insights?sessionId=${sessionId}`);
+}
+
+/**
+ * Trigger metacognitive analysis for a session
+ */
+export async function runInsightsAnalysis(
+  sessionId: string
+): Promise<ApiResponse<Insight[]>> {
+  return fetchApi<Insight[]>("/api/insights", {
+    method: "POST",
+    body: JSON.stringify({ sessionId }),
+  });
 }
 
 // ============================================================

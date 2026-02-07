@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ThinkingEngine, ThinkGraph } from "@opus-nx/core";
-import { getSession, createSession } from "@/lib/db";
+import { getSession, createSession, getLatestThinkingNode } from "@/lib/db";
 
 const StreamRequestSchema = z.object({
   query: z.string().min(1),
@@ -109,12 +109,24 @@ export async function POST(request: Request) {
             (result.usage as unknown as { thinking_tokens?: number })
               .thinking_tokens ?? thinkingTokens;
 
+          // Find the latest node in this session to link as parent
+          let parentNodeId: string | undefined;
+          try {
+            const latestNode = await getLatestThinkingNode(sessionId);
+            if (latestNode) {
+              parentNodeId = latestNode.id;
+            }
+          } catch (e) {
+            console.warn("[API] Failed to get latest node for linking:", e);
+          }
+
           // Persist to graph after streaming completes
           const thinkGraph = new ThinkGraph();
           const graphResult = await thinkGraph.persistThinkingNode(
             result.thinkingBlocks,
             {
               sessionId,
+              parentNodeId,
               inputQuery: query,
               tokenUsage: {
                 ...result.usage,
