@@ -63,7 +63,7 @@ export async function POST(request: Request) {
           // Uses adaptive thinking (Claude Opus 4.6 recommended mode)
           const engine = new ThinkingEngine({
             config: {
-              model: "claude-opus-4-6-20260101",
+              model: "claude-opus-4-6",
               thinking: { type: "adaptive", effort },
               maxTokens: 16384,
               streaming: true,
