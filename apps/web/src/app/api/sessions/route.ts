@@ -1,22 +1,39 @@
 import { NextResponse } from "next/server";
-import { getActiveSessions, createSession } from "@/lib/db";
+import { getActiveSessions, createSession, getFirstNodePerSessions } from "@/lib/db";
 
 /**
  * GET /api/sessions
- * Retrieve all active sessions
+ * Retrieve all active sessions with display names from first query.
+ * Uses a single batch query for first nodes to avoid N+1.
  */
 export async function GET() {
   try {
     const sessions = await getActiveSessions();
 
-    // Transform dates to ISO strings for JSON serialization
-    const serializedSessions = sessions.map((session) => ({
-      ...session,
-      createdAt: session.createdAt.toISOString(),
-      updatedAt: session.updatedAt.toISOString(),
-    }));
+    // Batch-fetch the first (earliest) node per session in a single query
+    const sessionIds = sessions.map((s) => s.id);
+    let firstNodeMap = new Map<string, { inputQuery: string | null }>();
+    try {
+      firstNodeMap = await getFirstNodePerSessions(sessionIds);
+    } catch {
+      // Non-critical — display names are optional
+    }
 
-    return NextResponse.json(serializedSessions);
+    const sessionsWithNames = sessions.map((session) => {
+      const firstNode = firstNodeMap.get(session.id);
+      const displayName = firstNode?.inputQuery ?? null;
+      // Use currentPlan metadata for demo flag if set by seed route
+      const plan = session.currentPlan as Record<string, unknown> | undefined;
+      return {
+        ...session,
+        createdAt: session.createdAt.toISOString(),
+        updatedAt: session.updatedAt.toISOString(),
+        displayName: displayName ?? (plan?.displayName as string | undefined) ?? null,
+        isDemo: plan?.isDemo === true,
+      };
+    });
+
+    return NextResponse.json(sessionsWithNames);
   } catch (error) {
     console.error("[API] Failed to get sessions:", error);
     return NextResponse.json(

@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { EDGE_COLORS, EDGE_LABELS, EDGE_ICONS, type EdgeType } from "@/lib/colors";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 const edgeTypes: EdgeType[] = [
   "influences",
@@ -11,27 +13,42 @@ const edgeTypes: EdgeType[] = [
 ];
 
 export function GraphLegend() {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
   return (
-    <div className="absolute top-4 right-4 z-10 p-3 rounded-lg border border-[var(--border)] bg-[var(--card)]/95 backdrop-blur-sm">
-      <h4 className="text-xs font-medium text-[var(--muted-foreground)] mb-2">
-        Edge Types
-      </h4>
-      <div className="space-y-1.5">
-        {edgeTypes.map((type) => (
-          <div key={type} className="flex items-center gap-2">
-            <div
-              className="w-8 h-0.5 rounded-full"
-              style={{
-                backgroundColor: EDGE_COLORS[type],
-                opacity: type === "contradicts" ? 0.7 : 1,
-              }}
-            />
-            <span className="text-xs text-[var(--foreground)]">
-              {EDGE_ICONS[type]} {EDGE_LABELS[type]}
-            </span>
+    <div className="absolute bottom-4 left-4 z-10">
+      <button
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        aria-expanded={!isCollapsed}
+        aria-controls="graph-legend-content"
+        className="flex items-center gap-1.5 p-2 rounded-lg border border-[var(--border)] bg-[var(--card)]/95 backdrop-blur-sm shadow-sm hover:bg-[var(--muted)] transition-colors"
+      >
+        <span className="text-xs font-medium text-[var(--muted-foreground)]">
+          Edge Types
+        </span>
+        {isCollapsed ? (
+          <ChevronDown className="w-3 h-3 text-[var(--muted-foreground)]" />
+        ) : (
+          <ChevronUp className="w-3 h-3 text-[var(--muted-foreground)]" />
+        )}
+      </button>
+      {!isCollapsed && (
+        <div id="graph-legend-content" className="mt-1 p-2.5 rounded-lg border border-[var(--border)] bg-[var(--card)]/95 backdrop-blur-sm shadow-sm">
+          <div className="space-y-1.5">
+            {edgeTypes.map((type) => (
+              <div key={type} className="flex items-center gap-2">
+                <div
+                  className="w-6 h-0.5 rounded-full"
+                  style={{ backgroundColor: EDGE_COLORS[type] }}
+                />
+                <span className="text-[11px] text-[var(--foreground)]">
+                  {EDGE_ICONS[type]} {EDGE_LABELS[type]}
+                </span>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

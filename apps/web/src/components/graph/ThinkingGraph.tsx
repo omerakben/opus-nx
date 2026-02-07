@@ -147,8 +147,8 @@ export function ThinkingGraph({
       {!isMobile && (
         <MiniMap
           nodeColor={nodeColor}
-          maskColor="rgba(0, 0, 0, 0.7)"
-          className="!bg-[var(--card)] !border-[var(--border)]"
+          maskColor="rgba(0, 0, 0, 0.4)"
+          className="!bg-[var(--card)] !border-[var(--border)] !rounded-lg !shadow-lg"
           position="bottom-right"
           pannable
           zoomable

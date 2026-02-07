@@ -207,6 +207,39 @@ export async function getSessionThinkingNodes(
 }
 
 /**
+ * Get the first (earliest) thinking node for each of the given session IDs.
+ * Single query to avoid N+1 when loading display names for session lists.
+ */
+export async function getFirstNodePerSessions(
+  sessionIds: string[]
+): Promise<Map<string, ThinkingNode>> {
+  if (sessionIds.length === 0) return new Map();
+
+  const supabase = getSupabase();
+
+  const { data, error } = await supabase
+    .from("thinking_nodes")
+    .select("*")
+    .in("session_id", sessionIds)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    handleSupabaseError(error, "Failed to get first nodes per session");
+  }
+
+  // Group by session_id, taking the first (earliest) node per session
+  const result = new Map<string, ThinkingNode>();
+  for (const row of data ?? []) {
+    const node = mapThinkingNode(row);
+    if (!result.has(node.sessionId)) {
+      result.set(node.sessionId, node);
+    }
+  }
+
+  return result;
+}
+
+/**
  * Get the most recent thinking node for a session
  */
 export async function getLatestThinkingNode(

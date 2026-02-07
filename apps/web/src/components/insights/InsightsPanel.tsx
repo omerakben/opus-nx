@@ -1,26 +1,60 @@
 "use client";
 
+import { useState, useCallback } from "react";
 import { InsightCard } from "./InsightCard";
-import { Card, CardHeader, CardTitle, CardContent, Skeleton, Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardContent, Skeleton, Tabs, TabsList, TabsTrigger, TabsContent, Button } from "@/components/ui";
 import type { Insight } from "@/lib/api";
-import { AlertTriangle, Lightbulb, Search } from "lucide-react";
+import { runInsightsAnalysis } from "@/lib/api";
+import { AlertTriangle, Lightbulb, Search, Brain, Loader2 } from "lucide-react";
 
 interface InsightsPanelProps {
   insights: Insight[];
   isLoading: boolean;
   onEvidenceClick?: (nodeId: string) => void;
+  sessionId?: string | null;
+  onInsightsGenerated?: (insights: Insight[]) => void;
 }
 
 export function InsightsPanel({
   insights,
   isLoading,
   onEvidenceClick,
+  sessionId,
+  onInsightsGenerated,
 }: InsightsPanelProps) {
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+
   const biasInsights = insights.filter((i) => i.insightType === "bias_detection");
   const patternInsights = insights.filter((i) => i.insightType === "pattern");
   const hypothesisInsights = insights.filter(
     (i) => i.insightType === "improvement_hypothesis"
   );
+
+  const handleRunAnalysis = useCallback(async () => {
+    if (!sessionId || isAnalyzing) return;
+
+    setIsAnalyzing(true);
+    setAnalyzeError(null);
+
+    try {
+      const response = await runInsightsAnalysis(sessionId);
+
+      if (response.error) {
+        setAnalyzeError(response.error.message);
+      } else if (response.data) {
+        // API returns { insights, nodesAnalyzed, summary, errors }
+        const insights = Array.isArray(response.data)
+          ? response.data
+          : (response.data as unknown as { insights: Insight[] }).insights ?? [];
+        onInsightsGenerated?.(insights);
+      }
+    } catch (err) {
+      setAnalyzeError(err instanceof Error ? err.message : "Analysis failed");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [sessionId, isAnalyzing, onInsightsGenerated]);
 
   if (isLoading) {
     return (
@@ -55,37 +89,97 @@ export function InsightsPanel({
       </CardHeader>
 
       <CardContent className="flex-1 p-0 overflow-hidden">
-        {insights.length === 0 ? (
+        {/* Analyzing state */}
+        {isAnalyzing ? (
           <div className="h-full flex items-center justify-center p-4">
             <div className="text-center">
-              <Lightbulb className="w-8 h-8 text-[var(--muted-foreground)] mx-auto mb-2" />
-              <p className="text-sm text-[var(--muted-foreground)]">
-                No insights yet
+              <div className="relative w-16 h-16 mx-auto mb-3">
+                <div className="absolute inset-0 rounded-full border-2 border-amber-500/20 animate-ping" />
+                <div className="absolute inset-2 rounded-full border-2 border-amber-500/40 animate-pulse" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Brain className="w-7 h-7 text-amber-400 animate-pulse" />
+                </div>
+              </div>
+              <p className="text-sm text-amber-400 animate-pulse font-medium">
+                Analyzing reasoning patterns...
               </p>
               <p className="text-xs text-[var(--muted-foreground)] mt-1">
-                Insights are generated from reasoning analysis
+                Claude is examining its own thinking for biases and patterns
               </p>
+            </div>
+          </div>
+        ) : insights.length === 0 ? (
+          <div className="h-full flex items-center justify-center p-4">
+            <div className="text-center">
+              <div className="relative w-14 h-14 mx-auto mb-3">
+                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-amber-500/10 to-violet-500/10" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Brain className="w-7 h-7 text-[var(--muted-foreground)]" />
+                </div>
+              </div>
+              <p className="text-sm text-[var(--muted-foreground)] font-medium">
+                No insights yet
+              </p>
+              <p className="text-xs text-[var(--muted-foreground)] mt-1 mb-4 max-w-[200px]">
+                Run self-reflection to detect biases, patterns, and improvement ideas
+              </p>
+              {sessionId && (
+                <Button
+                  onClick={handleRunAnalysis}
+                  size="sm"
+                  className="bg-amber-500 hover:bg-amber-600 text-white"
+                >
+                  <Brain className="w-4 h-4 mr-1.5" />
+                  Run Self-Reflection
+                </Button>
+              )}
+              {analyzeError && (
+                <p className="text-xs text-red-400 mt-2 max-w-[200px]">{analyzeError}</p>
+              )}
             </div>
           </div>
         ) : (
           <Tabs defaultValue="all" className="h-full flex flex-col">
-            <TabsList className="mx-4 mt-3 justify-start">
-              <TabsTrigger value="all" className="text-xs">
-                All ({insights.length})
-              </TabsTrigger>
-              <TabsTrigger value="bias" className="text-xs">
-                <AlertTriangle className="w-3 h-3 mr-1" />
-                Bias ({biasInsights.length})
-              </TabsTrigger>
-              <TabsTrigger value="pattern" className="text-xs">
-                <Search className="w-3 h-3 mr-1" />
-                Pattern ({patternInsights.length})
-              </TabsTrigger>
-              <TabsTrigger value="hypothesis" className="text-xs">
-                <Lightbulb className="w-3 h-3 mr-1" />
-                Ideas ({hypothesisInsights.length})
-              </TabsTrigger>
-            </TabsList>
+            <div className="flex items-center justify-between mx-4 mt-3 gap-2">
+              <TabsList className="justify-start">
+                <TabsTrigger value="all" className="text-xs">
+                  All ({insights.length})
+                </TabsTrigger>
+                <TabsTrigger value="bias" className="text-xs">
+                  <AlertTriangle className="w-3 h-3 mr-1" />
+                  Bias ({biasInsights.length})
+                </TabsTrigger>
+                <TabsTrigger value="pattern" className="text-xs">
+                  <Search className="w-3 h-3 mr-1" />
+                  Pattern ({patternInsights.length})
+                </TabsTrigger>
+                <TabsTrigger value="hypothesis" className="text-xs">
+                  <Lightbulb className="w-3 h-3 mr-1" />
+                  Ideas ({hypothesisInsights.length})
+                </TabsTrigger>
+              </TabsList>
+              {sessionId && (
+                <div className="flex flex-col items-end shrink-0">
+                  <Button
+                    onClick={handleRunAnalysis}
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-amber-400 hover:text-amber-300"
+                    disabled={isAnalyzing}
+                  >
+                    {isAnalyzing ? (
+                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    ) : (
+                      <Brain className="w-3 h-3 mr-1" />
+                    )}
+                    Re-analyze
+                  </Button>
+                  {analyzeError && (
+                    <p className="text-[10px] text-red-400 mt-0.5 max-w-[160px] text-right">{analyzeError}</p>
+                  )}
+                </div>
+              )}
+            </div>
 
             <div className="flex-1 overflow-y-auto p-4">
               <TabsContent value="all" className="mt-0 space-y-3">

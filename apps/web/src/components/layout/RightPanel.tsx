@@ -11,6 +11,7 @@ interface RightPanelProps {
   isLoadingInsights: boolean;
   sessionId: string | null;
   onEvidenceClick?: (nodeId: string) => void;
+  onInsightsGenerated?: (insights: Insight[]) => void;
   isMobile?: boolean;
 }
 
@@ -19,6 +20,7 @@ export function RightPanel({
   isLoadingInsights,
   sessionId,
   onEvidenceClick,
+  onInsightsGenerated,
   isMobile,
 }: RightPanelProps) {
   if (isMobile) {
@@ -42,6 +44,8 @@ export function RightPanel({
                 insights={insights}
                 isLoading={isLoadingInsights}
                 onEvidenceClick={onEvidenceClick}
+                sessionId={sessionId}
+                onInsightsGenerated={onInsightsGenerated}
               />
             </TabsContent>
 
@@ -74,6 +78,8 @@ export function RightPanel({
               insights={insights}
               isLoading={isLoadingInsights}
               onEvidenceClick={onEvidenceClick}
+              sessionId={sessionId}
+              onInsightsGenerated={onInsightsGenerated}
             />
           </TabsContent>
 

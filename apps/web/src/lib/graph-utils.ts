@@ -93,7 +93,8 @@ export function transformNodesToGraph(
 }
 
 /**
- * Calculate node positions for hierarchical layout.
+ * Calculate node positions using a hierarchical tree layout.
+ * Centers children under their parent for a clean visual hierarchy.
  */
 function calculateNodePositions(
   nodes: ThinkingNode[],
@@ -101,51 +102,82 @@ function calculateNodePositions(
   childrenMap: Map<string, string[]>
 ): Map<string, { x: number; y: number }> {
   const positions = new Map<string, { x: number; y: number }>();
-  const nodeWidth = 280;
-  const nodeHeight = 120;
-  const horizontalGap = 60;
-  const verticalGap = 80;
+  const nodeWidth = 300;
+  const nodeHeight = 160;
+  const horizontalGap = 80;
+  const verticalGap = 100;
 
-  // Find root nodes (no parent)
-  const rootNodes = nodes.filter((n) => !n.parentNodeId);
+  // Find root nodes (no parent or parent not in this set)
+  const nodeIds = new Set(nodes.map((n) => n.id));
+  const rootNodes = nodes.filter((n) => !n.parentNodeId || !nodeIds.has(n.parentNodeId));
 
-  // BFS to assign positions
-  let currentY = 0;
+  // Calculate subtree widths for centering
+  const subtreeWidths = new Map<string, number>();
 
-  const processLevel = (levelNodes: string[], level: number) => {
-    const startX = -(levelNodes.length * (nodeWidth + horizontalGap)) / 2;
+  function getSubtreeWidth(nodeId: string): number {
+    if (subtreeWidths.has(nodeId)) return subtreeWidths.get(nodeId)!;
 
-    levelNodes.forEach((nodeId, index) => {
-      positions.set(nodeId, {
-        x: startX + index * (nodeWidth + horizontalGap),
-        y: level * (nodeHeight + verticalGap),
-      });
-    });
-
-    // Process children
-    const nextLevel: string[] = [];
-    for (const nodeId of levelNodes) {
-      const children = childrenMap.get(nodeId) ?? [];
-      nextLevel.push(...children);
+    const children = (childrenMap.get(nodeId) ?? []).filter((id) => nodeIds.has(id));
+    if (children.length === 0) {
+      subtreeWidths.set(nodeId, nodeWidth);
+      return nodeWidth;
     }
 
-    if (nextLevel.length > 0) {
-      processLevel(nextLevel, level + 1);
-    }
-  };
-
-  if (rootNodes.length > 0) {
-    processLevel(
-      rootNodes.map((n) => n.id),
-      0
+    const childrenWidth = children.reduce(
+      (sum, childId) => sum + getSubtreeWidth(childId) + horizontalGap,
+      -horizontalGap
     );
+
+    const width = Math.max(nodeWidth, childrenWidth);
+    subtreeWidths.set(nodeId, width);
+    return width;
   }
 
-  // Handle orphan nodes
-  let orphanX = 0;
+  // Calculate widths for all roots
+  for (const root of rootNodes) {
+    getSubtreeWidth(root.id);
+  }
+
+  // Position nodes top-down, centering children under parents
+  function positionSubtree(nodeId: string, x: number, y: number) {
+    positions.set(nodeId, { x, y });
+
+    const children = (childrenMap.get(nodeId) ?? []).filter((id) => nodeIds.has(id));
+    if (children.length === 0) return;
+
+    const totalChildrenWidth = children.reduce(
+      (sum, childId) => sum + getSubtreeWidth(childId) + horizontalGap,
+      -horizontalGap
+    );
+
+    let childX = x - totalChildrenWidth / 2;
+
+    for (const childId of children) {
+      const childWidth = getSubtreeWidth(childId);
+      positionSubtree(childId, childX + childWidth / 2, y + nodeHeight + verticalGap);
+      childX += childWidth + horizontalGap;
+    }
+  }
+
+  // Position root nodes side by side
+  const totalRootWidth = rootNodes.reduce(
+    (sum, root) => sum + getSubtreeWidth(root.id) + horizontalGap,
+    -horizontalGap
+  );
+
+  let rootX = -totalRootWidth / 2;
+  for (const root of rootNodes) {
+    const width = getSubtreeWidth(root.id);
+    positionSubtree(root.id, rootX + width / 2, 0);
+    rootX += width + horizontalGap;
+  }
+
+  // Handle orphan nodes not in any tree
+  let orphanX = -totalRootWidth / 2;
+  const maxY = Math.max(0, ...Array.from(positions.values()).map((p) => p.y));
   for (const node of nodes) {
     if (!positions.has(node.id)) {
-      positions.set(node.id, { x: orphanX, y: currentY });
+      positions.set(node.id, { x: orphanX, y: maxY + nodeHeight + verticalGap });
       orphanX += nodeWidth + horizontalGap;
     }
   }
@@ -159,15 +191,21 @@ function calculateNodePositions(
 export function transformEdgesToGraph(edges: ReasoningEdge[]): GraphEdge[] {
   return edges.map((edge) => {
     const edgeType = edge.edgeType as EdgeType;
+    const color = EDGE_COLORS[edgeType] ?? EDGE_COLORS.influences;
     return {
       id: edge.id,
       source: edge.sourceId,
       target: edge.targetId,
       type: edgeType,
-      animated: edgeType === "influences",
+      animated: true,
+      label: edgeType,
+      labelStyle: { fill: color, fontSize: 10, fontWeight: 500 },
+      labelBgStyle: { fill: "var(--background)", fillOpacity: 0.85 },
+      labelBgPadding: [4, 2] as [number, number],
       style: {
-        stroke: EDGE_COLORS[edgeType] ?? EDGE_COLORS.influences,
-        strokeWidth: Math.max(1, edge.weight * 2),
+        stroke: color,
+        strokeWidth: Math.max(1.5, edge.weight * 2.5),
+        strokeOpacity: 0.8,
       },
       data: {
         edgeType,
