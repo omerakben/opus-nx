@@ -109,3 +109,74 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* Node appear animation */
+@keyframes nodeAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.react-flow__node-thinking {
+  animation: nodeAppear 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Streaming pulse on graph background */
+@keyframes streamPulse {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 0.05; }
+}
+
+.stream-pulse {
+  animation: streamPulse 2s ease-in-out infinite;
+}
+
+/* Gradient border for special nodes */
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Fork loading animation */
+@keyframes forkSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Slide in from right */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slideInRight 0.3s ease-out;
+}
+
+/* Fade in up */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s ease-out;
+}
