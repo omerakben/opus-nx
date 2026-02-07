@@ -117,11 +117,12 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
       setError(response.error.message);
     } else if (response.data) {
       setSteeringResult(response.data);
+      // Only clear input on success
+      setSteerAction(null);
+      setSteerInput("");
     }
 
     setIsSteering(false);
-    setSteerAction(null);
-    setSteerInput("");
   }, [result, steerAction, steerTarget, steerInput, isSteering]);
 
   const steerActionConfig = {
@@ -312,7 +313,9 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
                         }
                         className="flex-1 text-xs px-2 py-1.5 rounded border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)]"
                         onKeyDown={(e) => {
-                          if (e.key === "Enter") handleSteer();
+                          if (e.key === "Enter" && !isSteering && !((steerAction === "challenge" || steerAction === "refork") && !steerInput.trim())) {
+                            handleSteer();
+                          }
                         }}
                         autoFocus
                       />

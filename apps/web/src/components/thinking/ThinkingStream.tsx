@@ -1,8 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
-import { cn } from "@/lib/utils";
-import { formatNumber } from "@/lib/utils";
+import { cn, formatNumber } from "@/lib/utils";
 import { TokenCounter } from "./TokenCounter";
 import { ThinkingInput } from "./ThinkingInput";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui";

@@ -70,6 +70,9 @@ export function useThinkingStream(): UseThinkingStreamReturn {
   const abortControllerRef = useRef<AbortController | null>(null);
   const startTimeRef = useRef<number>(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Track whether we're currently inside a compaction block to avoid counting chunks as separate events
+  const isCompactingRef = useRef<boolean>(false);
+  const compactionBufferRef = useRef<string>("");
 
   const stop = useCallback(() => {
     if (eventSourceRef.current) {
@@ -169,6 +172,10 @@ export function useThinkingStream(): UseThinkingStreamReturn {
                   try {
                     const data = JSON.parse(line.slice(6));
                     if (data.type === "thinking") {
+                      // Reset compaction tracking when we get non-compaction events
+                      isCompactingRef.current = false;
+                      compactionBufferRef.current = "";
+
                       setState((prev) => {
                         const newThinking = prev.thinking + data.chunk;
                         return {
@@ -179,21 +186,28 @@ export function useThinkingStream(): UseThinkingStreamReturn {
                         };
                       });
                     } else if (data.type === "compaction") {
+                      // Buffer compaction text; only increment count once per compaction block
+                      compactionBufferRef.current += data.summary ?? "";
+                      const isNewCompaction = !isCompactingRef.current;
+                      isCompactingRef.current = true;
+
                       setState((prev) => ({
                         ...prev,
-                        compactionCount: prev.compactionCount + 1,
-                        compactionSummary: data.summary ?? "Context compacted",
+                        compactionCount: isNewCompaction ? prev.compactionCount + 1 : prev.compactionCount,
+                        compactionSummary: compactionBufferRef.current || "Context compacted",
                         phase: "compacting",
-                        streamingNodes: [
-                          ...prev.streamingNodes,
-                          {
-                            id: `compaction-${Date.now()}`,
-                            reasoning: data.summary ?? "Context compacted for infinite session",
-                            tokenCount: prev.tokenCount,
-                            timestamp: new Date(),
-                            nodeType: "compaction" as const,
-                          },
-                        ],
+                        streamingNodes: isNewCompaction
+                          ? [
+                              ...prev.streamingNodes,
+                              {
+                                id: `compaction-${Date.now()}`,
+                                reasoning: compactionBufferRef.current || "Context compacted for infinite session",
+                                tokenCount: prev.tokenCount,
+                                timestamp: new Date(),
+                                nodeType: "compaction" as const,
+                              },
+                            ]
+                          : prev.streamingNodes,
                       }));
                     } else if (data.type === "node") {
                       // New thinking node persisted - emit for live graph

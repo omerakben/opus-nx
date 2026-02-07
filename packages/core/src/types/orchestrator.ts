@@ -101,12 +101,12 @@ export const CompactionConfigSchema = z.object({
 });
 
 export const OrchestratorConfigSchema = z.object({
-  model: z.string().default("claude-opus-4-6"),
+  model: z.string().default("claude-opus-4-6-20260101"),
   maxTokens: z.number().default(16384),
   thinking: ThinkingConfigSchema.default({}),
   streaming: z.boolean().default(true),
   /** Data residency: "global" (default) or "us" for US-only inference */
-  inferenceGeo: z.enum(["global", "us"]).default("global").optional(),
+  inferenceGeo: z.enum(["global", "us"]).optional(),
   /** Context compaction for infinite reasoning sessions (Opus 4.6 beta) */
   compaction: CompactionConfigSchema.optional(),
 });

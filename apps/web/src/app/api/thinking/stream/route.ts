@@ -1,13 +1,13 @@
+import { z } from "zod";
 import { ThinkingEngine, ThinkGraph } from "@opus-nx/core";
 import { getSession, createSession } from "@/lib/db";
 
-interface StreamRequest {
-  query: string;
-  sessionId?: string;
-  effort?: "low" | "medium" | "high" | "max";
-  /** Enable context compaction for long sessions (Opus 4.6 beta) */
-  compactionEnabled?: boolean;
-}
+const StreamRequestSchema = z.object({
+  query: z.string().min(1),
+  sessionId: z.string().uuid().optional(),
+  effort: z.enum(["low", "medium", "high", "max"]).default("high"),
+  compactionEnabled: z.boolean().default(false),
+});
 
 /**
  * POST /api/thinking/stream
@@ -17,24 +17,24 @@ interface StreamRequest {
  * - Adaptive thinking with effort control
  * - Context compaction for infinite sessions
  * - Data residency (US-only inference)
- * - 128K output tokens
+ * - 16,384 output tokens (configurable)
  */
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as StreamRequest;
-    const {
-      query,
-      sessionId: providedSessionId,
-      effort = "high",
-      compactionEnabled = false,
-    } = body;
-
-    if (!query?.trim()) {
+    const body = await request.json();
+    const parsed = StreamRequestSchema.safeParse(body);
+    if (!parsed.success) {
       return new Response(
-        JSON.stringify({ error: { message: "Query is required" } }),
+        JSON.stringify({ error: { message: "Invalid request", details: parsed.error.issues } }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
+    const {
+      query,
+      sessionId: providedSessionId,
+      effort,
+      compactionEnabled,
+    } = parsed.data;
 
     // Get or create session
     let sessionId = providedSessionId;
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
           // Uses adaptive thinking (Claude Opus 4.6 recommended mode)
           const engine = new ThinkingEngine({
             config: {
-              model: "claude-opus-4-6",
+              model: "claude-opus-4-6-20260101",
               thinking: { type: "adaptive", effort },
               maxTokens: 16384,
               streaming: true,
@@ -141,10 +141,11 @@ export async function POST(request: Request) {
                   parentNodeId: graphResult.node.id,
                   inputQuery: `[Compaction] Context consolidated at ${new Date().toISOString()}`,
                   tokenUsage: result.usage,
+                  nodeType: "compaction",
                 }
               );
-            } catch {
-              // Non-critical - continue without compaction node
+            } catch (compactionError) {
+              console.warn("[API] Failed to persist compaction node:", compactionError);
             }
           }
 

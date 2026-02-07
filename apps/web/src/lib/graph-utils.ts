@@ -65,12 +65,9 @@ export function transformNodesToGraph(
     const position = positions.get(node.id) ?? { x: 0, y: 0 };
     const usage = parseTokenUsage(node.tokenUsage);
 
-    // Detect node type from inputQuery patterns or explicit field
+    // Use explicit nodeType from database, falling back to "thinking"
     const dbNode = node as ThinkingNode & { nodeType?: string };
-    let nodeType = dbNode.nodeType ?? "thinking";
-    if (node.inputQuery?.startsWith("[Compaction")) {
-      nodeType = "compaction";
-    }
+    const nodeType = dbNode.nodeType ?? "thinking";
 
     return {
       id: node.id,

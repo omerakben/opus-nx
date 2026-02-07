@@ -212,6 +212,7 @@ export class Orchestrator {
             parentNodeId: this.lastThinkingNodeId ?? undefined,
             inputQuery: `[Compaction #${this.session.compactionCount}] Context compacted at ${new Date().toISOString()}`,
             tokenUsage: result.usage,
+            nodeType: "compaction",
           }
         );
 

@@ -126,6 +126,8 @@ export interface PersistThinkingOptions {
   thinkingBudget?: number;
   signature?: string;
   tokenUsage?: TokenUsage;
+  /** Override the default node type (thinking, compaction, fork_branch, human_annotation) */
+  nodeType?: ThinkingNode["nodeType"];
 }
 
 export interface ThinkGraphResult {
@@ -604,8 +606,14 @@ export class ThinkGraph {
       }
     }
 
+    const mappedNode = this.mapDbThinkingNode(dbNode);
+    // Apply explicit nodeType override if provided (e.g. for compaction nodes)
+    if (validatedOptions.nodeType) {
+      mappedNode.nodeType = validatedOptions.nodeType;
+    }
+
     return {
-      node: this.mapDbThinkingNode(dbNode),
+      node: mappedNode,
       decisionPoints: dbDecisionPoints,
       linkedToParent,
     };
@@ -760,7 +768,7 @@ export class ThinkGraph {
       signature: dbNode.signature ?? undefined,
       inputQuery: dbNode.inputQuery ?? undefined,
       tokenUsage: dbNode.tokenUsage as { inputTokens?: number; outputTokens?: number; thinkingTokens?: number } | undefined,
-      nodeType: "thinking" as const,
+      nodeType: ((dbNode as unknown as Record<string, unknown>).nodeType as ThinkingNode["nodeType"]) ?? "thinking",
       createdAt: dbNode.createdAt,
     };
   }
