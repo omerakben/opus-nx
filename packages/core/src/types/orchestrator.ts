@@ -100,8 +100,30 @@ export const CompactionConfigSchema = z.object({
   instructions: z.string().optional(),
 });
 
+// Dynamic effort routing: auto-selects effort level based on task complexity
+export const EffortRoutingConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  /** Effort for simple/direct queries (greeting, factual, single-step) */
+  simpleEffort: z.enum(["low", "medium", "high", "max"]).default("medium"),
+  /** Effort for standard multi-step tasks */
+  standardEffort: z.enum(["low", "medium", "high", "max"]).default("high"),
+  /** Effort for complex reasoning (planning, analysis, debugging) */
+  complexEffort: z.enum(["low", "medium", "high", "max"]).default("max"),
+});
+
+// Token budget enforcement for session-level cost control
+export const TokenBudgetConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  /** Maximum total output tokens across the entire session */
+  maxSessionOutputTokens: z.number().default(500000),
+  /** Maximum number of compaction cycles before session stops */
+  maxCompactions: z.number().default(10),
+  /** Callback mode when budget is approaching (warn at 80%) */
+  warnAtPercent: z.number().min(0).max(100).default(80),
+});
+
 export const OrchestratorConfigSchema = z.object({
-  model: z.string().default("claude-opus-4-6-20260101"),
+  model: z.string().default("claude-opus-4-6"),
   maxTokens: z.number().default(16384),
   thinking: ThinkingConfigSchema.default({}),
   streaming: z.boolean().default(true),
@@ -109,10 +131,16 @@ export const OrchestratorConfigSchema = z.object({
   inferenceGeo: z.enum(["global", "us"]).optional(),
   /** Context compaction for infinite reasoning sessions (Opus 4.6 beta) */
   compaction: CompactionConfigSchema.optional(),
+  /** Dynamic effort routing based on task complexity */
+  effortRouting: EffortRoutingConfigSchema.optional(),
+  /** Token budget enforcement for session cost control */
+  tokenBudget: TokenBudgetConfigSchema.optional(),
 });
 
 export type ThinkingConfig = z.infer<typeof ThinkingConfigSchema>;
 export type CompactionConfig = z.infer<typeof CompactionConfigSchema>;
+export type EffortRoutingConfig = z.infer<typeof EffortRoutingConfigSchema>;
+export type TokenBudgetConfig = z.infer<typeof TokenBudgetConfigSchema>;
 export type OrchestratorConfig = z.infer<typeof OrchestratorConfigSchema>;
 
 // ============================================================
@@ -130,6 +158,10 @@ export interface OrchestratorSession {
   compactionCount: number;
   /** Last compaction summary (for continuity) */
   lastCompactionSummary?: string;
+  /** Cumulative output tokens consumed in this session */
+  cumulativeOutputTokens: number;
+  /** Whether the session budget warning has been triggered */
+  budgetWarningTriggered: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

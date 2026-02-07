@@ -130,13 +130,27 @@ TAVILY_API_KEY=tvly-...  # Optional
 ### Extended Thinking Configuration
 ```typescript
 const config: OrchestratorConfig = {
-  model: "claude-opus-4-6-20260101",
+  model: "claude-opus-4-6",
   thinking: {
-    type: "enabled",
-    effort: "high", // low=5k, medium=10k, high=20k, max=50k tokens
+    type: "adaptive",   // Opus 4.6 recommended: Claude decides when/how much to think
+    effort: "high",     // low, medium, high, max (max = Opus 4.6 only, unconstrained)
   },
   streaming: true,
   maxTokens: 8192,
+  // Dynamic effort routing (auto-adjusts effort based on task complexity)
+  effortRouting: {
+    enabled: true,
+    simpleEffort: "medium",
+    standardEffort: "high",
+    complexEffort: "max",
+  },
+  // Token budget enforcement (session-level cost control)
+  tokenBudget: {
+    enabled: true,
+    maxSessionOutputTokens: 500000,
+    maxCompactions: 10,
+    warnAtPercent: 80,
+  },
 }
 ```
 
