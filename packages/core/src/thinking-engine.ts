@@ -51,6 +51,11 @@ export class ThinkingEngine {
   private onCompactionStream?: (summary: string) => void;
 
   constructor(options: ThinkingEngineOptions) {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      throw new Error(
+        "ANTHROPIC_API_KEY environment variable is required. Set it in your .env file."
+      );
+    }
     this.client = new Anthropic();
     this.config = options.config;
     this.onThinkingStream = options.onThinkingStream;

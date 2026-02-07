@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       async start(controller) {
         try {
           let thinkingTokens = 0;
-          let parentLinkStatus: "linked" | "not_applicable" | "lookup_failed" | "persist_failed" = "not_applicable";
+          let parentLinkStatus: "linked" | "not_applicable" | "lookup_failed" | "persist_failed" | "pending" = "not_applicable";
           let compactionPersistStatus: "not_applicable" | "persisted" | "failed" = "not_applicable";
           const streamWarnings: string[] = [];
 
@@ -127,7 +127,7 @@ export async function POST(request: Request) {
             const latestNode = await getLatestThinkingNode(sessionId);
             if (latestNode) {
               parentNodeId = latestNode.id;
-              parentLinkStatus = "persist_failed";
+              parentLinkStatus = "pending";
             }
           } catch (e) {
             parentLinkStatus = "lookup_failed";
@@ -160,8 +160,8 @@ export async function POST(request: Request) {
               },
             }
           );
-          if (parentNodeId && graphResult.linkedToParent) {
-            parentLinkStatus = "linked";
+          if (parentNodeId) {
+            parentLinkStatus = graphResult.linkedToParent ? "linked" : "persist_failed";
           }
 
           // If compaction occurred, persist a compaction node

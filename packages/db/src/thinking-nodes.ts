@@ -320,6 +320,28 @@ export async function getEdgesFromNode(
 }
 
 /**
+ * Get edges for multiple source nodes in a single query (batch)
+ */
+export async function getEdgesForNodes(
+  nodeIds: string[]
+): Promise<ReasoningEdge[]> {
+  if (nodeIds.length === 0) return [];
+
+  const supabase = getSupabase();
+
+  const { data, error } = await supabase
+    .from("reasoning_edges")
+    .select("*")
+    .in("source_id", nodeIds);
+
+  if (error) {
+    handleSupabaseError(error, "Failed to get edges for nodes");
+  }
+
+  return (data ?? []).map(mapReasoningEdge);
+}
+
+/**
  * Get edges to a target node
  */
 export async function getEdgesToNode(

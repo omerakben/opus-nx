@@ -20,6 +20,7 @@ export {
   // Reasoning edges
   createReasoningEdge,
   getEdgesFromNode,
+  getEdgesForNodes,
   getEdgesToNode,
   // Decision points
   createDecisionPoint,

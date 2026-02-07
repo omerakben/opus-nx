@@ -255,11 +255,8 @@ export function useThinkingStream(): UseThinkingStreamReturn {
                         timerRef.current = null;
                       }
                     } else if (data.type === "warning") {
+                      // Warnings are not parse errors — do not conflate the two
                       console.warn("[use-thinking-stream] Recoverable stream warning", data);
-                      setState((prev) => ({
-                        ...prev,
-                        parseErrorCount: prev.parseErrorCount + 1,
-                      }));
                     }
                   } catch (parseError) {
                     // Ignore malformed events but surface recoverable error telemetry in state.

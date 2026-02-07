@@ -64,7 +64,7 @@ export function LeftPanel({
 
       {/* Stats */}
       {nodes.length > 0 && (
-        <div className="p-4 border-t border-[var(--border)]">
+        <div className="p-4 border-t border-[var(--border)]" data-tour="session-stats">
           <SessionStats nodes={nodes} />
         </div>
       )}

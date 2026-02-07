@@ -150,6 +150,17 @@ export class MemoryManager {
     const entries: KnowledgeContext["entries"] = [];
     let contextText = "";
 
+    // Pre-fetch all related knowledge in parallel to avoid N+1 queries
+    const relatedMap = new Map<string, Awaited<ReturnType<typeof getRelatedKnowledge>>>();
+    if (includeRelated) {
+      const relatedResults = await Promise.all(
+        results.map((r) => getRelatedKnowledge(r.id, relatedDepth))
+      );
+      results.forEach((r, i) => {
+        relatedMap.set(r.id, relatedResults[i]);
+      });
+    }
+
     for (const result of results) {
       entries.push({
         id: result.id,
@@ -163,11 +174,9 @@ export class MemoryManager {
       contextText += `Category: ${result.category}\n`;
       contextText += `${result.content}\n\n`;
 
-      if (includeRelated) {
-        const related = await getRelatedKnowledge(result.id, relatedDepth);
-        if (related.length > 0) {
-          contextText += `Related: ${related.map((r) => r.title).join(", ")}\n\n`;
-        }
+      const related = relatedMap.get(result.id);
+      if (related && related.length > 0) {
+        contextText += `Related: ${related.map((r) => r.title).join(", ")}\n\n`;
       }
     }
 
@@ -214,7 +223,7 @@ export class MemoryManager {
     });
 
     const response = await this.anthropicClient.messages.create({
-      model: "claude-opus-4-6",
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 256,
       messages: [
         {

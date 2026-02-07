@@ -388,32 +388,36 @@ export async function getInsightCountsByType(
 ): Promise<Record<InsightType, number>> {
   const supabase = getSupabase();
 
-  let query = supabase
-    .from("metacognitive_insights")
-    .select("insight_type");
-
-  if (sessionId) {
-    query = query.eq("session_id", sessionId);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    handleSupabaseError(error, "Failed to get insight counts");
-  }
-
+  const types: InsightType[] = ["bias_detection", "pattern", "improvement_hypothesis"];
   const counts: Record<InsightType, number> = {
     bias_detection: 0,
     pattern: 0,
     improvement_hypothesis: 0,
   };
 
-  for (const row of data ?? []) {
-    const type = row.insight_type as InsightType;
-    if (type in counts) {
-      counts[type]++;
-    }
-  }
+  // Use SQL count aggregation instead of fetching all rows
+  await Promise.all(
+    types.map(async (type) => {
+      let query = supabase
+        .from("metacognitive_insights")
+        .select("id", { count: "exact", head: true })
+        .eq("insight_type", type);
+
+      if (sessionId) {
+        query = query.eq("session_id", sessionId);
+      }
+
+      const { count, error } = await query;
+
+      if (error) {
+        handleSupabaseError(error, "Failed to get insight counts");
+      }
+
+      if (count !== null) {
+        counts[type] = count;
+      }
+    })
+  );
 
   return counts;
 }

@@ -1,8 +1,10 @@
+import { timingSafeEqual } from "crypto";
 import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
+import { generateAuthSignature } from "@/lib/auth";
 
 /**
  * POST /api/auth
- * Validates the password against AUTH_SECRET env var and sets an auth cookie.
+ * Validates the password against AUTH_SECRET env var and sets a signed auth cookie.
  */
 export async function POST(request: Request) {
   const correlationId = getCorrelationId(request);
@@ -21,7 +23,13 @@ export async function POST(request: Request) {
       });
     }
 
-    if (password !== secret) {
+    // Timing-safe password comparison to prevent timing attacks
+    const passwordBuffer = Buffer.from(password);
+    const secretBuffer = Buffer.from(secret);
+    if (
+      passwordBuffer.length !== secretBuffer.length ||
+      !timingSafeEqual(passwordBuffer, secretBuffer)
+    ) {
       return jsonError({
         status: 401,
         code: "INVALID_ACCESS_CODE",
@@ -33,7 +41,9 @@ export async function POST(request: Request) {
 
     const response = jsonSuccess({ success: true }, { correlationId });
 
-    response.cookies.set("opus-nx-auth", "authenticated", {
+    // Sign the cookie with HMAC-SHA256 instead of using a plain string
+    const signature = generateAuthSignature(secret);
+    response.cookies.set("opus-nx-auth", signature, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

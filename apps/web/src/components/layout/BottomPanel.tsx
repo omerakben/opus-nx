@@ -56,7 +56,7 @@ export function BottomPanel({
   }
 
   return (
-    <div className="h-64 border-t border-[var(--border)]">
+    <div className="h-64 border-t border-[var(--border)]" data-tour="thinking-input">
       <ThinkingStream
         thinking={thinking}
         tokenCount={tokenCount}

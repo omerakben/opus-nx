@@ -78,8 +78,14 @@ class Logger {
   }
 }
 
+const VALID_LOG_LEVELS: readonly LogLevel[] = ["debug", "info", "warn", "error"];
+
 export function createLogger(name: string, minLevel?: LogLevel): Logger {
-  return new Logger(name, minLevel);
+  const rawEnvLevel = typeof process !== "undefined" ? process.env?.LOG_LEVEL : undefined;
+  const envLevel = VALID_LOG_LEVELS.includes(rawEnvLevel as LogLevel)
+    ? (rawEnvLevel as LogLevel)
+    : undefined;
+  return new Logger(name, minLevel ?? envLevel ?? "info");
 }
 
 export type { Logger, LogLevel, LogEntry };

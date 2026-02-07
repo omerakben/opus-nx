@@ -4,6 +4,7 @@ import {
   createThinkingNode,
   createReasoningEdge,
   createDecisionPoint,
+  createDecisionPoints,
   getThinkingNode,
   getSessionThinkingNodes,
   getLatestThinkingNode,
@@ -83,10 +84,10 @@ const TokenUsageDBSchema = z.object({
 function toDBStructuredReasoning(data: unknown): Record<string, unknown> {
   const result = StructuredReasoningDBSchema.safeParse(data);
   if (!result.success) {
-    logger.warn("Structured reasoning validation failed, using raw data", {
+    logger.warn("Structured reasoning validation failed, using sanitized defaults", {
       errors: result.error.issues.slice(0, 3),
     });
-    return data as Record<string, unknown>;
+    return { steps: [], decisionPoints: [], alternativesConsidered: 0 };
   }
   return result.data as Record<string, unknown>;
 }
@@ -100,10 +101,10 @@ function toDBTokenUsage(data: unknown): Record<string, unknown> | undefined {
   }
   const result = TokenUsageDBSchema.safeParse(data);
   if (!result.success) {
-    logger.warn("Token usage validation failed, using raw data", {
+    logger.warn("Token usage validation failed, using sanitized defaults", {
       errors: result.error.issues.slice(0, 3),
     });
-    return data as Record<string, unknown>;
+    return { inputTokens: 0, outputTokens: 0, thinkingTokens: 0 };
   }
   return result.data as Record<string, unknown>;
 }
@@ -670,36 +671,34 @@ export class ThinkGraph {
     const dbNode = await createThinkingNode(nodeInput);
     logger.info("Persisted thinking node", { nodeId: dbNode.id });
 
-    // Create decision points with individual error handling
+    // Create decision points in a single batch insert
     const dbDecisionPoints: DecisionPoint[] = [];
     if (parsed.decisionPoints.length > 0) {
-      for (const dp of parsed.decisionPoints) {
-        try {
-          const input: CreateDecisionPointInput = {
-            thinkingNodeId: dbNode.id,
-            stepNumber: dp.stepNumber,
-            description: dp.description,
-            chosenPath: dp.chosenPath,
-            alternatives: dp.alternatives,
-            confidence: dp.confidence ?? undefined,
-            reasoningExcerpt: dp.reasoningExcerpt ?? undefined,
-          };
-          const createdPoint = await createDecisionPoint(input);
-          dbDecisionPoints.push(this.mapDbDecisionPoint(createdPoint));
-        } catch (error) {
-          persistenceIssues.push({
-            stage: "decision_point",
-            stepNumber: dp.stepNumber,
-            message: error instanceof Error ? error.message : String(error),
-          });
-          logger.warn("Failed to persist decision point", {
-            nodeId: dbNode.id,
-            stepNumber: dp.stepNumber,
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
+      try {
+        const inputs: CreateDecisionPointInput[] = parsed.decisionPoints.map((dp) => ({
+          thinkingNodeId: dbNode.id,
+          stepNumber: dp.stepNumber,
+          description: dp.description,
+          chosenPath: dp.chosenPath,
+          alternatives: dp.alternatives,
+          confidence: dp.confidence ?? undefined,
+          reasoningExcerpt: dp.reasoningExcerpt ?? undefined,
+        }));
+        const createdPoints = await createDecisionPoints(inputs);
+        createdPoints.sort((a, b) => a.stepNumber - b.stepNumber);
+        dbDecisionPoints.push(...createdPoints.map((p) => this.mapDbDecisionPoint(p)));
+        logger.debug("Created decision points", { count: dbDecisionPoints.length });
+      } catch (error) {
+        persistenceIssues.push({
+          stage: "decision_point",
+          message: error instanceof Error ? error.message : String(error),
+        });
+        logger.warn("Failed to persist decision points", {
+          nodeId: dbNode.id,
+          count: parsed.decisionPoints.length,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
-      logger.debug("Created decision points", { count: dbDecisionPoints.length });
     }
 
     // Link to parent if provided (with error isolation)

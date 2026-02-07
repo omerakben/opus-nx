@@ -90,8 +90,8 @@ export async function searchKnowledge(
     content: row.content as string,
     category: row.category as string,
     similarity: row.similarity as number,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: row.created_at ? new Date(row.created_at as string) : new Date(),
+    updatedAt: row.updated_at ? new Date(row.updated_at as string) : new Date(),
   }));
 }
 
