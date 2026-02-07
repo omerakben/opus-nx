@@ -760,6 +760,7 @@ export class ThinkGraph {
       signature: dbNode.signature ?? undefined,
       inputQuery: dbNode.inputQuery ?? undefined,
       tokenUsage: dbNode.tokenUsage as { inputTokens?: number; outputTokens?: number; thinkingTokens?: number } | undefined,
+      nodeType: "thinking" as const,
       createdAt: dbNode.createdAt,
     };
   }

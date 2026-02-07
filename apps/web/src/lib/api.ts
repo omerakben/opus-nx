@@ -1,5 +1,10 @@
 /**
  * Client-side API helpers for the Opus Nx dashboard.
+ *
+ * Opus 4.6 Cognitive Architecture:
+ * - ThinkFork with human guidance per branch
+ * - Branch steering (expand, merge, challenge, refork)
+ * - Context compaction for infinite sessions
  */
 
 // ============================================================
@@ -116,11 +121,18 @@ export async function startThinking(
 // ThinkFork API
 // ============================================================
 
+export interface BranchGuidance {
+  style: string;
+  guidance: string;
+}
+
 export interface ForkRequest {
   query: string;
   sessionId?: string;
   styles?: string[];
   effort?: "low" | "medium" | "high" | "max";
+  /** Human guidance per branch (cognitive co-piloting) */
+  branchGuidance?: BranchGuidance[];
 }
 
 export interface ForkBranch {
@@ -151,6 +163,7 @@ export interface ForkResponse {
     rationale: string;
     confidence: number;
   };
+  appliedGuidance?: BranchGuidance[];
 }
 
 export async function runForkAnalysis(
@@ -159,6 +172,38 @@ export async function runForkAnalysis(
   return fetchApi<ForkResponse>("/api/fork", {
     method: "POST",
     body: JSON.stringify(request),
+  });
+}
+
+// ============================================================
+// Fork Steering API (Cognitive Co-Piloting)
+// ============================================================
+
+export type SteeringAction =
+  | { action: "expand"; style: string; direction?: string }
+  | { action: "merge"; styles: string[]; focusArea?: string }
+  | { action: "challenge"; style: string; challenge: string }
+  | { action: "refork"; newContext: string; keepOriginal?: boolean };
+
+export interface SteeringResult {
+  action: string;
+  result: string;
+  confidence: number;
+  keyInsights: string[];
+  synthesizedApproach?: string;
+  expandedAnalysis?: string;
+  challengeResponse?: string;
+  tokensUsed: number;
+  durationMs: number;
+}
+
+export async function steerForkAnalysis(
+  originalResult: ForkResponse,
+  action: SteeringAction
+): Promise<ApiResponse<SteeringResult>> {
+  return fetchApi<SteeringResult>("/api/fork/steer", {
+    method: "POST",
+    body: JSON.stringify({ originalResult, action }),
   });
 }
 
@@ -199,6 +244,8 @@ export interface ThinkingNode {
   confidenceScore: number | null;
   tokenUsage: Record<string, unknown>;
   inputQuery: string | null;
+  /** Node type: thinking, compaction, fork_branch, human_annotation */
+  nodeType?: string;
   createdAt: string;
 }
 

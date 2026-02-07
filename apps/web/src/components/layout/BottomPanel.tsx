@@ -8,9 +8,13 @@ interface BottomPanelProps {
   isStreaming: boolean;
   error: string | null;
   sessionId: string | null;
-  onStart: (query: string) => void;
+  onStart: (query: string, effort?: string) => void;
   onStop: () => void;
   onClear: () => void;
+  phase?: "analyzing" | "reasoning" | "deciding" | "concluding" | "compacting" | null;
+  compactionCount?: number;
+  compactionSummary?: string | null;
+  elapsedMs?: number;
 }
 
 export function BottomPanel({
@@ -22,6 +26,10 @@ export function BottomPanel({
   onStart,
   onStop,
   onClear,
+  phase,
+  compactionCount,
+  compactionSummary,
+  elapsedMs,
 }: BottomPanelProps) {
   return (
     <div className="h-64 border-t border-[var(--border)]">
@@ -34,6 +42,10 @@ export function BottomPanel({
         onStart={onStart}
         onStop={onStop}
         onClear={onClear}
+        phase={phase}
+        compactionCount={compactionCount}
+        compactionSummary={compactionSummary}
+        elapsedMs={elapsedMs}
       />
     </div>
   );

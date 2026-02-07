@@ -5,6 +5,7 @@ import type {
   RedactedThinkingBlock,
   TextBlock,
   ToolUseBlock,
+  CompactionBlock,
   ContentBlock,
   OrchestratorConfig,
   ThinkingResult,
@@ -21,6 +22,7 @@ export interface ThinkingEngineOptions {
   config: OrchestratorConfig;
   onThinkingStream?: (thinking: string) => void;
   onTextStream?: (text: string) => void;
+  onCompactionStream?: (summary: string) => void;
 }
 
 // ============================================================
@@ -32,24 +34,34 @@ export interface ThinkingEngineOptions {
  *
  * This is the "brain" of Opus Nx - it uses adaptive thinking to reason
  * through complex problems before acting.
+ *
+ * Opus 4.6 Features:
+ * - Adaptive thinking: Claude decides when/how much to think
+ * - Effort parameter: low/medium/high/max control
+ * - Context compaction: Infinite sessions via automatic summarization
+ * - Data residency: US-only inference option
+ * - 128K output tokens, 1M context window
+ * - Interleaved thinking between tool calls
  */
 export class ThinkingEngine {
   private client: Anthropic;
   private config: OrchestratorConfig;
   private onThinkingStream?: (thinking: string) => void;
   private onTextStream?: (text: string) => void;
+  private onCompactionStream?: (summary: string) => void;
 
   constructor(options: ThinkingEngineOptions) {
     this.client = new Anthropic();
     this.config = options.config;
     this.onThinkingStream = options.onThinkingStream;
     this.onTextStream = options.onTextStream;
+    this.onCompactionStream = options.onCompactionStream;
   }
 
   /**
    * Execute a thinking request with Claude Opus 4.6
    *
-   * Uses extended thinking with configurable budget levels to reason
+   * Uses adaptive thinking with configurable effort levels to reason
    * through the problem before generating a response.
    */
   async think(
@@ -62,6 +74,8 @@ export class ThinkingEngine {
       model: this.config.model,
       thinkingType: this.config.thinking.type,
       effort: this.config.thinking.effort,
+      compactionEnabled: !!this.config.compaction?.enabled,
+      inferenceGeo: this.config.inferenceGeo,
     });
 
     try {
@@ -84,32 +98,7 @@ export class ThinkingEngine {
     messages: Anthropic.MessageParam[],
     tools: Anthropic.Tool[] | undefined
   ): Promise<ThinkingResult> {
-    // Build request with extended thinking
-    const requestParams: Record<string, unknown> = {
-      model: this.config.model,
-      max_tokens: this.config.maxTokens,
-      system: systemPrompt,
-      messages,
-      stream: true,
-    };
-
-    // Configure thinking based on type (adaptive is recommended for Opus 4.6)
-    if (this.config.thinking.type === "adaptive") {
-      // New adaptive thinking mode - Claude decides when/how much to think
-      requestParams.thinking = { type: "adaptive" };
-      // Effort is now set via output_config (GA in Claude 4.6)
-      requestParams.output_config = { effort: this.config.thinking.effort };
-    } else {
-      // Legacy enabled mode with budget_tokens (deprecated on Opus 4.6)
-      requestParams.thinking = {
-        type: "enabled",
-        budget_tokens: this.getThinkingBudget(),
-      };
-    }
-
-    if (tools && tools.length > 0) {
-      requestParams.tools = tools;
-    }
+    const requestParams = this.buildRequestParams(systemPrompt, messages, tools, true);
 
     const stream = this.client.messages.stream(
       requestParams as unknown as Anthropic.MessageCreateParamsStreaming
@@ -118,21 +107,29 @@ export class ThinkingEngine {
     const thinkingBlocks: (ThinkingBlock | RedactedThinkingBlock)[] = [];
     const textBlocks: TextBlock[] = [];
     const toolUseBlocks: ToolUseBlock[] = [];
+    const compactionBlocks: CompactionBlock[] = [];
 
     // Process streaming events
     for await (const event of stream) {
-      if (event.type === "content_block_delta") {
+      if (event.type === "content_block_start") {
+        const block = (event as unknown as { content_block: { type: string } }).content_block;
+        if (block.type === "compaction") {
+          logger.info("Compaction triggered during stream");
+        }
+      } else if (event.type === "content_block_delta") {
         const delta = event.delta as unknown as Record<string, unknown>;
         if (delta.type === "thinking_delta" && typeof delta.thinking === "string") {
           this.onThinkingStream?.(delta.thinking);
         } else if (delta.type === "text_delta" && typeof delta.text === "string") {
           this.onTextStream?.(delta.text);
+        } else if (delta.type === "compaction_delta" && typeof delta.content === "string") {
+          this.onCompactionStream?.(delta.content);
         }
       }
     }
 
     const response = await stream.finalMessage();
-    return this.parseResponse(response, thinkingBlocks, textBlocks, toolUseBlocks);
+    return this.parseResponse(response, thinkingBlocks, textBlocks, toolUseBlocks, compactionBlocks);
   }
 
   /**
@@ -143,7 +140,25 @@ export class ThinkingEngine {
     messages: Anthropic.MessageParam[],
     tools: Anthropic.Tool[] | undefined
   ): Promise<ThinkingResult> {
-    // Build request with extended thinking
+    const requestParams = this.buildRequestParams(systemPrompt, messages, tools, false);
+
+    const response = await this.client.messages.create(
+      requestParams as unknown as Anthropic.MessageCreateParams
+    ) as Anthropic.Message;
+
+    return this.parseResponse(response, [], [], [], []);
+  }
+
+  /**
+   * Build request parameters for the Anthropic API.
+   * Configures adaptive thinking, effort, compaction, and data residency.
+   */
+  private buildRequestParams(
+    systemPrompt: string,
+    messages: Anthropic.MessageParam[],
+    tools: Anthropic.Tool[] | undefined,
+    streaming: boolean
+  ): Record<string, unknown> {
     const requestParams: Record<string, unknown> = {
       model: this.config.model,
       max_tokens: this.config.maxTokens,
@@ -151,11 +166,16 @@ export class ThinkingEngine {
       messages,
     };
 
+    if (streaming) {
+      requestParams.stream = true;
+    }
+
     // Configure thinking based on type (adaptive is recommended for Opus 4.6)
     if (this.config.thinking.type === "adaptive") {
-      // New adaptive thinking mode - Claude decides when/how much to think
+      // Adaptive thinking - Claude decides when/how much to think
+      // Enables interleaved thinking between tool calls automatically
       requestParams.thinking = { type: "adaptive" };
-      // Effort is now set via output_config (GA in Claude 4.6)
+      // Effort controls thinking depth via output_config (GA in Opus 4.6)
       requestParams.output_config = { effort: this.config.thinking.effort };
     } else {
       // Legacy enabled mode with budget_tokens (deprecated on Opus 4.6)
@@ -165,15 +185,35 @@ export class ThinkingEngine {
       };
     }
 
+    // Data residency (Opus 4.6+)
+    if (this.config.inferenceGeo && this.config.inferenceGeo !== "global") {
+      requestParams.inference_geo = this.config.inferenceGeo;
+    }
+
+    // Context compaction (Opus 4.6 beta)
+    if (this.config.compaction?.enabled) {
+      requestParams.context_management = {
+        edits: [
+          {
+            type: "compact_20260112",
+            trigger: {
+              type: "input_tokens",
+              value: this.config.compaction.triggerTokens ?? 150000,
+            },
+            pause_after_compaction: this.config.compaction.pauseAfterCompaction ?? false,
+            ...(this.config.compaction.instructions
+              ? { instructions: this.config.compaction.instructions }
+              : {}),
+          },
+        ],
+      };
+    }
+
     if (tools && tools.length > 0) {
       requestParams.tools = tools;
     }
 
-    const response = await this.client.messages.create(
-      requestParams as unknown as Anthropic.MessageCreateParams
-    ) as Anthropic.Message;
-
-    return this.parseResponse(response, [], [], []);
+    return requestParams;
   }
 
   /**
@@ -183,7 +223,8 @@ export class ThinkingEngine {
     response: Anthropic.Message,
     thinkingBlocks: (ThinkingBlock | RedactedThinkingBlock)[],
     textBlocks: TextBlock[],
-    toolUseBlocks: ToolUseBlock[]
+    toolUseBlocks: ToolUseBlock[],
+    compactionBlocks: CompactionBlock[]
   ): ThinkingResult {
     const content: ContentBlock[] = [];
 
@@ -205,6 +246,16 @@ export class ThinkingEngine {
         };
         thinkingBlocks.push(redactedBlock);
         content.push(redactedBlock);
+      } else if (blockData.type === "compaction") {
+        const compactionBlock: CompactionBlock = {
+          type: "compaction",
+          content: blockData.content as string,
+        };
+        compactionBlocks.push(compactionBlock);
+        content.push(compactionBlock);
+        logger.info("Compaction block received", {
+          summaryLength: compactionBlock.content.length,
+        });
       } else if (block.type === "text") {
         const textBlock: TextBlock = {
           type: "text",
@@ -229,7 +280,7 @@ export class ThinkingEngine {
       outputTokens: response.usage.output_tokens,
     };
 
-    // Check for extended usage fields (cache tokens)
+    // Check for extended usage fields (cache tokens, thinking tokens)
     const extendedUsage = response.usage as unknown as Record<string, unknown>;
     if (typeof extendedUsage.cache_creation_input_tokens === "number") {
       usage.cacheCreationInputTokens = extendedUsage.cache_creation_input_tokens;
@@ -243,7 +294,10 @@ export class ThinkingEngine {
       thinkingBlocks,
       textBlocks,
       toolUseBlocks,
+      compactionBlocks,
       usage,
+      compacted: compactionBlocks.length > 0,
+      stopReason: response.stop_reason ?? undefined,
     };
   }
 
@@ -277,9 +331,11 @@ export class ThinkingEngine {
   setCallbacks(callbacks: {
     onThinkingStream?: (thinking: string) => void;
     onTextStream?: (text: string) => void;
+    onCompactionStream?: (summary: string) => void;
   }): void {
     this.onThinkingStream = callbacks.onThinkingStream;
     this.onTextStream = callbacks.onTextStream;
+    this.onCompactionStream = callbacks.onCompactionStream;
   }
 
   /**

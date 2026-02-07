@@ -80,16 +80,40 @@ export function ThinkingGraph({
 
   if (nodes.length === 0) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-[var(--card)]">
-        <div className="text-center p-8">
-          <div className="text-4xl mb-4">🧠</div>
+      <div className="w-full h-full flex items-center justify-center bg-[var(--card)] relative overflow-hidden">
+        {/* Decorative circles */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full border border-[var(--border)] opacity-20" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full border border-dashed border-violet-500/20" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full border border-blue-500/20" />
+        <div className="text-center p-8 relative z-10">
+          <div className="relative w-20 h-20 mx-auto mb-6">
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-500/10 to-violet-500/10" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <svg className="w-10 h-10 text-[var(--muted-foreground)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z" strokeDasharray="4 4" />
+                <circle cx="12" cy="12" r="3" fill="currentColor" opacity="0.3" />
+                <path d="M12 9v-3M12 18v-3M9 12H6M18 12h-3" strokeLinecap="round" />
+              </svg>
+            </div>
+          </div>
           <h3 className="text-lg font-medium text-[var(--foreground)] mb-2">
-            No reasoning nodes yet
+            Reasoning Graph
           </h3>
-          <p className="text-sm text-[var(--muted-foreground)] max-w-sm">
-            Start a thinking session to see your reasoning graph visualized here.
-            Each node represents a step in the extended thinking process.
+          <p className="text-sm text-[var(--muted-foreground)] max-w-sm mb-4">
+            Start a thinking session to visualize the reasoning graph.
+            Each node is a step in Claude&apos;s extended thinking.
           </p>
+          <div className="flex items-center justify-center gap-4 text-[10px] text-[var(--muted-foreground)]">
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-green-500/50" /> Supports
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-red-500/50" /> Contradicts
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-blue-500/50" /> Influences
+            </span>
+          </div>
         </div>
       </div>
     );

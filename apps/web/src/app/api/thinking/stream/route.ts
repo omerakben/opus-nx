@@ -5,16 +5,29 @@ interface StreamRequest {
   query: string;
   sessionId?: string;
   effort?: "low" | "medium" | "high" | "max";
+  /** Enable context compaction for long sessions (Opus 4.6 beta) */
+  compactionEnabled?: boolean;
 }
 
 /**
  * POST /api/thinking/stream
- * Stream extended thinking in real-time using SSE
+ * Stream extended thinking in real-time using SSE.
+ *
+ * Opus 4.6 Features:
+ * - Adaptive thinking with effort control
+ * - Context compaction for infinite sessions
+ * - Data residency (US-only inference)
+ * - 128K output tokens
  */
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as StreamRequest;
-    const { query, sessionId: providedSessionId, effort = "high" } = body;
+    const {
+      query,
+      sessionId: providedSessionId,
+      effort = "high",
+      compactionEnabled = false,
+    } = body;
 
     if (!query?.trim()) {
       return new Response(
@@ -47,21 +60,38 @@ export async function POST(request: Request) {
           let thinkingTokens = 0;
 
           // Create thinking engine with streaming callbacks
-          // Uses adaptive thinking (Claude 4.6 recommended mode)
+          // Uses adaptive thinking (Claude Opus 4.6 recommended mode)
           const engine = new ThinkingEngine({
             config: {
               model: "claude-opus-4-6",
               thinking: { type: "adaptive", effort },
-              maxTokens: 16000,
+              maxTokens: 16384,
               streaming: true,
+              compaction: compactionEnabled
+                ? {
+                    enabled: true,
+                    triggerTokens: 150000,
+                    pauseAfterCompaction: false,
+                    instructions: "Preserve all reasoning graph references, decision points, and confidence assessments. Summarize supporting details while maintaining the logical chain.",
+                  }
+                : undefined,
             },
             onThinkingStream: (chunk) => {
-              thinkingTokens += Math.ceil(chunk.length / 4); // Approximate token count
+              thinkingTokens += Math.ceil(chunk.length / 4);
 
               const data = JSON.stringify({
                 type: "thinking",
                 chunk,
                 tokenCount: thinkingTokens,
+              });
+
+              controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+            },
+            onCompactionStream: (summary) => {
+              // Stream compaction events to the client
+              const data = JSON.stringify({
+                type: "compaction",
+                summary,
               });
 
               controller.enqueue(encoder.encode(`data: ${data}\n\n`));
@@ -93,11 +123,37 @@ export async function POST(request: Request) {
             }
           );
 
+          // If compaction occurred, persist a compaction node
+          if (result.compacted && result.compactionBlocks.length > 0) {
+            const compactionSummary = result.compactionBlocks
+              .map((b) => b.content)
+              .join("\n");
+
+            try {
+              await thinkGraph.persistThinkingNode(
+                [{
+                  type: "thinking" as const,
+                  thinking: `[MEMORY CONSOLIDATION]\n\n${compactionSummary}`,
+                  signature: "compaction",
+                }],
+                {
+                  sessionId,
+                  parentNodeId: graphResult.node.id,
+                  inputQuery: `[Compaction] Context consolidated at ${new Date().toISOString()}`,
+                  tokenUsage: result.usage,
+                }
+              );
+            } catch {
+              // Non-critical - continue without compaction node
+            }
+          }
+
           // Send completion event
           const doneData = JSON.stringify({
             type: "done",
             nodeId: graphResult.node.id,
             totalTokens: actualThinkingTokens,
+            compacted: result.compacted,
           });
           controller.enqueue(encoder.encode(`data: ${doneData}\n\n`));
 

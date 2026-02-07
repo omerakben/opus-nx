@@ -22,6 +22,8 @@ export interface GraphNode extends Node {
     createdAt: Date;
     isSelected: boolean;
     decisionCount?: number;
+    /** Node type: thinking, compaction, fork_branch, human_annotation */
+    nodeType?: string;
   };
 }
 
@@ -63,6 +65,13 @@ export function transformNodesToGraph(
     const position = positions.get(node.id) ?? { x: 0, y: 0 };
     const usage = parseTokenUsage(node.tokenUsage);
 
+    // Detect node type from inputQuery patterns or explicit field
+    const dbNode = node as ThinkingNode & { nodeType?: string };
+    let nodeType = dbNode.nodeType ?? "thinking";
+    if (node.inputQuery?.startsWith("[Compaction")) {
+      nodeType = "compaction";
+    }
+
     return {
       id: node.id,
       type: "thinking",
@@ -80,6 +89,7 @@ export function transformNodesToGraph(
         inputQuery: node.inputQuery,
         createdAt: node.createdAt,
         isSelected: node.id === selectedNodeId,
+        nodeType,
       },
     };
   });

@@ -40,6 +40,10 @@ export function Dashboard() {
     tokenCount,
     isStreaming,
     error: streamError,
+    phase,
+    compactionCount,
+    compactionSummary,
+    elapsedMs,
     start: startStream,
     stop: stopStream,
     clear: clearStream,
@@ -70,9 +74,9 @@ export function Dashboard() {
 
   // Handle starting a new thinking stream
   const handleStartStream = useCallback(
-    (query: string) => {
+    (query: string, effort?: string) => {
       if (activeSession?.id) {
-        startStream(activeSession.id, query);
+        startStream(activeSession.id, query, effort);
       }
     },
     [activeSession?.id, startStream]
@@ -115,8 +119,20 @@ export function Dashboard() {
 
         {/* Center: Graph + Stream */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Graph */}
-          <div className="flex-1 overflow-hidden">
+          {/* Graph with streaming pulse */}
+          <div className="flex-1 overflow-hidden relative">
+            {/* Streaming indicator overlay */}
+            {isStreaming && (
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-[var(--card)]/90 border border-green-500/30 backdrop-blur-sm flex items-center gap-2 animate-pulse">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-ping" />
+                <span className="text-xs text-green-400 font-medium">
+                  Claude is thinking...
+                </span>
+                <span className="text-[10px] text-[var(--muted-foreground)]">
+                  Graph updates on completion
+                </span>
+              </div>
+            )}
             <ReactFlowProvider>
               <ThinkingGraph
                 nodes={nodes}
@@ -139,6 +155,10 @@ export function Dashboard() {
             onStart={handleStartStream}
             onStop={stopStream}
             onClear={clearStream}
+            phase={phase}
+            compactionCount={compactionCount}
+            compactionSummary={compactionSummary}
+            elapsedMs={elapsedMs}
           />
         </div>
 

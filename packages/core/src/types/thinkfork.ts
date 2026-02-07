@@ -79,6 +79,22 @@ export const DivergencePointSchema = z.object({
 export type DivergencePoint = z.infer<typeof DivergencePointSchema>;
 
 // ============================================================
+// Human-in-the-Loop: Per-Branch Guidance
+// ============================================================
+
+/**
+ * Human guidance for a specific fork branch.
+ * Allows humans to steer individual reasoning perspectives.
+ */
+export const BranchGuidanceSchema = z.object({
+  style: ForkStyleSchema,
+  /** Human guidance injected into this branch's prompt */
+  guidance: z.string().min(1).max(2000),
+});
+
+export type BranchGuidance = z.infer<typeof BranchGuidanceSchema>;
+
+// ============================================================
 // Fork Analysis Result
 // ============================================================
 
@@ -102,9 +118,35 @@ export const ThinkForkResultSchema = z.object({
   errors: z.array(z.string()).optional(),
   /** Styles that used fallback prompts instead of file-based prompts */
   fallbackPromptsUsed: z.array(ForkStyleSchema).optional(),
+  /** Human guidance that was applied to branches */
+  appliedGuidance: z.array(BranchGuidanceSchema).optional(),
 });
 
 export type ThinkForkResult = z.infer<typeof ThinkForkResultSchema>;
+
+// ============================================================
+// Steering Result (from post-analysis human actions)
+// ============================================================
+
+/**
+ * Result from a steering action (expand, merge, challenge, refork).
+ */
+export const SteeringResultSchema = z.object({
+  action: z.string(),
+  result: z.string(),
+  confidence: z.number().min(0).max(1),
+  keyInsights: z.array(z.string()),
+  /** If merge: the synthesized approach */
+  synthesizedApproach: z.string().optional(),
+  /** If expand: deeper analysis of the branch */
+  expandedAnalysis: z.string().optional(),
+  /** If challenge: the response to the challenge */
+  challengeResponse: z.string().optional(),
+  tokensUsed: z.number(),
+  durationMs: z.number(),
+});
+
+export type SteeringResult = z.infer<typeof SteeringResultSchema>;
 
 // ============================================================
 // ThinkFork Options
@@ -113,6 +155,52 @@ export type ThinkForkResult = z.infer<typeof ThinkForkResultSchema>;
 /**
  * Configuration options for ThinkFork analysis.
  */
+
+// ============================================================
+// Branch Steering Actions (Post-Analysis)
+// ============================================================
+
+/**
+ * Actions humans can take after seeing initial fork results.
+ * This is the "cognitive co-piloting" interface.
+ */
+export const BranchSteeringActionSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("expand"),
+    /** Which branch to expand with deeper analysis */
+    style: ForkStyleSchema,
+    /** Additional context or direction for expansion */
+    direction: z.string().optional(),
+  }),
+  z.object({
+    action: z.literal("merge"),
+    /** Branches to synthesize into a unified approach */
+    styles: z.array(ForkStyleSchema).min(2),
+    /** What aspect to focus the merger on */
+    focusArea: z.string().optional(),
+  }),
+  z.object({
+    action: z.literal("challenge"),
+    /** Which branch's conclusion to challenge */
+    style: ForkStyleSchema,
+    /** The specific challenge or counter-argument */
+    challenge: z.string(),
+  }),
+  z.object({
+    action: z.literal("refork"),
+    /** Re-run with new human-provided context across all branches */
+    newContext: z.string(),
+    /** Keep original results for comparison */
+    keepOriginal: z.boolean().default(true),
+  }),
+]);
+
+export type BranchSteeringAction = z.infer<typeof BranchSteeringActionSchema>;
+
+// ============================================================
+// ThinkFork Options
+// ============================================================
+
 export const ThinkForkOptionsSchema = z.object({
   /** Which fork styles to use (default: all four) */
   styles: z.array(ForkStyleSchema).min(2).default(["conservative", "aggressive", "balanced", "contrarian"]),
@@ -124,6 +212,8 @@ export const ThinkForkOptionsSchema = z.object({
   sessionId: z.string().uuid().optional(),
   /** Additional context to include in all branch prompts */
   additionalContext: z.string().optional(),
+  /** Human guidance per branch (cognitive co-piloting) */
+  branchGuidance: z.array(BranchGuidanceSchema).optional(),
 });
 
 export type ThinkForkOptions = z.infer<typeof ThinkForkOptionsSchema>;

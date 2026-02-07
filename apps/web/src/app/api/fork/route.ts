@@ -6,16 +6,21 @@ interface ForkRequest {
   sessionId?: string;
   styles?: string[];
   effort?: "low" | "medium" | "high" | "max";
+  /** Human guidance per branch (cognitive co-piloting) */
+  branchGuidance?: Array<{
+    style: string;
+    guidance: string;
+  }>;
 }
 
 /**
  * POST /api/fork
- * Run ThinkFork multi-perspective analysis
+ * Run ThinkFork multi-perspective analysis with optional human guidance
  */
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as ForkRequest;
-    const { query, styles, effort = "high" } = body;
+    const { query, styles, effort = "high", branchGuidance } = body;
 
     if (!query?.trim()) {
       return NextResponse.json(
@@ -27,11 +32,15 @@ export async function POST(request: Request) {
     // Create ThinkFork instance
     const thinkFork = new ThinkForkEngine();
 
-    // Run analysis using the fork method
+    // Run analysis with optional human guidance per branch
     const result = await thinkFork.fork(query, {
       styles: styles as ("conservative" | "aggressive" | "balanced" | "contrarian")[] | undefined,
       effort,
       analyzeConvergence: true,
+      branchGuidance: branchGuidance as Array<{
+        style: "conservative" | "aggressive" | "balanced" | "contrarian";
+        guidance: string;
+      }> | undefined,
     });
 
     return NextResponse.json({
@@ -40,6 +49,7 @@ export async function POST(request: Request) {
       divergencePoints: result.divergencePoints,
       metaInsight: result.metaInsight,
       recommendedApproach: result.recommendedApproach,
+      appliedGuidance: result.appliedGuidance,
     });
   } catch (error) {
     console.error("[API] Fork analysis error:", error);

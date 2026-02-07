@@ -69,6 +69,26 @@ export const TokenUsageSchema = z.object({
   thinkingTokens: z.number().optional(),
 });
 
+/** Node type distinguishes between regular thinking, compaction, and fork branch nodes */
+export const NodeTypeSchema = z.enum([
+  "thinking",          // Regular reasoning node
+  "compaction",        // Memory consolidation from context compaction
+  "fork_branch",       // Result from a ThinkFork branch
+  "human_annotation",  // Human-added note or guidance
+]);
+
+export type NodeType = z.infer<typeof NodeTypeSchema>;
+
+/** Human annotation on a decision point or node */
+export const AnnotationSchema = z.object({
+  id: z.string().uuid(),
+  action: z.enum(["agree", "disagree", "explore", "note"]),
+  text: z.string(),
+  createdAt: z.date(),
+});
+
+export type Annotation = z.infer<typeof AnnotationSchema>;
+
 export const ThinkingNodeSchema = z.object({
   id: z.string().uuid(),
   sessionId: z.string().uuid(),
@@ -80,6 +100,10 @@ export const ThinkingNodeSchema = z.object({
   signature: z.string().optional(),
   inputQuery: z.string().optional(),
   tokenUsage: TokenUsageSchema.optional(),
+  /** Type of node - determines visualization and behavior */
+  nodeType: NodeTypeSchema.default("thinking"),
+  /** Human annotations on this node */
+  annotations: z.array(AnnotationSchema).optional(),
   createdAt: z.date(),
 });
 
