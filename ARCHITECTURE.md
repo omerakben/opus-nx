@@ -591,7 +591,7 @@ Trigger: Manual or auto after N sessions
 │              ThinkingEngine.think() with MAX budget            │
 │                                                                │
 │  Config:                                                       │
-│    model: 'claude-opus-4-6-20260101'                           │
+│    model: 'claude-opus-4-6'                                    │
 │    thinking.effort: 'max'  // 50k tokens                       │
 │    maxTokens: 16384                                            │
 │                                                                │

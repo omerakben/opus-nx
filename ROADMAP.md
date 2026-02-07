@@ -428,7 +428,7 @@ async getSelfReflection(sessionId: string): Promise<MetacognitiveInsight[]> {
 
   // 3. Configure engine for max thinking
   const config: OrchestratorConfig = {
-    model: 'claude-opus-4-6-20260101',
+    model: 'claude-opus-4-6',
     maxTokens: 16384,
     thinking: {
       type: 'enabled',
