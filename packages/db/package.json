@@ -14,8 +14,8 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist",
-    "migrate": "echo 'Run: supabase db push' && exit 0",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "migrate": "tsx run-migrations.ts",
     "generate": "supabase gen types typescript --local > src/types.ts"
   },
   "dependencies": {
@@ -23,6 +23,7 @@
     "@opus-nx/shared": "workspace:*"
   },
   "devDependencies": {
+    "tsx": "4.21.0",
     "typescript": "^5.7.0",
     "supabase": "^1.200.0"
   }

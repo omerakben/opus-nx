@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ThinkingEngine, ThinkGraph } from "@opus-nx/core";
 import { getSession, createSession, getLatestThinkingNode } from "@/lib/db";
+import { getCorrelationId, jsonError } from "@/lib/api-response";
 
 const StreamRequestSchema = z.object({
   query: z.string().min(1),
@@ -20,14 +21,19 @@ const StreamRequestSchema = z.object({
  * - 16,384 output tokens (configurable)
  */
 export async function POST(request: Request) {
+  const correlationId = getCorrelationId(request);
   try {
     const body = await request.json();
     const parsed = StreamRequestSchema.safeParse(body);
     if (!parsed.success) {
-      return new Response(
-        JSON.stringify({ error: { message: "Invalid request", details: parsed.error.issues } }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
+      return jsonError({
+        status: 400,
+        code: "INVALID_STREAM_REQUEST",
+        message: "Invalid request",
+        details: parsed.error.issues,
+        correlationId,
+        recoverable: true,
+      });
     }
     const {
       query,
@@ -44,10 +50,13 @@ export async function POST(request: Request) {
     } else {
       const existingSession = await getSession(sessionId);
       if (!existingSession) {
-        return new Response(
-          JSON.stringify({ error: { message: "Session not found" } }),
-          { status: 404, headers: { "Content-Type": "application/json" } }
-        );
+        return jsonError({
+          status: 404,
+          code: "SESSION_NOT_FOUND",
+          message: "Session not found",
+          correlationId,
+          recoverable: true,
+        });
       }
     }
 
@@ -58,6 +67,9 @@ export async function POST(request: Request) {
       async start(controller) {
         try {
           let thinkingTokens = 0;
+          let parentLinkStatus: "linked" | "not_applicable" | "lookup_failed" | "persist_failed" = "not_applicable";
+          let compactionPersistStatus: "not_applicable" | "persisted" | "failed" = "not_applicable";
+          const streamWarnings: string[] = [];
 
           // Create thinking engine with streaming callbacks
           // Uses adaptive thinking (Claude Opus 4.6 recommended mode)
@@ -115,9 +127,23 @@ export async function POST(request: Request) {
             const latestNode = await getLatestThinkingNode(sessionId);
             if (latestNode) {
               parentNodeId = latestNode.id;
+              parentLinkStatus = "persist_failed";
             }
           } catch (e) {
-            console.warn("[API] Failed to get latest node for linking:", e);
+            parentLinkStatus = "lookup_failed";
+            streamWarnings.push("Failed to resolve latest node for parent linking");
+            console.warn("[API] Failed to get latest node for linking:", {
+              correlationId,
+              error: e,
+            });
+            const warningData = JSON.stringify({
+              type: "warning",
+              code: "PARENT_LOOKUP_FAILED",
+              message: "Failed to resolve latest node for parent linking",
+              correlationId,
+              recoverable: true,
+            });
+            controller.enqueue(encoder.encode(`data: ${warningData}\n\n`));
           }
 
           // Persist to graph after streaming completes
@@ -134,6 +160,9 @@ export async function POST(request: Request) {
               },
             }
           );
+          if (parentNodeId && graphResult.linkedToParent) {
+            parentLinkStatus = "linked";
+          }
 
           // If compaction occurred, persist a compaction node
           if (result.compacted && result.compactionBlocks.length > 0) {
@@ -156,8 +185,22 @@ export async function POST(request: Request) {
                   nodeType: "compaction",
                 }
               );
+              compactionPersistStatus = "persisted";
             } catch (compactionError) {
-              console.warn("[API] Failed to persist compaction node:", compactionError);
+              compactionPersistStatus = "failed";
+              streamWarnings.push("Failed to persist compaction node");
+              console.warn("[API] Failed to persist compaction node:", {
+                correlationId,
+                error: compactionError,
+              });
+              const warningData = JSON.stringify({
+                type: "warning",
+                code: "COMPACTION_PERSIST_FAILED",
+                message: "Failed to persist compaction node",
+                correlationId,
+                recoverable: true,
+              });
+              controller.enqueue(encoder.encode(`data: ${warningData}\n\n`));
             }
           }
 
@@ -167,16 +210,30 @@ export async function POST(request: Request) {
             nodeId: graphResult.node.id,
             totalTokens: actualThinkingTokens,
             compacted: result.compacted,
+            degraded:
+              graphResult.degraded ||
+              parentLinkStatus !== "linked" && parentLinkStatus !== "not_applicable" ||
+              compactionPersistStatus === "failed",
+            degradation: {
+              persistenceIssues: graphResult.persistenceIssues,
+              parentLinkStatus,
+              compactionPersistStatus,
+            },
+            warnings: streamWarnings,
+            correlationId,
           });
           controller.enqueue(encoder.encode(`data: ${doneData}\n\n`));
 
           controller.close();
         } catch (error) {
-          console.error("[API] Stream error:", error);
+          console.error("[API] Stream error:", { correlationId, error });
 
           const errorData = JSON.stringify({
             type: "error",
+            code: "STREAM_EXECUTION_FAILED",
             message: error instanceof Error ? error.message : "Stream failed",
+            recoverable: false,
+            correlationId,
           });
           controller.enqueue(encoder.encode(`data: ${errorData}\n\n`));
           controller.close();
@@ -189,15 +246,16 @@ export async function POST(request: Request) {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
+        "x-correlation-id": correlationId,
       },
     });
   } catch (error) {
-    console.error("[API] Stream setup error:", error);
-    return new Response(
-      JSON.stringify({
-        error: { message: error instanceof Error ? error.message : "Unknown error" },
-      }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
+    console.error("[API] Stream setup error:", { correlationId, error });
+    return jsonError({
+      status: 500,
+      code: "STREAM_SETUP_FAILED",
+      message: error instanceof Error ? error.message : "Unknown error",
+      correlationId,
+    });
   }
 }

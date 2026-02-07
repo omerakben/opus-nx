@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
 import { ThinkingEngine, ThinkGraph } from "@opus-nx/core";
 import { createSession, getSession } from "@/lib/db";
+import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
 
 interface ThinkingRequest {
   query: string;
@@ -13,15 +13,19 @@ interface ThinkingRequest {
  * Execute a thinking session (non-streaming)
  */
 export async function POST(request: Request) {
+  const correlationId = getCorrelationId(request);
   try {
     const body = (await request.json()) as ThinkingRequest;
     const { query, sessionId: providedSessionId, effort = "high" } = body;
 
     if (!query?.trim()) {
-      return NextResponse.json(
-        { error: { message: "Query is required" } },
-        { status: 400 }
-      );
+      return jsonError({
+        status: 400,
+        code: "INVALID_QUERY",
+        message: "Query is required",
+        correlationId,
+        recoverable: true,
+      });
     }
 
     // Get or create session
@@ -32,10 +36,13 @@ export async function POST(request: Request) {
     } else {
       const existingSession = await getSession(sessionId);
       if (!existingSession) {
-        return NextResponse.json(
-          { error: { message: "Session not found" } },
-          { status: 404 }
-        );
+        return jsonError({
+          status: 404,
+          code: "SESSION_NOT_FOUND",
+          message: "Session not found",
+          correlationId,
+          recoverable: true,
+        });
       }
     }
 
@@ -77,25 +84,34 @@ export async function POST(request: Request) {
       }
     );
 
-    return NextResponse.json({
-      sessionId,
-      nodeId: graphResult.node.id,
-      thinking: result.thinkingBlocks
-        .filter((b) => b.type === "thinking")
-        .map((b) => (b as { thinking: string }).thinking)
-        .join("\n\n"),
-      response: result.textBlocks.map((b) => b.text).join("\n\n"),
-      tokenUsage: {
-        inputTokens: result.usage.inputTokens,
-        outputTokens: result.usage.outputTokens,
-        thinkingTokens: Math.round(thinkingTokens),
+    return jsonSuccess(
+      {
+        sessionId,
+        nodeId: graphResult.node.id,
+        thinking: result.thinkingBlocks
+          .filter((b) => b.type === "thinking")
+          .map((b) => (b as { thinking: string }).thinking)
+          .join("\n\n"),
+        response: result.textBlocks.map((b) => b.text).join("\n\n"),
+        tokenUsage: {
+          inputTokens: result.usage.inputTokens,
+          outputTokens: result.usage.outputTokens,
+          thinkingTokens: Math.round(thinkingTokens),
+        },
+        degraded: graphResult.degraded,
+        degradation: graphResult.degraded
+          ? { persistenceIssues: graphResult.persistenceIssues }
+          : undefined,
       },
-    });
-  } catch (error) {
-    console.error("[API] Thinking error:", error);
-    return NextResponse.json(
-      { error: { message: error instanceof Error ? error.message : "Unknown error" } },
-      { status: 500 }
+      { correlationId }
     );
+  } catch (error) {
+    console.error("[API] Thinking error:", { correlationId, error });
+    return jsonError({
+      status: 500,
+      code: "THINKING_FAILED",
+      message: error instanceof Error ? error.message : "Unknown error",
+      correlationId,
+    });
   }
 }

@@ -326,10 +326,30 @@ export async function searchInsights(
         "Failed to search insights (both full-text and ILIKE failed)"
       );
     }
-    return (fallbackResult.data ?? []).map(mapMetacognitiveInsight);
+    return (fallbackResult.data ?? []).map((row) => {
+      const insight = mapMetacognitiveInsight(row);
+      return {
+        ...insight,
+        metadata: {
+          ...insight.metadata,
+          searchMode: "ilike_fallback",
+          searchQuality: "degraded",
+        },
+      };
+    });
   }
 
-  return (data ?? []).map(mapMetacognitiveInsight);
+  return (data ?? []).map((row) => {
+    const insight = mapMetacognitiveInsight(row);
+    return {
+      ...insight,
+      metadata: {
+        ...insight.metadata,
+        searchMode: "full_text",
+        searchQuality: "standard",
+      },
+    };
+  });
 }
 
 /**

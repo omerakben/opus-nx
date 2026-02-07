@@ -14,6 +14,9 @@
 export interface ApiError {
   message: string;
   code?: string;
+  recoverable?: boolean;
+  correlationId?: string;
+  details?: unknown;
 }
 
 export interface ApiResponse<T> {
@@ -38,17 +41,29 @@ async function fetchApi<T>(
       ...options,
     });
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      let errorMessage = `HTTP ${response.status}`;
-      try {
-        const parsed = JSON.parse(errorBody);
-        errorMessage = parsed.error?.message ?? parsed.message ?? errorMessage;
-      } catch {
-        errorMessage = errorBody || errorMessage;
+      if (!response.ok) {
+        const errorBody = await response.text();
+        let errorMessage = `HTTP ${response.status}`;
+        let parsedError: ApiError | undefined;
+        try {
+          const parsed = JSON.parse(errorBody);
+          errorMessage = parsed.error?.message ?? parsed.message ?? errorMessage;
+          parsedError = parsed.error
+            ? {
+                message: parsed.error.message ?? errorMessage,
+                code: parsed.error.code ?? String(response.status),
+                recoverable: parsed.error.recoverable,
+                correlationId: parsed.error.correlationId,
+                details: parsed.error.details,
+              }
+            : undefined;
+        } catch {
+          errorMessage = errorBody || errorMessage;
+        }
+        return {
+          error: parsedError ?? { message: errorMessage, code: String(response.status) },
+        };
       }
-      return { error: { message: errorMessage, code: String(response.status) } };
-    }
 
     const data = await response.json();
     return { data };
@@ -78,6 +93,8 @@ export interface Session {
   displayName?: string | null;
   /** Whether this is a demo session seeded for showcase */
   isDemo?: boolean;
+  /** Quality indicator for display name enrichment in sessions route */
+  displayNameStatus?: "ok" | "degraded";
 }
 
 export async function getSessions(): Promise<ApiResponse<Session[]>> {
@@ -105,6 +122,14 @@ export interface ThinkingResponse {
   nodeId: string;
   thinking: string;
   response: string;
+  degraded?: boolean;
+  degradation?: {
+    persistenceIssues?: Array<{
+      stage: string;
+      message: string;
+      stepNumber?: number;
+    }>;
+  };
   tokenUsage: {
     inputTokens: number;
     outputTokens: number;
@@ -168,6 +193,7 @@ export interface ForkResponse {
     confidence: number;
   };
   appliedGuidance?: BranchGuidance[];
+  fallbackPromptsUsed?: string[];
 }
 
 export async function runForkAnalysis(
@@ -271,6 +297,7 @@ export interface ReasoningEdge {
   targetId: string;
   edgeType: string;
   weight: number;
+  createdAt: string;
 }
 
 export async function getSessionNodes(

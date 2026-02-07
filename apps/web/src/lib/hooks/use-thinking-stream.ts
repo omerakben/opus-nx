@@ -25,6 +25,8 @@ interface ThinkingStreamState {
   streamingNodes: StreamingNode[];
   /** Elapsed time in ms since stream start */
   elapsedMs: number;
+  /** Number of recoverable SSE parse errors seen in this stream */
+  parseErrorCount: number;
 }
 
 interface UseThinkingStreamReturn extends ThinkingStreamState {
@@ -64,6 +66,7 @@ export function useThinkingStream(): UseThinkingStreamReturn {
     compactionSummary: null,
     streamingNodes: [],
     elapsedMs: 0,
+    parseErrorCount: 0,
   });
 
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -102,6 +105,7 @@ export function useThinkingStream(): UseThinkingStreamReturn {
       compactionSummary: null,
       streamingNodes: [],
       elapsedMs: 0,
+      parseErrorCount: 0,
     });
   }, [stop]);
 
@@ -122,6 +126,7 @@ export function useThinkingStream(): UseThinkingStreamReturn {
         compactionSummary: null,
         streamingNodes: [],
         elapsedMs: 0,
+        parseErrorCount: 0,
       });
 
       // Start elapsed timer
@@ -151,6 +156,7 @@ export function useThinkingStream(): UseThinkingStreamReturn {
 
           const reader = response.body.getReader();
           const decoder = new TextDecoder();
+          let pendingLine = "";
 
           const read = async () => {
             while (true) {
@@ -164,8 +170,9 @@ export function useThinkingStream(): UseThinkingStreamReturn {
                 break;
               }
 
-              const text = decoder.decode(value, { stream: true });
+              const text = pendingLine + decoder.decode(value, { stream: true });
               const lines = text.split("\n");
+              pendingLine = lines.pop() ?? "";
 
               for (const line of lines) {
                 if (line.startsWith("data: ")) {
@@ -247,9 +254,20 @@ export function useThinkingStream(): UseThinkingStreamReturn {
                         clearInterval(timerRef.current);
                         timerRef.current = null;
                       }
+                    } else if (data.type === "warning") {
+                      console.warn("[use-thinking-stream] Recoverable stream warning", data);
+                      setState((prev) => ({
+                        ...prev,
+                        parseErrorCount: prev.parseErrorCount + 1,
+                      }));
                     }
-                  } catch {
-                    // Ignore JSON parse errors from incomplete chunks
+                  } catch (parseError) {
+                    // Ignore malformed events but surface recoverable error telemetry in state.
+                    console.warn("[use-thinking-stream] Recoverable SSE parse error", parseError);
+                    setState((prev) => ({
+                      ...prev,
+                      parseErrorCount: prev.parseErrorCount + 1,
+                    }));
                   }
                 }
               }

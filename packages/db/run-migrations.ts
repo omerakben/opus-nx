@@ -22,18 +22,20 @@ async function runMigrations() {
   const migrations = [
     "001_initial_schema.sql",
     "002_thinking_graph.sql",
+    "003_node_type.sql",
   ];
+
+  const failures: string[] = [];
 
   for (const migration of migrations) {
     const filePath = join(__dirname, "migrations", migration);
-    console.log(`\n📦 Running migration: ${migration}`);
+    console.log(`\nRunning migration: ${migration}`);
 
     try {
       const sql = readFileSync(filePath, "utf-8");
-
-      // Split by semicolons but preserve function bodies
       const statements = splitSqlStatements(sql);
 
+      let executed = 0;
       for (let i = 0; i < statements.length; i++) {
         const stmt = statements[i].trim();
         if (!stmt || stmt.startsWith("--")) continue;
@@ -41,47 +43,44 @@ async function runMigrations() {
         const { error } = await supabase.rpc("exec_sql", { sql_string: stmt });
 
         if (error) {
-          // Try direct query if RPC doesn't exist
-          const result = await supabase.from("_migrations").select("*").limit(1);
-          if (result.error?.code === "PGRST116") {
-            console.log(`   Statement ${i + 1}: Skipping (table may not exist yet)`);
-          } else {
-            console.error(`   ❌ Statement ${i + 1} failed: ${error.message}`);
-          }
-        } else {
-          process.stdout.write(".");
+          throw new Error(`Statement ${i + 1} failed in ${migration}: ${error.message}`);
         }
+
+        executed++;
+        process.stdout.write(".");
       }
 
-      console.log(`\n   ✅ ${migration} completed`);
+      console.log(`\n   OK ${migration} (${executed} statements)`);
     } catch (err) {
-      console.error(`   ❌ Failed to read ${migration}:`, err);
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`\n   FAILED ${migration}: ${message}`);
+      failures.push(`${migration}: ${message}`);
     }
   }
 
-  console.log("\n🎉 Migrations complete!");
+  if (failures.length > 0) {
+    throw new Error(`Migration run failed with ${failures.length} failure(s):\n- ${failures.join("\n- ")}`);
+  }
+
+  console.log("\nAll migrations completed successfully.");
 }
 
 function splitSqlStatements(sql: string): string[] {
   const statements: string[] = [];
   let current = "";
   let inFunction = false;
-  let dollarQuote = "";
 
   const lines = sql.split("\n");
 
   for (const line of lines) {
-    // Track $$ function bodies
     if (line.includes("$$") && !inFunction) {
       inFunction = true;
-      dollarQuote = "$$";
     } else if (line.includes("$$") && inFunction) {
       inFunction = false;
     }
 
     current += line + "\n";
 
-    // Only split on semicolon if not in a function body
     if (line.trim().endsWith(";") && !inFunction) {
       statements.push(current);
       current = "";
@@ -95,4 +94,7 @@ function splitSqlStatements(sql: string): string[] {
   return statements;
 }
 
-runMigrations().catch(console.error);
+runMigrations().catch((error) => {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exit(1);
+});

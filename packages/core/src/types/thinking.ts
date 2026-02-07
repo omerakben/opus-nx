@@ -181,6 +181,7 @@ export const CreateThinkingNodeInputSchema = z.object({
   signature: z.string().optional(),
   inputQuery: z.string().optional(),
   tokenUsage: TokenUsageSchema.optional(),
+  nodeType: NodeTypeSchema.optional(),
 });
 
 export const CreateReasoningEdgeInputSchema = z.object({

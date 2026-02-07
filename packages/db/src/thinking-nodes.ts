@@ -39,6 +39,7 @@ export interface ThinkingNode {
   signature: string | null;
   inputQuery: string | null;
   tokenUsage: Record<string, unknown>;
+  nodeType: "thinking" | "compaction" | "fork_branch" | "human_annotation";
   createdAt: Date;
 }
 
@@ -74,6 +75,7 @@ export interface CreateThinkingNodeInput {
   signature?: string;
   inputQuery?: string;
   tokenUsage?: Record<string, unknown>;
+  nodeType?: "thinking" | "compaction" | "fork_branch" | "human_annotation";
 }
 
 export interface CreateReasoningEdgeInput {
@@ -149,6 +151,7 @@ export async function createThinkingNode(
       signature: input.signature ?? null,
       input_query: input.inputQuery ?? null,
       token_usage: input.tokenUsage ?? {},
+      node_type: input.nodeType ?? "thinking",
     })
     .select()
     .single();
@@ -557,6 +560,7 @@ function mapThinkingNode(row: Record<string, unknown>): ThinkingNode {
     signature: row.signature as string | null,
     inputQuery: row.input_query as string | null,
     tokenUsage: (row.token_usage as Record<string, unknown>) ?? {},
+    nodeType: ((row.node_type as ThinkingNode["nodeType"]) ?? "thinking"),
     createdAt: new Date(row.created_at as string),
   };
 }

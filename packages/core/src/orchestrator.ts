@@ -2,7 +2,7 @@ import { createLogger } from "@opus-nx/shared";
 import { createSession, updateSessionPlan } from "@opus-nx/db";
 import { ThinkingEngine } from "./thinking-engine.js";
 import { MemoryManager } from "./memory-manager.js";
-import { ThinkGraph, type ThinkGraphResult } from "./think-graph.js";
+import { ThinkGraph } from "./think-graph.js";
 import type {
   OrchestratorConfig,
   OrchestratorSession,
@@ -76,6 +76,15 @@ export interface OrchestratorResult {
   knowledgeContext?: string;
   /** The persisted thinking node from ThinkGraph */
   thinkingNode?: ThinkingNode;
+  /** Persistence metadata for degraded-state signaling */
+  graphPersistence?: {
+    degraded: boolean;
+    issues: Array<{
+      stage: "node" | "decision_point" | "reasoning_edge";
+      message: string;
+      stepNumber?: number;
+    }>;
+  };
   /** Whether context compaction occurred during this request */
   compacted: boolean;
   /** Compaction summary if compaction occurred */
@@ -256,6 +265,7 @@ export class Orchestrator {
       // Persist thinking to ThinkGraph - this is the core innovation!
       // Every reasoning session becomes a queryable graph node
       let thinkingNode: ThinkingNode | undefined;
+      let graphPersistence: OrchestratorResult["graphPersistence"];
       if (result.thinkingBlocks.length > 0) {
         try {
           const graphResult = await this.thinkGraph.persistThinkingNode(
@@ -271,6 +281,17 @@ export class Orchestrator {
           thinkingNode = graphResult.node;
           this.lastThinkingNodeId = graphResult.node.id;
           this.onThinkingNodeCreated?.(graphResult.node);
+          graphPersistence = {
+            degraded: graphResult.degraded,
+            issues: graphResult.persistenceIssues,
+          };
+
+          if (graphResult.degraded) {
+            logger.warn("ThinkGraph persistence completed with degradation", {
+              nodeId: graphResult.node.id,
+              issues: graphResult.persistenceIssues,
+            });
+          }
 
           logger.info("Persisted thinking node to ThinkGraph", {
             nodeId: graphResult.node.id,
@@ -278,6 +299,13 @@ export class Orchestrator {
             linkedToParent: graphResult.linkedToParent,
           });
         } catch (error) {
+          graphPersistence = {
+            degraded: true,
+            issues: [{
+              stage: "node",
+              message: error instanceof Error ? error.message : String(error),
+            }],
+          };
           logger.error("Failed to persist thinking node (continuing without)", {
             sessionId: this.session.id,
             error: error instanceof Error ? error.message : String(error),
@@ -313,6 +341,7 @@ export class Orchestrator {
         thinkingBlocks,
         knowledgeContext: knowledgeContext || undefined,
         thinkingNode,
+        graphPersistence,
         compacted: result.compacted,
         compactionSummary,
         effectiveEffort,

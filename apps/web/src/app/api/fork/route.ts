@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { NextResponse } from "next/server";
 import { ThinkForkEngine } from "@opus-nx/core";
+import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
 
 const ForkStyleSchema = z.enum(["conservative", "aggressive", "balanced", "contrarian"]);
 
@@ -20,21 +20,25 @@ const ForkRequestSchema = z.object({
  * Run ThinkFork multi-perspective analysis with optional human guidance
  */
 export async function POST(request: Request) {
+  const correlationId = getCorrelationId(request);
+
   try {
     const body = await request.json();
     const parsed = ForkRequestSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: { message: "Invalid request", details: parsed.error.issues } },
-        { status: 400 }
-      );
+      return jsonError({
+        status: 400,
+        code: "INVALID_FORK_REQUEST",
+        message: "Invalid request",
+        details: parsed.error.issues,
+        correlationId,
+        recoverable: true,
+      });
     }
+
     const { query, styles, effort, branchGuidance } = parsed.data;
 
-    // Create ThinkFork instance
     const thinkFork = new ThinkForkEngine();
-
-    // Run analysis with optional human guidance per branch
     const result = await thinkFork.fork(query, {
       styles,
       effort,
@@ -42,19 +46,25 @@ export async function POST(request: Request) {
       branchGuidance,
     });
 
-    return NextResponse.json({
-      branches: result.branches,
-      convergencePoints: result.convergencePoints,
-      divergencePoints: result.divergencePoints,
-      metaInsight: result.metaInsight,
-      recommendedApproach: result.recommendedApproach,
-      appliedGuidance: result.appliedGuidance,
-    });
-  } catch (error) {
-    console.error("[API] Fork analysis error:", error);
-    return NextResponse.json(
-      { error: { message: error instanceof Error ? error.message : "Analysis failed" } },
-      { status: 500 }
+    return jsonSuccess(
+      {
+        branches: result.branches,
+        convergencePoints: result.convergencePoints,
+        divergencePoints: result.divergencePoints,
+        metaInsight: result.metaInsight,
+        recommendedApproach: result.recommendedApproach,
+        appliedGuidance: result.appliedGuidance,
+        fallbackPromptsUsed: result.fallbackPromptsUsed,
+      },
+      { correlationId }
     );
+  } catch (error) {
+    console.error("[API] Fork analysis error:", { correlationId, error });
+    return jsonError({
+      status: 500,
+      code: "FORK_ANALYSIS_FAILED",
+      message: error instanceof Error ? error.message : "Analysis failed",
+      correlationId,
+    });
   }
 }

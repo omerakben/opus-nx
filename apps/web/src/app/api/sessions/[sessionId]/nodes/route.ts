@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { getSessionThinkingNodes, getEdgesFromNode } from "@/lib/db";
+import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
 
 interface RouteParams {
   params: Promise<{ sessionId: string }>;
@@ -10,18 +10,18 @@ interface RouteParams {
  * Get all thinking nodes and edges for a session
  */
 export async function GET(request: Request, { params }: RouteParams) {
+  const correlationId = getCorrelationId(request);
+
   try {
     const { sessionId } = await params;
 
-    // Get all thinking nodes for the session
+    // Get all thinking nodes for the session.
     const nodes = await getSessionThinkingNodes(sessionId, { limit: 100 });
 
-    // Get edges for each node
-    const allEdges = await Promise.all(
-      nodes.map((node) => getEdgesFromNode(node.id))
-    );
+    // Get edges for each node.
+    const allEdges = await Promise.all(nodes.map((node) => getEdgesFromNode(node.id)));
 
-    // Flatten and deduplicate edges
+    // Flatten and deduplicate edges.
     const edgeMap = new Map<string, typeof allEdges[0][0]>();
     for (const edges of allEdges) {
       for (const edge of edges) {
@@ -31,7 +31,6 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     const edges = Array.from(edgeMap.values());
 
-    // Serialize dates
     const serializedNodes = nodes.map((node) => ({
       ...node,
       createdAt: node.createdAt.toISOString(),
@@ -42,15 +41,20 @@ export async function GET(request: Request, { params }: RouteParams) {
       createdAt: edge.createdAt.toISOString(),
     }));
 
-    return NextResponse.json({
-      nodes: serializedNodes,
-      edges: serializedEdges,
-    });
-  } catch (error) {
-    console.error("[API] Failed to get session nodes:", error);
-    return NextResponse.json(
-      { error: { message: "Failed to get session nodes" } },
-      { status: 500 }
+    return jsonSuccess(
+      {
+        nodes: serializedNodes,
+        edges: serializedEdges,
+      },
+      { correlationId }
     );
+  } catch (error) {
+    console.error("[API] Failed to get session nodes:", { correlationId, error });
+    return jsonError({
+      status: 500,
+      code: "SESSION_NODES_FETCH_FAILED",
+      message: "Failed to get session nodes",
+      correlationId,
+    });
   }
 }

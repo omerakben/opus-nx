@@ -1,5 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import "@/styles/globals.css";
+import { ensureServerEnv } from "@/lib/server-env";
+
+// Validate required runtime env vars as soon as the app boots.
+if (process.env.NEXT_PHASE !== "phase-production-build") {
+  ensureServerEnv();
+}
 
 export const metadata: Metadata = {
   title: "Opus Nx - Cognitive Architecture Dashboard",

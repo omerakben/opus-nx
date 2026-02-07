@@ -134,6 +134,12 @@ export interface ThinkGraphResult {
   node: ThinkingNode;
   decisionPoints: DecisionPoint[];
   linkedToParent: boolean;
+  degraded: boolean;
+  persistenceIssues: Array<{
+    stage: "decision_point" | "reasoning_edge";
+    message: string;
+    stepNumber?: number;
+  }>;
 }
 
 // ============================================================
@@ -630,6 +636,8 @@ export class ThinkGraph {
     thinkingBlocks: (ThinkingBlock | RedactedThinkingBlock)[],
     options: PersistThinkingOptions
   ): Promise<ThinkGraphResult> {
+    const persistenceIssues: ThinkGraphResult["persistenceIssues"] = [];
+
     // Validate parentNodeId if provided
     let validatedOptions = options;
     if (options.parentNodeId && !isValidUUID(options.parentNodeId)) {
@@ -656,6 +664,7 @@ export class ThinkGraph {
       signature,
       inputQuery: validatedOptions.inputQuery,
       tokenUsage: toDBTokenUsage(validatedOptions.tokenUsage),
+      nodeType: validatedOptions.nodeType,
     };
 
     const dbNode = await createThinkingNode(nodeInput);
@@ -678,6 +687,11 @@ export class ThinkGraph {
           const createdPoint = await createDecisionPoint(input);
           dbDecisionPoints.push(this.mapDbDecisionPoint(createdPoint));
         } catch (error) {
+          persistenceIssues.push({
+            stage: "decision_point",
+            stepNumber: dp.stepNumber,
+            message: error instanceof Error ? error.message : String(error),
+          });
           logger.warn("Failed to persist decision point", {
             nodeId: dbNode.id,
             stepNumber: dp.stepNumber,
@@ -703,6 +717,10 @@ export class ThinkGraph {
         linkedToParent = true;
         logger.debug("Linked to parent node", { parentId: validatedOptions.parentNodeId });
       } catch (error) {
+        persistenceIssues.push({
+          stage: "reasoning_edge",
+          message: error instanceof Error ? error.message : String(error),
+        });
         logger.warn("Failed to create reasoning edge", {
           sourceId: validatedOptions.parentNodeId,
           targetId: dbNode.id,
@@ -722,6 +740,8 @@ export class ThinkGraph {
       node: mappedNode,
       decisionPoints: dbDecisionPoints,
       linkedToParent,
+      degraded: persistenceIssues.length > 0,
+      persistenceIssues,
     };
   }
 
@@ -874,7 +894,7 @@ export class ThinkGraph {
       signature: dbNode.signature ?? undefined,
       inputQuery: dbNode.inputQuery ?? undefined,
       tokenUsage: dbNode.tokenUsage as { inputTokens?: number; outputTokens?: number; thinkingTokens?: number } | undefined,
-      nodeType: ((dbNode as unknown as Record<string, unknown>).nodeType as ThinkingNode["nodeType"]) ?? "thinking",
+      nodeType: dbNode.nodeType ?? "thinking",
       createdAt: dbNode.createdAt,
     };
   }

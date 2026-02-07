@@ -63,7 +63,7 @@ export function useGraph(sessionId: string | null): UseGraphReturn {
       const dbEdges = response.data.edges.map((e) => ({
         ...e,
         metadata: {},
-        createdAt: new Date(),
+        createdAt: new Date(e.createdAt),
       }));
 
       const graphNodes = transformNodesToGraph(

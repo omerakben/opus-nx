@@ -1,7 +1,6 @@
 import { z } from "zod";
-import { NextResponse } from "next/server";
 import { ThinkForkEngine } from "@opus-nx/core";
-import type { ForkResponse, SteeringAction } from "@/lib/api";
+import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
 
 const ForkStyleSchema = z.enum(["conservative", "aggressive", "balanced", "contrarian"]);
 
@@ -54,14 +53,20 @@ const SteerRequestSchema = z.object({
  * This is the "cognitive co-piloting" endpoint - humans guide AI reasoning.
  */
 export async function POST(request: Request) {
+  const correlationId = getCorrelationId(request);
+
   try {
     const body = await request.json();
     const parsed = SteerRequestSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: { message: "Invalid request", details: parsed.error.issues } },
-        { status: 400 }
-      );
+      return jsonError({
+        status: 400,
+        code: "INVALID_STEER_REQUEST",
+        message: "Invalid request",
+        details: parsed.error.issues,
+        correlationId,
+        recoverable: true,
+      });
     }
     const { originalResult, action } = parsed.data;
 
@@ -72,12 +77,14 @@ export async function POST(request: Request) {
       action as Parameters<typeof thinkFork.steer>[1]
     );
 
-    return NextResponse.json(result);
+    return jsonSuccess(result, { correlationId });
   } catch (error) {
-    console.error("[API] Fork steer error:", error);
-    return NextResponse.json(
-      { error: { message: error instanceof Error ? error.message : "Steering failed" } },
-      { status: 500 }
-    );
+    console.error("[API] Fork steer error:", { correlationId, error });
+    return jsonError({
+      status: 500,
+      code: "FORK_STEER_FAILED",
+      message: error instanceof Error ? error.message : "Steering failed",
+      correlationId,
+    });
   }
 }

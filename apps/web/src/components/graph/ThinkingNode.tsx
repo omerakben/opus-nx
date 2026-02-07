@@ -85,10 +85,10 @@ function getNodeTypeConfig(nodeType?: string) {
 }
 
 const ANNOTATION_ACTIONS = [
-  { action: "agree", icon: ThumbsUp, color: "text-green-400 hover:bg-green-500/20", title: "Agree with this reasoning" },
-  { action: "disagree", icon: ThumbsDown, color: "text-red-400 hover:bg-red-500/20", title: "Disagree with this reasoning" },
-  { action: "explore", icon: Compass, color: "text-blue-400 hover:bg-blue-500/20", title: "Explore further" },
-  { action: "note", icon: StickyNote, color: "text-amber-400 hover:bg-amber-500/20", title: "Add a note" },
+  { action: "agree", icon: ThumbsUp, color: "text-green-400 hover:bg-green-500/20", title: "Mark local agreement (not saved)" },
+  { action: "disagree", icon: ThumbsDown, color: "text-red-400 hover:bg-red-500/20", title: "Mark local disagreement (not saved)" },
+  { action: "explore", icon: Compass, color: "text-blue-400 hover:bg-blue-500/20", title: "Mark for local exploration (not saved)" },
+  { action: "note", icon: StickyNote, color: "text-amber-400 hover:bg-amber-500/20", title: "Add local note marker (not saved)" },
 ] as const;
 
 export const ThinkingNode = memo(function ThinkingNode({
@@ -202,6 +202,7 @@ export const ThinkingNode = memo(function ThinkingNode({
         {/* Annotation bar - shows on hover for thinking nodes */}
         {!isSpecialNode && (
           <div className="opacity-0 group-hover:opacity-100 transition-opacity border-t border-[var(--border)] px-3 py-1.5 flex items-center gap-1">
+            <span className="text-[10px] text-[var(--muted-foreground)] mr-1">Local</span>
             {ANNOTATION_ACTIONS.map(({ action, icon: ActionIcon, color, title }) => (
               <button
                 key={action}
@@ -223,10 +224,10 @@ export const ThinkingNode = memo(function ThinkingNode({
         {annotation && (
           <div className="px-3 py-1.5 border-t border-[var(--border)] bg-cyan-500/5 animate-fade-in-up">
             <div className="text-[10px] text-cyan-400 mb-1">
-              {annotation === "agree" && "You agree with this reasoning"}
-              {annotation === "disagree" && "You disagree with this reasoning"}
-              {annotation === "explore" && "Marked for deeper exploration"}
-              {annotation === "note" && "Note added to this node"}
+              {annotation === "agree" && "Local marker: you agree with this reasoning"}
+              {annotation === "disagree" && "Local marker: you disagree with this reasoning"}
+              {annotation === "explore" && "Local marker: marked for deeper exploration"}
+              {annotation === "note" && "Local marker: note added to this node"}
             </div>
           </div>
         )}

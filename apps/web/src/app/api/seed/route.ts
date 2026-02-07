@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import {
   createSession,
   updateSessionPlan,
@@ -7,13 +6,15 @@ import {
   createDecisionPoint,
   createMetacognitiveInsights,
 } from "@/lib/db";
+import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
 
 /**
  * POST /api/seed
  * Seed a flagship demo session with rich, interconnected graph data.
  * This creates the "wow" moment for hackathon judges.
  */
-export async function POST() {
+export async function POST(request: Request) {
+  const correlationId = getCorrelationId(request);
   try {
     // 1. Create the demo session and mark it with demo metadata
     const session = await createSession();
@@ -303,19 +304,24 @@ I'm fairly confident in this synthesis because it integrates well-supported conc
       },
     ]);
 
-    return NextResponse.json({
-      success: true,
-      sessionId: session.id,
-      nodesCreated: 6,
-      edgesCreated: edges.length,
-      insightsCreated: 3,
-      message: "Demo session 'AI Consciousness Deep Dive' seeded successfully",
-    });
-  } catch (error) {
-    console.error("[API] Failed to seed demo data:", error);
-    return NextResponse.json(
-      { error: { message: error instanceof Error ? error.message : "Seeding failed" } },
-      { status: 500 }
+    return jsonSuccess(
+      {
+        success: true,
+        sessionId: session.id,
+        nodesCreated: 6,
+        edgesCreated: edges.length,
+        insightsCreated: 3,
+        message: "Demo session 'AI Consciousness Deep Dive' seeded successfully",
+      },
+      { correlationId }
     );
+  } catch (error) {
+    console.error("[API] Failed to seed demo data:", { correlationId, error });
+    return jsonError({
+      status: 500,
+      code: "SEED_FAILED",
+      message: error instanceof Error ? error.message : "Seeding failed",
+      correlationId,
+    });
   }
 }

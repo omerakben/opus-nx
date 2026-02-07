@@ -43,6 +43,7 @@ export function watchConfig<T extends z.ZodTypeAny>(
  */
 export const EnvSchema = z.object({
   ANTHROPIC_API_KEY: z.string().min(1),
+  AUTH_SECRET: z.string().min(1),
   SUPABASE_URL: z.string().url(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   SUPABASE_ANON_KEY: z.string().min(1),
