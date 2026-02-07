@@ -219,6 +219,68 @@ export const ThinkForkOptionsSchema = z.object({
 export type ThinkForkOptions = z.infer<typeof ThinkForkOptionsSchema>;
 
 // ============================================================
+// Debate Mode (Agent Teams-inspired competing hypotheses)
+// ============================================================
+
+/**
+ * Options for debate mode: branches challenge each other's conclusions.
+ * Inspired by Agent Teams' competing-hypotheses debugging pattern.
+ */
+export const DebateOptionsSchema = z.object({
+  /** Number of debate rounds (each round = every branch responds to others) */
+  rounds: z.number().min(1).max(5).default(2),
+  /** Thinking effort for debate rounds */
+  effort: z.enum(["low", "medium", "high", "max"]).default("high"),
+  /** Styles to participate in debate (min 2) */
+  styles: z.array(ForkStyleSchema).min(2).default(["conservative", "aggressive", "balanced", "contrarian"]),
+});
+
+export type DebateOptions = z.infer<typeof DebateOptionsSchema>;
+
+/**
+ * A single debate round entry where one branch responds to others.
+ */
+export const DebateRoundEntrySchema = z.object({
+  style: ForkStyleSchema,
+  round: z.number(),
+  response: z.string(),
+  confidence: z.number().min(0).max(1),
+  /** Whether this branch changed its position */
+  positionChanged: z.boolean(),
+  keyCounterpoints: z.array(z.string()),
+  concessions: z.array(z.string()),
+});
+
+export type DebateRoundEntry = z.infer<typeof DebateRoundEntrySchema>;
+
+/**
+ * Complete result from a debate session.
+ */
+export const DebateResultSchema = z.object({
+  query: z.string(),
+  /** Initial fork results before debate */
+  initialFork: ThinkForkResultSchema,
+  /** All debate round entries */
+  rounds: z.array(DebateRoundEntrySchema),
+  /** Final positions after debate */
+  finalPositions: z.array(z.object({
+    style: ForkStyleSchema,
+    conclusion: z.string(),
+    confidence: z.number(),
+    changedFromInitial: z.boolean(),
+  })),
+  /** Consensus conclusion if branches converged */
+  consensus: z.string().optional(),
+  /** Overall confidence in the debate outcome */
+  consensusConfidence: z.number().min(0).max(1).optional(),
+  totalRounds: z.number(),
+  totalTokensUsed: z.number(),
+  totalDurationMs: z.number(),
+});
+
+export type DebateResult = z.infer<typeof DebateResultSchema>;
+
+// ============================================================
 // Tool Schemas for Structured Output
 // ============================================================
 

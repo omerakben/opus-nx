@@ -9,6 +9,7 @@ import {
   FORK_STYLE_DESCRIPTIONS,
   ForkStyleSchema,
   ThinkForkOptionsSchema,
+  DebateOptionsSchema,
   BranchSteeringActionSchema,
   type ForkStyle,
   type ForkBranchResult,
@@ -19,6 +20,9 @@ import {
   type BranchGuidance,
   type BranchSteeringAction,
   type SteeringResult,
+  type DebateOptions,
+  type DebateResult,
+  type DebateRoundEntry,
 } from "./types/thinkfork.js";
 import type { OrchestratorConfig, ToolUseBlock } from "./types/orchestrator.js";
 
@@ -41,7 +45,45 @@ export interface ThinkForkEngineOptions {
   onThinkingStream?: (style: ForkStyle, thinking: string) => void;
   /** Callback when comparison analysis starts */
   onComparisonStart?: () => void;
+  /** Callback when a debate round starts */
+  onDebateRoundStart?: (round: number, style: ForkStyle) => void;
+  /** Callback when a debate round entry completes */
+  onDebateRoundComplete?: (entry: DebateRoundEntry) => void;
 }
+
+// Tool for structured debate responses
+const DEBATE_RESPONSE_TOOL = {
+  name: "record_debate_response",
+  description: "Record your response to the other branches' conclusions in this debate round.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      response: {
+        type: "string",
+        description: "Your response to the other branches' arguments (2-4 sentences)",
+      },
+      confidence: {
+        type: "number",
+        description: "Your updated confidence level (0.0-1.0) after considering counterarguments",
+      },
+      position_changed: {
+        type: "boolean",
+        description: "Whether your position has changed from the previous round",
+      },
+      key_counterpoints: {
+        type: "array",
+        items: { type: "string" },
+        description: "Key counterpoints you're making against other branches",
+      },
+      concessions: {
+        type: "array",
+        items: { type: "string" },
+        description: "Points where you concede the other branches are correct or have merit",
+      },
+    },
+    required: ["response", "confidence", "position_changed", "key_counterpoints", "concessions"],
+  },
+};
 
 // ============================================================
 // ThinkFork Engine
@@ -752,7 +794,7 @@ Respond to this challenge. If the challenge has merit, revise your conclusion. I
    */
   private createThinkingConfig(effort: "low" | "medium" | "high" | "max"): OrchestratorConfig {
     return {
-      model: "claude-opus-4-6-20260101",
+      model: "claude-opus-4-6",
       thinking: { type: "adaptive", effort },
       streaming: true,
       maxTokens: 16384,
@@ -826,6 +868,263 @@ Compare the different perspectives and use the record_comparison tool to capture
 4. Optionally, which approach seems most suitable
 
 {BRANCH_RESULTS}`;
+  }
+
+  // ============================================================
+  // Debate Mode (Agent Teams-inspired competing hypotheses)
+  // ============================================================
+
+  /**
+   * Run a multi-round debate between reasoning branches.
+   *
+   * Inspired by Agent Teams' competing-hypotheses pattern, this method:
+   * 1. First runs a standard fork to get initial positions
+   * 2. Then runs multiple debate rounds where each branch:
+   *    - Sees all other branches' latest conclusions
+   *    - Can challenge, concede, or refine their position
+   *    - Records counterpoints and concessions
+   * 3. After all rounds, synthesizes a final consensus (if one emerges)
+   *
+   * This is powerful for:
+   * - High-stakes decisions where multiple perspectives matter
+   * - Identifying hidden assumptions through adversarial probing
+   * - Building confidence through stress-testing conclusions
+   */
+  async debate(
+    query: string,
+    options: Partial<DebateOptions> = {}
+  ): Promise<DebateResult> {
+    const parsed = DebateOptionsSchema.parse(options);
+    const startTime = Date.now();
+    let totalTokens = 0;
+
+    logger.info("Starting debate mode", {
+      query: query.slice(0, 100),
+      rounds: parsed.rounds,
+      styles: parsed.styles,
+    });
+
+    // Step 1: Run initial fork to get starting positions
+    const initialFork = await this.fork(query, {
+      styles: parsed.styles,
+      effort: parsed.effort,
+      analyzeConvergence: true,
+    });
+    totalTokens += initialFork.totalTokensUsed;
+
+    // Build current positions from initial fork results
+    const currentPositions = new Map<ForkStyle, {
+      conclusion: string;
+      confidence: number;
+      keyInsights: string[];
+    }>();
+
+    for (const branch of initialFork.branches) {
+      if (!branch.error) {
+        currentPositions.set(branch.style, {
+          conclusion: branch.conclusion,
+          confidence: branch.confidence,
+          keyInsights: branch.keyInsights,
+        });
+      }
+    }
+
+    // Step 2: Run debate rounds
+    const allRoundEntries: DebateRoundEntry[] = [];
+
+    for (let round = 1; round <= parsed.rounds; round++) {
+      logger.info(`Starting debate round ${round}/${parsed.rounds}`);
+
+      // Each branch responds to all other branches' positions
+      const roundPromises = parsed.styles
+        .filter((s) => currentPositions.has(s))
+        .map((style) =>
+          this.executeDebateRound(query, style, round, currentPositions, parsed.effort)
+        );
+
+      const roundResults = await Promise.allSettled(roundPromises);
+
+      for (const result of roundResults) {
+        if (result.status === "fulfilled" && result.value) {
+          const entry = result.value;
+          allRoundEntries.push(entry);
+          totalTokens += entry.response.length; // approximate
+
+          // Update position if it changed
+          currentPositions.set(entry.style, {
+            conclusion: entry.response,
+            confidence: entry.confidence,
+            keyInsights: entry.keyCounterpoints,
+          });
+
+          this.options.onDebateRoundComplete?.(entry);
+        }
+      }
+    }
+
+    // Step 3: Determine final positions and consensus
+    const finalPositions = parsed.styles
+      .filter((s) => currentPositions.has(s))
+      .map((style) => {
+        const pos = currentPositions.get(style)!;
+        const initialBranch = initialFork.branches.find((b) => b.style === style);
+        return {
+          style,
+          conclusion: pos.conclusion,
+          confidence: pos.confidence,
+          changedFromInitial: initialBranch?.conclusion !== pos.conclusion,
+        };
+      });
+
+    // Check for consensus: if all branches converge above 0.7 confidence
+    // and no more position changes in the last round
+    const lastRoundEntries = allRoundEntries.filter((e) => e.round === parsed.rounds);
+    const allStableInLastRound = lastRoundEntries.every((e) => !e.positionChanged);
+    const allHighConfidence = finalPositions.every((p) => p.confidence >= 0.7);
+
+    let consensus: string | undefined;
+    let consensusConfidence: number | undefined;
+
+    if (allStableInLastRound && allHighConfidence && finalPositions.length > 0) {
+      // Branches converged — synthesize a consensus
+      consensus = finalPositions.map((p) =>
+        `[${p.style}] ${p.conclusion}`
+      ).join("\n\n");
+      consensusConfidence = finalPositions.reduce((sum, p) => sum + p.confidence, 0) / finalPositions.length;
+    }
+
+    const totalDurationMs = Date.now() - startTime;
+
+    logger.info("Debate completed", {
+      rounds: parsed.rounds,
+      totalEntries: allRoundEntries.length,
+      hasConsensus: !!consensus,
+      consensusConfidence,
+      positionsChanged: finalPositions.filter((p) => p.changedFromInitial).length,
+      totalDurationMs,
+    });
+
+    return {
+      query,
+      initialFork,
+      rounds: allRoundEntries,
+      finalPositions,
+      consensus,
+      consensusConfidence,
+      totalRounds: parsed.rounds,
+      totalTokensUsed: totalTokens,
+      totalDurationMs,
+    };
+  }
+
+  /**
+   * Execute a single debate round for one branch.
+   */
+  private async executeDebateRound(
+    query: string,
+    style: ForkStyle,
+    round: number,
+    currentPositions: Map<ForkStyle, { conclusion: string; confidence: number; keyInsights: string[] }>,
+    effort: "low" | "medium" | "high" | "max"
+  ): Promise<DebateRoundEntry> {
+    this.options.onDebateRoundStart?.(round, style);
+
+    const config = this.createThinkingConfig(effort);
+    const engine = new ThinkingEngine({ config });
+
+    // Build the debate prompt with other branches' positions
+    const otherPositions = Array.from(currentPositions.entries())
+      .filter(([s]) => s !== style)
+      .map(([s, pos]) =>
+        `### ${s.charAt(0).toUpperCase() + s.slice(1)} Branch (confidence: ${(pos.confidence * 100).toFixed(0)}%)\n${pos.conclusion}\n\nKey insights:\n${pos.keyInsights.map((i) => `- ${i}`).join("\n")}`
+      )
+      .join("\n\n---\n\n");
+
+    const myPosition = currentPositions.get(style);
+
+    const debatePrompt = `## Debate Round ${round}
+
+You are the **${style}** perspective in a structured debate about:
+
+> ${query}
+
+### Your Current Position (confidence: ${((myPosition?.confidence ?? 0.5) * 100).toFixed(0)}%)
+${myPosition?.conclusion ?? "No position yet."}
+
+### Other Branches' Positions
+
+${otherPositions}
+
+### Your Task
+
+As the ${style} perspective (${FORK_STYLE_DESCRIPTIONS[style]}):
+
+1. **Evaluate** the other branches' arguments — which points are strong?
+2. **Challenge** weak points in their reasoning
+3. **Concede** where they make valid points you hadn't considered
+4. **Refine** your own position based on this exchange
+5. Use the \`record_debate_response\` tool to capture your updated position
+
+Be intellectually honest — it's better to change your mind when warranted than to stubbornly defend a weak position.`;
+
+    const systemPrompt = `You are engaging in a structured intellectual debate from the ${style} perspective. ${FORK_STYLE_DESCRIPTIONS[style]}. Think deeply about the arguments presented and respond with intellectual rigor and honesty.`;
+
+    const startTime = Date.now();
+
+    try {
+      const result = await engine.think(
+        systemPrompt,
+        [{ role: "user", content: debatePrompt }],
+        [DEBATE_RESPONSE_TOOL]
+      );
+
+      // Extract debate response from tool use
+      const toolUse = result.toolUseBlocks.find((b) => b.name === "record_debate_response");
+      if (toolUse) {
+        const input = toolUse.input as {
+          response: string;
+          confidence: number;
+          position_changed: boolean;
+          key_counterpoints: string[];
+          concessions: string[];
+        };
+
+        return {
+          style,
+          round,
+          response: String(input.response),
+          confidence: Math.min(1, Math.max(0, Number(input.confidence) || 0.5)),
+          positionChanged: Boolean(input.position_changed),
+          keyCounterpoints: (input.key_counterpoints || []).map(String),
+          concessions: (input.concessions || []).map(String),
+        };
+      }
+
+      // Fallback: extract from text
+      const textResponse = result.textBlocks.map((b) => b.text).join("\n");
+      return {
+        style,
+        round,
+        response: textResponse.slice(0, 1000),
+        confidence: myPosition?.confidence ?? 0.5,
+        positionChanged: false,
+        keyCounterpoints: [],
+        concessions: [],
+      };
+    } catch (error) {
+      logger.error(`Debate round ${round} failed for ${style}`, {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return {
+        style,
+        round,
+        response: `[Error in round ${round}: ${error instanceof Error ? error.message : String(error)}]`,
+        confidence: myPosition?.confidence ?? 0.5,
+        positionChanged: false,
+        keyCounterpoints: [],
+        concessions: [],
+      };
+    }
   }
 }
 

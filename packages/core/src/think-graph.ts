@@ -142,38 +142,54 @@ export interface ThinkGraphResult {
 
 /**
  * Patterns that indicate decision points in reasoning.
- * These help identify where the AI considered alternatives.
+ *
+ * Opus 4.6 returns summarized thinking (not raw stream-of-consciousness),
+ * so patterns must handle both verbose reasoning and concise summaries.
+ * Summaries tend to use more structured language: "Decided to...",
+ * "Considered X vs Y", "Selected approach A over B".
  */
 const DECISION_PATTERNS = [
-  // Explicit decisions
+  // Explicit decisions (verbose & summarized forms)
   /(?:I (?:could|should|will|might|need to) (?:either|choose|decide|go with|opt for|select))/i,
-  /(?:(?:Option|Approach|Alternative|Choice|Path) [A-C1-3])/i,
+  /(?:(?:Option|Approach|Alternative|Choice|Path|Strategy|Method) [A-C1-5])/i,
   /(?:On (?:one|the other) hand)/i,
+  // Summarized decision language (Opus 4.6 summarized thinking)
+  /(?:(?:Decided|Choosing|Selected|Opted) (?:to|for|between))/i,
+  /(?:(?:Weigh(?:ing|ed)|Evaluat(?:ing|ed)|Compar(?:ing|ed)) (?:the |several |multiple )?(?:options|approaches|strategies|alternatives|trade-?offs))/i,
+  /(?:(?:Key|Main|Primary|Critical) (?:decision|choice|trade-?off|consideration))/i,
   // Comparisons
   /(?:(?:vs|versus|compared to|rather than|instead of|over|between))/i,
   // Trade-offs
-  /(?:(?:trade-?off|pros? and cons?|advantages? (?:and|vs) disadvantages?))/i,
-  // Conclusions
+  /(?:(?:trade-?off|pros? and cons?|advantages? (?:and|vs) disadvantages?|benefits? (?:and|vs) (?:costs?|drawbacks?)))/i,
+  // Conclusions (verbose & summarized)
   /(?:(?:I(?:'ll| will) go with|I(?:'ve| have) decided|The best (?:approach|option|choice)|Therefore|Thus|Hence))/i,
-  // Rejection markers
+  /(?:(?:Concluded|Determined|Settled on|Final (?:decision|choice|approach)))/i,
+  // Rejection markers (verbose & summarized)
   /(?:(?:However|But|Although|While|rejected|ruled out|not (?:ideal|suitable|appropriate)))/i,
+  /(?:(?:Eliminated|Discarded|Dismissed|Ruled against|Rejected (?:due to|because)))/i,
 ];
 
 /**
- * Confidence indicators in reasoning text
+ * Confidence indicators in reasoning text.
+ *
+ * Opus 4.6 summarized thinking uses more direct confidence language:
+ * "High confidence that...", "Strong evidence for...", "Uncertain about..."
  */
 const CONFIDENCE_INDICATORS = {
   high: [
     /(?:certainly|definitely|clearly|undoubtedly|absolutely|confident|sure)/i,
-    /(?:strong evidence|conclusive|proven|established)/i,
+    /(?:strong evidence|conclusive|proven|established|well-supported)/i,
+    /(?:high confidence|very likely|overwhelmingly|robustly)/i,
   ],
   medium: [
     /(?:likely|probably|reasonable|plausible|suggests)/i,
     /(?:based on|indicates|appears to|seems to)/i,
+    /(?:moderate confidence|fairly confident|reasonable certainty|on balance)/i,
   ],
   low: [
     /(?:uncertain|unclear|might|could|possibly|perhaps)/i,
     /(?:unsure|ambiguous|questionable|tentative)/i,
+    /(?:low confidence|insufficient evidence|speculative|inconclusive|needs? (?:more|further) (?:analysis|investigation|data))/i,
   ],
 };
 
@@ -294,45 +310,68 @@ export class ThinkGraph {
 
   /**
    * Classify a reasoning step by its type.
+   *
+   * Handles both verbose reasoning and Opus 4.6 summarized thinking,
+   * which uses more direct language like "Concluded:", "Analysis:", etc.
    */
   private classifyReasoningStep(
     text: string
   ): "analysis" | "hypothesis" | "evaluation" | "conclusion" | "consideration" {
     const lowerText = text.toLowerCase();
 
+    // Conclusion indicators (verbose + summarized)
     if (
       lowerText.includes("therefore") ||
       lowerText.includes("thus") ||
       lowerText.includes("in conclusion") ||
       lowerText.includes("i will") ||
-      lowerText.includes("i'll go with")
+      lowerText.includes("i'll go with") ||
+      lowerText.includes("concluded") ||
+      lowerText.includes("final decision") ||
+      lowerText.includes("settled on") ||
+      lowerText.includes("determined that") ||
+      lowerText.startsWith("conclusion:")
     ) {
       return "conclusion";
     }
 
+    // Hypothesis indicators (verbose + summarized)
     if (
       lowerText.includes("if ") ||
       lowerText.includes("assuming") ||
       lowerText.includes("hypothesis") ||
-      lowerText.includes("suppose")
+      lowerText.includes("suppose") ||
+      lowerText.includes("hypothesized") ||
+      lowerText.includes("might work if") ||
+      lowerText.startsWith("hypothesis:")
     ) {
       return "hypothesis";
     }
 
+    // Evaluation indicators (verbose + summarized)
     if (
       lowerText.includes("evaluating") ||
       lowerText.includes("comparing") ||
       lowerText.includes("weighing") ||
-      lowerText.includes("trade-off")
+      lowerText.includes("trade-off") ||
+      lowerText.includes("assessed") ||
+      lowerText.includes("pros and cons") ||
+      lowerText.includes("evaluated") ||
+      lowerText.startsWith("evaluation:")
     ) {
       return "evaluation";
     }
 
+    // Analysis indicators (verbose + summarized)
     if (
       lowerText.includes("analyzing") ||
       lowerText.includes("examining") ||
       lowerText.includes("looking at") ||
-      lowerText.includes("consider")
+      lowerText.includes("consider") ||
+      lowerText.includes("investigated") ||
+      lowerText.includes("explored") ||
+      lowerText.includes("breaking down") ||
+      lowerText.startsWith("analysis:")
     ) {
       return "analysis";
     }
@@ -389,13 +428,22 @@ export class ThinkGraph {
   /**
    * Extract the chosen path from a decision statement.
    * Note: Patterns use length limits {1,500} to prevent ReDoS attacks.
+   *
+   * Handles both verbose reasoning and Opus 4.6 summarized thinking,
+   * which uses more direct language like "Decided to use X", "Selected Y".
    */
   private extractChosenPath(sentence: string, context: string): string | null {
-    // Look for explicit choice markers with length-limited capture groups
+    // Look for explicit choice markers (verbose + summarized forms)
     const choicePatterns = [
       /(?:I(?:'ll| will) (?:go with|choose|use|select)) ([^.]{1,500})/i,
       /(?:The best (?:approach|option|choice) is) ([^.]{1,500})/i,
       /(?:I(?:'ve| have) decided (?:to|on)) ([^.]{1,500})/i,
+      // Summarized thinking patterns (Opus 4.6)
+      /(?:Decided (?:to|on)) ([^.]{1,500})/i,
+      /(?:Selected|Chose|Opted for) ([^.]{1,500})/i,
+      /(?:Final (?:decision|choice|approach):?) ([^.]{1,500})/i,
+      /(?:Settled on) ([^.]{1,500})/i,
+      /(?:Going (?:with|forward with)) ([^.]{1,500})/i,
     ];
 
     for (const pattern of choicePatterns) {
@@ -411,17 +459,24 @@ export class ThinkGraph {
   /**
    * Extract alternatives that were considered and rejected.
    * Note: Patterns use length limits {1,300} to prevent ReDoS attacks.
+   *
+   * Handles both verbose and Opus 4.6 summarized thinking, which uses
+   * more direct language like "Eliminated X due to Y", "Discarded Z".
    */
   private extractAlternatives(
     context: string
   ): Array<{ path: string; reasonRejected: string }> {
     const alternatives: Array<{ path: string; reasonRejected: string }> = [];
 
-    // Pattern: "X, but Y" or "X, however Y" with length-limited capture groups
+    // Rejection patterns (verbose + summarized forms)
     const rejectionPatterns = [
       /([^,]{1,300}),?\s*(?:but|however|although)\s+([^.]{1,300})/gi,
       /(?:rather than|instead of)\s+([^,]{1,300}),?\s+(?:because|since|as)\s+([^.]{1,300})/gi,
       /(?:ruled out|rejected)\s+([^,]{1,300})\s+(?:because|since|as|due to)\s+([^.]{1,300})/gi,
+      // Summarized thinking patterns (Opus 4.6)
+      /(?:eliminated|discarded|dismissed)\s+([^,]{1,300})\s+(?:because|since|as|due to|for)\s+([^.]{1,300})/gi,
+      /(?:considered)\s+([^,]{1,300})\s+but\s+([^.]{1,300})/gi,
+      /([^,]{1,300})\s+was\s+(?:rejected|eliminated|ruled out)\s+(?:because|due to|as|since)\s+([^.]{1,300})/gi,
     ];
 
     for (const pattern of rejectionPatterns) {
