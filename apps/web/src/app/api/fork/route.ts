@@ -1,17 +1,19 @@
+import { z } from "zod";
 import { NextResponse } from "next/server";
 import { ThinkForkEngine } from "@opus-nx/core";
 
-interface ForkRequest {
-  query: string;
-  sessionId?: string;
-  styles?: string[];
-  effort?: "low" | "medium" | "high" | "max";
-  /** Human guidance per branch (cognitive co-piloting) */
-  branchGuidance?: Array<{
-    style: string;
-    guidance: string;
-  }>;
-}
+const ForkStyleSchema = z.enum(["conservative", "aggressive", "balanced", "contrarian"]);
+
+const ForkRequestSchema = z.object({
+  query: z.string().min(1),
+  sessionId: z.string().uuid().optional(),
+  styles: z.array(ForkStyleSchema).min(2).optional(),
+  effort: z.enum(["low", "medium", "high", "max"]).default("high"),
+  branchGuidance: z.array(z.object({
+    style: ForkStyleSchema,
+    guidance: z.string().min(1).max(2000),
+  })).optional(),
+});
 
 /**
  * POST /api/fork
@@ -19,28 +21,25 @@ interface ForkRequest {
  */
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as ForkRequest;
-    const { query, styles, effort = "high", branchGuidance } = body;
-
-    if (!query?.trim()) {
+    const body = await request.json();
+    const parsed = ForkRequestSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: { message: "Query is required" } },
+        { error: { message: "Invalid request", details: parsed.error.issues } },
         { status: 400 }
       );
     }
+    const { query, styles, effort, branchGuidance } = parsed.data;
 
     // Create ThinkFork instance
     const thinkFork = new ThinkForkEngine();
 
     // Run analysis with optional human guidance per branch
     const result = await thinkFork.fork(query, {
-      styles: styles as ("conservative" | "aggressive" | "balanced" | "contrarian")[] | undefined,
+      styles,
       effort,
       analyzeConvergence: true,
-      branchGuidance: branchGuidance as Array<{
-        style: "conservative" | "aggressive" | "balanced" | "contrarian";
-        guidance: string;
-      }> | undefined,
+      branchGuidance,
     });
 
     return NextResponse.json({

@@ -273,16 +273,16 @@ export class ThinkForkEngine {
       logger.error(`Branch ${style} failed`, { error: errorMsg });
 
       // Provide actionable error messages
-      let userMessage = `Branch execution failed: ${errorMsg}`;
+      let errorDetail = `Branch execution failed: ${errorMsg}`;
       if (errorMsg.includes("rate limit") || errorMsg.includes("429")) {
-        userMessage = "API rate limit exceeded. Please wait and retry.";
+        errorDetail = "API rate limit exceeded. Please wait and retry.";
       } else if (errorMsg.includes("401") || errorMsg.includes("authentication")) {
-        userMessage = "Invalid API key. Check ANTHROPIC_API_KEY.";
+        errorDetail = "Invalid API key. Check ANTHROPIC_API_KEY.";
       } else if (errorMsg.includes("timeout")) {
-        userMessage = "Request timed out.";
+        errorDetail = "Request timed out.";
       }
 
-      const failedResult = this.createFailedBranchResult(style, userMessage, Date.now() - startTime);
+      const failedResult = this.createFailedBranchResult(style, errorDetail, Date.now() - startTime);
       this.options.onBranchComplete?.(failedResult);
       return failedResult;
     }
@@ -752,10 +752,10 @@ Respond to this challenge. If the challenge has merit, revise your conclusion. I
    */
   private createThinkingConfig(effort: "low" | "medium" | "high" | "max"): OrchestratorConfig {
     return {
-      model: "claude-opus-4-6",
+      model: "claude-opus-4-6-20260101",
       thinking: { type: "adaptive", effort },
       streaming: true,
-      maxTokens: 8192,
+      maxTokens: 16384,
     };
   }
 

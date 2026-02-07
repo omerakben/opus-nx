@@ -1,28 +1,52 @@
+import { z } from "zod";
 import { NextResponse } from "next/server";
 import { ThinkForkEngine } from "@opus-nx/core";
+import type { ForkResponse, SteeringAction } from "@/lib/api";
 
-interface SteerRequest {
-  originalResult: {
-    query: string;
-    branches: Array<{
-      style: string;
-      conclusion: string;
-      confidence: number;
-      keyInsights: string[];
-      risks?: string[];
-      opportunities?: string[];
-    }>;
-    convergencePoints: unknown[];
-    divergencePoints: unknown[];
-    metaInsight: string;
-    recommendedApproach?: { style: string; rationale: string; confidence: number };
-  };
-  action:
-    | { action: "expand"; style: string; direction?: string }
-    | { action: "merge"; styles: string[]; focusArea?: string }
-    | { action: "challenge"; style: string; challenge: string }
-    | { action: "refork"; newContext: string; keepOriginal?: boolean };
-}
+const ForkStyleSchema = z.enum(["conservative", "aggressive", "balanced", "contrarian"]);
+
+const SteerRequestSchema = z.object({
+  originalResult: z.object({
+    branches: z.array(z.object({
+      style: z.string(),
+      conclusion: z.string(),
+      confidence: z.number(),
+      keyInsights: z.array(z.string()),
+      risks: z.array(z.string()).optional(),
+      opportunities: z.array(z.string()).optional(),
+    })),
+    convergencePoints: z.array(z.unknown()),
+    divergencePoints: z.array(z.unknown()),
+    metaInsight: z.string(),
+    recommendedApproach: z.object({
+      style: z.string(),
+      rationale: z.string(),
+      confidence: z.number(),
+    }).optional(),
+  }),
+  action: z.discriminatedUnion("action", [
+    z.object({
+      action: z.literal("expand"),
+      style: ForkStyleSchema,
+      direction: z.string().optional(),
+    }),
+    z.object({
+      action: z.literal("merge"),
+      styles: z.array(ForkStyleSchema).min(2),
+      focusArea: z.string().optional(),
+    }),
+    z.object({
+      action: z.literal("challenge"),
+      style: ForkStyleSchema,
+      challenge: z.string().min(1),
+    }),
+    z.object({
+      action: z.literal("refork"),
+      newContext: z.string().min(1),
+      keepOriginal: z.boolean().default(true),
+    }),
+  ]),
+});
 
 /**
  * POST /api/fork/steer
@@ -31,19 +55,18 @@ interface SteerRequest {
  */
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as SteerRequest;
-    const { originalResult, action } = body;
-
-    if (!originalResult || !action) {
+    const body = await request.json();
+    const parsed = SteerRequestSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: { message: "originalResult and action are required" } },
+        { error: { message: "Invalid request", details: parsed.error.issues } },
         { status: 400 }
       );
     }
+    const { originalResult, action } = parsed.data;
 
     const thinkFork = new ThinkForkEngine();
 
-    // Cast to the expected types
     const result = await thinkFork.steer(
       originalResult as Parameters<typeof thinkFork.steer>[0],
       action as Parameters<typeof thinkFork.steer>[1]
