@@ -2,9 +2,12 @@
 
 import { InsightsPanel } from "@/components/insights";
 import { ForkPanel } from "@/components/fork";
+import { GoTPanel } from "@/components/got";
+import { VerificationPanel } from "@/components/verify";
+import { MemoryPanel } from "@/components/memory";
 import { Tabs, TabsList, TabsTrigger, TabsContent, Button, Tooltip } from "@/components/ui";
 import type { Insight } from "@/lib/api";
-import { GitFork, Lightbulb, PanelRightOpen, PanelRightClose } from "lucide-react";
+import { GitFork, Lightbulb, PanelRightOpen, PanelRightClose, BrainCircuit, ShieldCheck, Database } from "lucide-react";
 
 interface RightPanelProps {
   insights: Insight[];
@@ -43,6 +46,18 @@ export function RightPanel({
               <GitFork className="w-3 h-3 mr-1" />
               ThinkFork
             </TabsTrigger>
+            <TabsTrigger value="got" className="text-xs">
+              <BrainCircuit className="w-3 h-3 mr-1" />
+              GoT
+            </TabsTrigger>
+            <TabsTrigger value="verify" className="text-xs">
+              <ShieldCheck className="w-3 h-3 mr-1" />
+              PRM
+            </TabsTrigger>
+            <TabsTrigger value="memory" className="text-xs">
+              <Database className="w-3 h-3 mr-1" />
+              Memory
+            </TabsTrigger>
           </TabsList>
 
           <div className="flex-1 min-h-0 overflow-hidden">
@@ -58,6 +73,18 @@ export function RightPanel({
 
             <TabsContent value="fork" className="h-full m-0 mt-2">
               <ForkPanel sessionId={sessionId} />
+            </TabsContent>
+
+            <TabsContent value="got" className="h-full m-0 mt-2 overflow-y-auto">
+              <GoTPanel sessionId={sessionId} isMobile />
+            </TabsContent>
+
+            <TabsContent value="verify" className="h-full m-0 mt-2 overflow-y-auto">
+              <VerificationPanel sessionId={sessionId} isMobile />
+            </TabsContent>
+
+            <TabsContent value="memory" className="h-full m-0 mt-2 overflow-y-auto">
+              <MemoryPanel sessionId={sessionId} isMobile />
             </TabsContent>
           </div>
         </Tabs>
@@ -102,10 +129,31 @@ export function RightPanel({
             </div>
           </Tooltip>
 
-          {/* Fork status - static icon */}
+          {/* Fork status */}
           <Tooltip content="Divergent Path Analysis" side="left">
             <div className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-[var(--muted)] transition-colors">
               <GitFork className="w-4 h-4 text-violet-400" />
+            </div>
+          </Tooltip>
+
+          {/* GoT */}
+          <Tooltip content="Graph of Thoughts" side="left">
+            <div className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-[var(--muted)] transition-colors">
+              <BrainCircuit className="w-4 h-4 text-violet-400" />
+            </div>
+          </Tooltip>
+
+          {/* PRM */}
+          <Tooltip content="Step Verification" side="left">
+            <div className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-[var(--muted)] transition-colors">
+              <ShieldCheck className="w-4 h-4 text-blue-400" />
+            </div>
+          </Tooltip>
+
+          {/* Memory */}
+          <Tooltip content="Memory Hierarchy" side="left">
+            <div className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-[var(--muted)] transition-colors">
+              <Database className="w-4 h-4 text-cyan-400" />
             </div>
           </Tooltip>
         </div>
@@ -152,7 +200,19 @@ export function RightPanel({
               </TabsTrigger>
               <TabsTrigger value="fork" className="text-xs" data-tour="fork-tab">
                 <GitFork className="w-3 h-3 mr-1" />
-                ThinkFork
+                Fork
+              </TabsTrigger>
+              <TabsTrigger value="got" className="text-xs">
+                <BrainCircuit className="w-3 h-3 mr-1" />
+                GoT
+              </TabsTrigger>
+              <TabsTrigger value="verify" className="text-xs">
+                <ShieldCheck className="w-3 h-3 mr-1" />
+                PRM
+              </TabsTrigger>
+              <TabsTrigger value="memory" className="text-xs">
+                <Database className="w-3 h-3 mr-1" />
+                Mem
               </TabsTrigger>
             </TabsList>
           </div>
@@ -174,6 +234,18 @@ export function RightPanel({
 
           <TabsContent value="fork" className="h-full m-0 mt-2">
             <ForkPanel sessionId={sessionId} />
+          </TabsContent>
+
+          <TabsContent value="got" className="h-full m-0 mt-2 overflow-y-auto">
+            <GoTPanel sessionId={sessionId} />
+          </TabsContent>
+
+          <TabsContent value="verify" className="h-full m-0 mt-2 overflow-y-auto">
+            <VerificationPanel sessionId={sessionId} />
+          </TabsContent>
+
+          <TabsContent value="memory" className="h-full m-0 mt-2 overflow-y-auto">
+            <MemoryPanel sessionId={sessionId} />
           </TabsContent>
         </div>
       </Tabs>

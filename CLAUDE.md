@@ -63,14 +63,17 @@ supabase/
 
 ### Core Components (`@opus-nx/core`)
 
-| Module               | Purpose                                                              |
-| -------------------- | -------------------------------------------------------------------- |
-| `thinking-engine.ts` | Claude Opus 4.6 wrapper with extended thinking (5k-50k tokens)       |
-| `think-graph.ts`     | Parses reasoning into nodes, extracts decisions, persists graph      |
-| `metacognition.ts`   | Self-reflection using 50k thinking budget to analyze patterns/biases |
-| `thinkfork.ts`       | Parallel reasoning branches (conservative/aggressive/balanced)       |
-| `orchestrator.ts`    | Session management, task routing, knowledge context injection        |
-| `memory-manager.ts`  | Voyage AI embeddings, semantic search, knowledge storage             |
+| Module                | Purpose                                                              |
+| --------------------- | -------------------------------------------------------------------- |
+| `thinking-engine.ts`  | Claude Opus 4.6 wrapper with extended thinking (5k-50k tokens)       |
+| `think-graph.ts`      | Parses reasoning into nodes, extracts decisions, persists graph      |
+| `metacognition.ts`    | Self-reflection using 50k thinking budget to analyze patterns/biases |
+| `thinkfork.ts`        | Parallel reasoning branches (conservative/aggressive/balanced)       |
+| `orchestrator.ts`     | Session management, task routing, knowledge context injection        |
+| `memory-manager.ts`   | Voyage AI embeddings, semantic search, knowledge storage             |
+| `got-engine.ts`       | Graph of Thoughts reasoning (BFS/DFS/best-first with aggregation)    |
+| `prm-verifier.ts`     | Process Reward Model — step-by-step reasoning verification           |
+| `memory-hierarchy.ts` | MemGPT-inspired 3-tier memory (context/recall/archival)              |
 
 ### Data Layer (`@opus-nx/db`)
 
@@ -91,6 +94,9 @@ Supabase PostgreSQL with pgvector. Key tables:
 | `/api/insights`  | Metacognitive insights            |
 | `/api/reasoning` | ThinkGraph queries                |
 | `/api/sessions`  | Session management                |
+| `/api/got`       | Graph of Thoughts reasoning       |
+| `/api/verify`    | PRM step-by-step verification     |
+| `/api/memory`    | Hierarchical memory operations    |
 
 ## Key Patterns
 
@@ -126,6 +132,21 @@ All packages use strict TypeScript. Exports use `.js` extensions for ESM compati
 ```typescript
 export * from "./thinking-engine.js";  // Note the .js even for .ts files
 ```
+
+## Research Foundation
+
+Opus Nx implements algorithms from four foundational papers:
+
+| Paper | Module | Key Contribution |
+|-------|--------|-----------------|
+| [Tree of Thoughts](https://arxiv.org/abs/2305.10601) (Yao et al., 2023) | `thinkfork.ts`, `got-engine.ts` | BFS/DFS search over reasoning trees with state evaluation |
+| [Graph of Thoughts](https://arxiv.org/abs/2308.09687) (Besta et al., 2023) | `got-engine.ts` | Arbitrary thought graph topology with aggregation and refinement |
+| [Let's Verify Step by Step](https://arxiv.org/abs/2305.20050) (Lightman et al., 2023) | `prm-verifier.ts` | Process supervision — verify each reasoning step independently |
+| [MemGPT](https://arxiv.org/abs/2310.08560) (Packer et al., 2023) | `memory-hierarchy.ts` | 3-tier memory hierarchy (main context / recall / archival) |
+
+### Testing
+
+Core tests use Vitest: `pnpm --filter @opus-nx/core test`
 
 ## Tech Stack
 

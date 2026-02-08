@@ -5,3 +5,6 @@ export * from "./memory-manager.js";
 export * from "./think-graph.js";
 export * from "./metacognition.js";
 export * from "./thinkfork.js";
+export * from "./got-engine.js";
+export * from "./prm-verifier.js";
+export * from "./memory-hierarchy.js";
