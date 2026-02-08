@@ -20,7 +20,6 @@ export function Header({ isMobile }: HeaderProps) {
     return (
       <header className="h-12 border-b border-[var(--border)] bg-[var(--card)] px-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/opus_nx_icon.svg"
             alt="Opus Nx"
@@ -62,7 +61,6 @@ export function Header({ isMobile }: HeaderProps) {
     <header className="h-14 border-b border-[var(--border)] bg-[var(--card)] px-4 flex items-center justify-between">
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/opus_nx_icon.svg"
             alt="Opus Nx"

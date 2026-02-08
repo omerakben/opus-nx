@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { Badge, Card, CardContent, Skeleton } from "@/components/ui";
+import { Badge, Button, Card, CardContent, Input, Skeleton } from "@/components/ui";
 
 // ============================================================
 // Types
@@ -66,10 +66,9 @@ const TIER_STYLES = {
 
 interface MemoryPanelProps {
   sessionId: string | null;
-  isMobile?: boolean;
 }
 
-export function MemoryPanel({ sessionId, isMobile }: MemoryPanelProps) {
+export function MemoryPanel({ sessionId }: MemoryPanelProps) {
   const [stats, setStats] = useState<MemoryStats | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<MemoryEntry[]>([]);
@@ -187,7 +186,7 @@ export function MemoryPanel({ sessionId, isMobile }: MemoryPanelProps) {
             className={cn(
               "flex-1 px-2 py-1.5 rounded-md text-[11px] font-medium transition-colors capitalize",
               activeTab === tab
-                ? "bg-cyan-500/20 text-cyan-300"
+                ? "bg-[var(--accent)]/15 text-[var(--accent)]"
                 : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
             )}
           >
@@ -282,21 +281,22 @@ export function MemoryPanel({ sessionId, isMobile }: MemoryPanelProps) {
       {activeTab === "search" && (
         <div className="space-y-3 animate-fade-in">
           <div className="flex gap-2">
-            <input
+            <Input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               placeholder="Search archival memory..."
-              className="flex-1 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+              className="flex-1"
             />
-            <button
+            <Button
               onClick={handleSearch}
               disabled={isSearching || !searchQuery.trim()}
-              className="px-3 py-2 rounded-lg bg-cyan-500/20 text-cyan-300 text-sm font-medium hover:bg-cyan-500/30 transition-colors disabled:opacity-50"
+              variant="outline"
+              size="sm"
             >
               Search
-            </button>
+            </Button>
           </div>
 
           {isSearching && <Skeleton className="h-20 rounded-lg" />}
@@ -341,21 +341,16 @@ export function MemoryPanel({ sessionId, isMobile }: MemoryPanelProps) {
             value={insertContent}
             onChange={(e) => setInsertContent(e.target.value)}
             placeholder="Enter knowledge to store in archival memory..."
-            className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-1 focus:ring-cyan-500/50 resize-none"
+            className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)] text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]/50 resize-none"
             rows={4}
           />
-          <button
+          <Button
             onClick={handleInsert}
             disabled={isInserting || !insertContent.trim()}
-            className={cn(
-              "w-full px-3 py-2 rounded-lg text-sm font-medium transition-all",
-              isInserting
-                ? "bg-cyan-500/20 text-cyan-300 cursor-not-allowed"
-                : "bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:opacity-90"
-            )}
+            className="w-full text-sm"
           >
             {isInserting ? "Storing..." : "Store in Archival Memory"}
-          </button>
+          </Button>
         </div>
       )}
     </div>

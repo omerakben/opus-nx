@@ -396,7 +396,7 @@ export const ThinkingNode = memo(function ThinkingNode({
               checkpointState.verdict === "disagree" && "text-red-400"
             )}>
               <Check className="w-3 h-3" />
-              {checkpointState.verdict === "verified" && "Verified by human operator"}
+              {checkpointState.verdict === "verified" && "Verified by Opus"}
               {checkpointState.verdict === "questionable" && "Flagged as questionable"}
               {checkpointState.verdict === "disagree" && "Correction submitted — new branch created"}
             </div>

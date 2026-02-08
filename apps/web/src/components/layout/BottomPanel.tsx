@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { ThinkingStream } from "@/components/thinking";
 
 interface BottomPanelProps {
@@ -33,6 +35,8 @@ export function BottomPanel({
   elapsedMs,
   isMobile,
 }: BottomPanelProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   if (isMobile) {
     return (
       <div className="h-full">
@@ -56,7 +60,13 @@ export function BottomPanel({
   }
 
   return (
-    <div className="h-64 border-t border-[var(--border)]" data-tour="thinking-input">
+    <div
+      className={cn(
+        "border-t border-[var(--border)] transition-[height] duration-300 ease-out",
+        isExpanded ? "h-[50vh]" : "h-64"
+      )}
+      data-tour="thinking-input"
+    >
       <ThinkingStream
         thinking={thinking}
         tokenCount={tokenCount}
@@ -70,6 +80,8 @@ export function BottomPanel({
         compactionCount={compactionCount}
         compactionSummary={compactionSummary}
         elapsedMs={elapsedMs}
+        isExpanded={isExpanded}
+        onToggleExpand={() => setIsExpanded(!isExpanded)}
       />
     </div>
   );

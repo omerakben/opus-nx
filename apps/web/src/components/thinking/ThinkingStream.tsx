@@ -24,11 +24,13 @@ type ThinkingPhase = "analyzing" | "reasoning" | "deciding" | "concluding" | "co
 
 const PHASE_CONFIG: Record<string, { icon: typeof Brain; label: string; color: string; bgColor: string }> = {
   analyzing: { icon: Search, label: "Analyzing", color: "text-blue-400", bgColor: "bg-blue-400" },
-  reasoning: { icon: Brain, label: "Reasoning", color: "text-violet-400", bgColor: "bg-violet-400" },
+  reasoning: { icon: Brain, label: "Reasoning", color: "text-amber-500", bgColor: "bg-amber-500" },
   deciding: { icon: Scale, label: "Deciding", color: "text-amber-400", bgColor: "bg-amber-400" },
   concluding: { icon: CheckCircle, label: "Concluding", color: "text-green-400", bgColor: "bg-green-400" },
   compacting: { icon: Database, label: "Compacting", color: "text-amber-400", bgColor: "bg-amber-400" },
 };
+
+const EFFORT_LEVELS = ["low", "medium", "high", "max"] as const;
 
 interface ThinkingStreamProps {
   thinking: string;
@@ -44,6 +46,9 @@ interface ThinkingStreamProps {
   compactionSummary?: string | null;
   elapsedMs?: number;
   isMobile?: boolean;
+  /** Controlled expand/collapse from parent */
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
 }
 
 function formatElapsed(ms: number): string {
@@ -68,10 +73,11 @@ export function ThinkingStream({
   compactionSummary,
   elapsedMs = 0,
   isMobile,
+  isExpanded = false,
+  onToggleExpand,
 }: ThinkingStreamProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [effort, setEffort] = useState<string>("high");
-  const [isExpanded, setIsExpanded] = useState(false);
 
   // Auto-scroll to bottom as content streams in
   useEffect(() => {
@@ -129,22 +135,25 @@ export function ThinkingStream({
           <TokenCounter count={tokenCount} isStreaming={isStreaming} />
           {/* Effort selector — segmented control */}
           {!isStreaming && (
-            <div className="relative flex items-center rounded-lg bg-[var(--muted)]/30 p-0.5 overflow-hidden">
+            <div className="relative flex items-center rounded-lg border border-[var(--border)] bg-[var(--muted)]/40 p-0.5 overflow-hidden">
               {/* Sliding indicator */}
               <div
-                className="absolute top-0.5 bottom-0.5 w-1/4 bg-[var(--card)] shadow-sm rounded-md transition-transform duration-200 ease-out"
-                style={{ transform: `translateX(${(["low", "medium", "high", "max"] as const).indexOf(effort as "low" | "medium" | "high" | "max") * 100}%)` }}
+                className="absolute top-0.5 bottom-0.5 rounded-md bg-[var(--card)] shadow-sm border border-[var(--border)] transition-transform duration-200 ease-out"
+                style={{
+                  width: `${100 / EFFORT_LEVELS.length}%`,
+                  transform: `translateX(${EFFORT_LEVELS.indexOf(effort as typeof EFFORT_LEVELS[number]) * 100}%)`,
+                }}
               />
-              {(["low", "medium", "high", "max"] as const).map((e) => (
+              {EFFORT_LEVELS.map((e) => (
                 <button
                   key={e}
                   onClick={() => setEffort(e)}
                   className={cn(
-                    "relative z-10 px-1.5 py-0.5 text-[10px] transition-colors",
-                    isMobile && "px-2 py-1 text-xs",
+                    "relative z-10 px-2 py-0.5 text-[11px] font-medium rounded-md transition-colors cursor-pointer",
+                    isMobile && "px-2.5 py-1 text-xs",
                     effort === e
                       ? "text-[var(--foreground)]"
-                      : "text-[var(--muted-foreground)]"
+                      : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
                   )}
                   title={`${e} effort thinking${e === "max" ? " (Opus 4.6 exclusive)" : ""}`}
                 >
@@ -169,21 +178,19 @@ export function ThinkingStream({
               Clear
             </Button>
           )}
-          {!isMobile && (
+          {!isMobile && onToggleExpand && (
             <button
-              onClick={() => setIsExpanded(!isExpanded)}
+              onClick={onToggleExpand}
               className="h-6 w-6 flex items-center justify-center rounded hover:bg-[var(--muted)] transition-colors"
+              aria-label={isExpanded ? "Collapse thinking panel" : "Expand thinking panel"}
             >
-              {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+              {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
             </button>
           )}
         </div>
       </CardHeader>
 
-      <CardContent className={cn(
-        "flex-1 flex flex-col p-0 overflow-hidden transition-[max-height] duration-300 ease-out",
-        !isMobile && isExpanded && "max-h-[50vh]"
-      )}>
+      <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
         {/* Phase progress bar */}
         {isStreaming && phase && (
           <div className="px-4 py-1.5 border-b border-[var(--border)] bg-[var(--card)]">
@@ -240,7 +247,7 @@ export function ThinkingStream({
         <div
           ref={containerRef}
           className={cn(
-            "flex-1 overflow-y-auto p-4 font-mono text-sm leading-relaxed bg-[var(--background)] border-l-2 border-violet-500/30",
+            "flex-1 overflow-y-auto p-4 font-mono text-sm leading-relaxed bg-[var(--background)] border-l-2 border-amber-500/30",
             isMobile && "text-xs p-3"
           )}
         >

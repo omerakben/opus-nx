@@ -2,8 +2,8 @@
 
 import { useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { getConfidenceColor, getConfidenceTextClass, getConfidenceBgClass } from "@/lib/colors";
-import { Badge, Card, CardContent, Skeleton } from "@/components/ui";
+import { getConfidenceColor, getConfidenceTextClass } from "@/lib/colors";
+import { Badge, Button, Card, CardContent, Skeleton } from "@/components/ui";
 
 // ============================================================
 // Types
@@ -84,10 +84,9 @@ interface VerificationPanelProps {
   sessionId: string | null;
   /** Pre-populate with steps from a thinking node */
   initialSteps?: Array<{ content: string; type?: string }>;
-  isMobile?: boolean;
 }
 
-export function VerificationPanel({ sessionId, initialSteps, isMobile }: VerificationPanelProps) {
+export function VerificationPanel({ sessionId: _sessionId, initialSteps }: VerificationPanelProps) {
   const [isVerifying, setIsVerifying] = useState(false);
   const [result, setResult] = useState<VerificationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -149,25 +148,20 @@ export function VerificationPanel({ sessionId, initialSteps, isMobile }: Verific
 
       {/* Verify Button */}
       {initialSteps && initialSteps.length > 0 && !result && (
-        <button
+        <Button
           onClick={() => handleVerify(initialSteps)}
           disabled={isVerifying}
-          className={cn(
-            "w-full px-3 py-2 rounded-lg text-sm font-medium transition-all",
-            isVerifying
-              ? "bg-blue-500/20 text-blue-300 cursor-not-allowed"
-              : "bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:opacity-90"
-          )}
+          className="w-full text-sm"
         >
           {isVerifying ? (
             <span className="flex items-center justify-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-blue-300 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
               Verifying {initialSteps.length} steps...
             </span>
           ) : (
             `Verify ${initialSteps.length} Reasoning Steps`
           )}
-        </button>
+        </Button>
       )}
 
       {/* Error */}
@@ -291,7 +285,7 @@ export function VerificationPanel({ sessionId, initialSteps, isMobile }: Verific
                       )}
 
                       {step.suggestedCorrection && (
-                        <div className="px-2 py-1.5 rounded bg-blue-500/10 border border-blue-500/20 text-[10px] text-blue-300">
+                        <div className="px-2 py-1.5 rounded bg-[var(--accent)]/10 border border-[var(--accent)]/20 text-[10px] text-[var(--accent)]">
                           <span className="font-medium">Suggested fix:</span>{" "}
                           {step.suggestedCorrection}
                         </div>

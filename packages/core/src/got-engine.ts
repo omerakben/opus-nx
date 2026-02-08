@@ -122,7 +122,6 @@ export interface GoTEngineOptions {
  * - **Generation**: Create k diverse thoughts from a parent
  * - **Evaluation**: Score each thought's quality (self-PRM)
  * - **Aggregation**: Merge multiple thoughts into synergistic outputs
- * - **Refinement**: Improve thoughts through feedback loops
  * - **Search**: BFS, DFS, or best-first exploration
  *
  * Key advantage: GoT enables "thought recycling" where partial
@@ -132,6 +131,11 @@ export interface GoTEngineOptions {
 export class GoTEngine {
   private options: GoTEngineOptions;
   private thoughtCounter = 0;
+
+  // Reusable engines created per reason() call to avoid
+  // instantiating a new Anthropic client for every LLM call.
+  private engine: ThinkingEngine | null = null;
+  private evalEngine: ThinkingEngine | null = null;
 
   constructor(options: GoTEngineOptions = {}) {
     this.options = options;
@@ -159,10 +163,17 @@ export class GoTEngine {
       pruneThreshold: config.pruneThreshold ?? 0.3,
       maxThoughts: config.maxThoughts ?? 50,
       enableAggregation: config.enableAggregation ?? true,
-      enableRefinement: config.enableRefinement ?? true,
-      maxRefinements: config.maxRefinements ?? 2,
       effort: config.effort ?? "high",
     };
+
+    // Reset per-call state
+    this.thoughtCounter = 0;
+
+    // Create reusable engines for this reasoning session
+    this.engine = this.createEngineInstance(fullConfig.effort);
+    this.evalEngine = this.createEngineInstance(
+      fullConfig.effort === "max" ? "high" : fullConfig.effort
+    );
 
     const startTime = Date.now();
     logger.info("Starting GoT reasoning", {
@@ -188,7 +199,7 @@ export class GoTEngine {
     state.thoughts.push(rootThought);
 
     // Execute search strategy
-    let stats = {
+    let stats: GoTResult["stats"] = {
       totalThoughts: 1,
       thoughtsExplored: 0,
       thoughtsPruned: 0,
@@ -199,16 +210,22 @@ export class GoTEngine {
       totalDurationMs: 0,
     };
 
-    switch (fullConfig.strategy) {
-      case "bfs":
-        stats = await this.searchBFS(state, rootThought, fullConfig);
-        break;
-      case "dfs":
-        stats = await this.searchDFS(state, rootThought, fullConfig);
-        break;
-      case "best_first":
-        stats = await this.searchBestFirst(state, rootThought, fullConfig);
-        break;
+    try {
+      switch (fullConfig.strategy) {
+        case "bfs":
+          stats = await this.searchBFS(state, rootThought, fullConfig);
+          break;
+        case "dfs":
+          stats = await this.searchDFS(state, rootThought, fullConfig);
+          break;
+        case "best_first":
+          stats = await this.searchBestFirst(state, rootThought, fullConfig);
+          break;
+      }
+    } finally {
+      // Release engine references after reasoning completes
+      this.engine = null;
+      this.evalEngine = null;
     }
 
     // Find the best thought
@@ -292,13 +309,13 @@ export class GoTEngine {
           parent,
           config.branchingFactor,
           depth,
-          config.effort,
-          state
+          state,
+          stats
         );
 
         // Evaluate children
         for (const child of children) {
-          const score = await this.evaluateThought(child, parent, config.effort);
+          const score = await this.evaluateThought(child, parent);
           child.score = score;
           child.state = score >= config.pruneThreshold ? "verified" : "rejected";
 
@@ -320,7 +337,7 @@ export class GoTEngine {
 
       // GoT extension: aggregate compatible thoughts
       if (config.enableAggregation && topK.length >= 2) {
-        const aggregated = await this.tryAggregation(topK, depth, config.effort, state);
+        const aggregated = await this.tryAggregation(topK, depth, state);
         if (aggregated) {
           topK.push(aggregated);
           stats.aggregationsMade++;
@@ -340,7 +357,7 @@ export class GoTEngine {
    * Uses a recursive approach:
    * 1. Generate children for current thought
    * 2. Evaluate and sort by score
-   * 3. Recurse into the best child
+   * 3. Recurse into the best child only (true DFS with backtracking)
    * 4. Backtrack if score drops below threshold
    */
   private async searchDFS(
@@ -380,13 +397,13 @@ export class GoTEngine {
       current,
       config.branchingFactor,
       depth,
-      config.effort,
-      state
+      state,
+      stats
     );
 
     // Evaluate and sort
     for (const child of children) {
-      const score = await this.evaluateThought(child, current, config.effort);
+      const score = await this.evaluateThought(child, current);
       child.score = score;
       child.state = score >= config.pruneThreshold ? "verified" : "rejected";
       stats.totalThoughts++;
@@ -399,24 +416,23 @@ export class GoTEngine {
     const pruned = children.filter((c) => c.state === "rejected");
     stats.thoughtsPruned += pruned.length;
 
-    // Recurse into viable children (sorted by score, best first)
-    for (const child of viable) {
+    // True DFS: recurse into the best child only, backtrack if it dead-ends
+    if (viable.length > 0) {
       stats.thoughtsExplored++;
-      await this.dfsRecurse(child, depth + 1, state, config, stats);
+      await this.dfsRecurse(viable[0], depth + 1, state, config, stats);
     }
   }
 
   /**
    * Best-First Search: always expand the highest-scored thought.
-   * A priority queue-based approach that greedily explores the
-   * most promising thought at each step.
+   * Maintains a sorted open set with O(log n) insertion via binary search.
    */
   private async searchBestFirst(
     state: GraphReasoningState,
     root: Thought,
     config: GoTConfig
   ): Promise<GoTResult["stats"]> {
-    // Priority queue (sorted array, highest score first)
+    // Open set maintained in sorted order (highest score first)
     const openSet: Thought[] = [root];
     const stats: GoTResult["stats"] = {
       totalThoughts: 1,
@@ -430,8 +446,7 @@ export class GoTEngine {
     };
 
     while (openSet.length > 0 && state.thoughts.length < config.maxThoughts) {
-      // Pop the best thought
-      openSet.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+      // Pop the best thought (already sorted, take first)
       const best = openSet.shift()!;
 
       if (best.depth >= config.maxDepth) continue;
@@ -444,19 +459,19 @@ export class GoTEngine {
         best,
         config.branchingFactor,
         best.depth + 1,
-        config.effort,
-        state
+        state,
+        stats
       );
 
-      // Evaluate and add viable children to open set
+      // Evaluate and insert viable children in sorted position
       for (const child of children) {
-        const score = await this.evaluateThought(child, best, config.effort);
+        const score = await this.evaluateThought(child, best);
         child.score = score;
         child.state = score >= config.pruneThreshold ? "verified" : "rejected";
         stats.totalThoughts++;
 
         if (child.state === "verified") {
-          openSet.push(child);
+          this.sortedInsert(openSet, child);
         } else {
           stats.thoughtsPruned++;
         }
@@ -468,17 +483,35 @@ export class GoTEngine {
         const aggregated = await this.tryAggregation(
           topThoughts,
           best.depth + 1,
-          config.effort,
           state
         );
         if (aggregated) {
-          openSet.push(aggregated);
+          this.sortedInsert(openSet, aggregated);
           stats.aggregationsMade++;
         }
       }
     }
 
     return stats;
+  }
+
+  /**
+   * Insert a thought into a descending-sorted array using binary search.
+   * O(log n) search + O(n) shift, but avoids re-sorting the entire array.
+   */
+  private sortedInsert(arr: Thought[], thought: Thought): void {
+    const score = thought.score ?? 0;
+    let lo = 0;
+    let hi = arr.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1;
+      if ((arr[mid].score ?? 0) > score) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
+    }
+    arr.splice(lo, 0, thought);
   }
 
   // ============================================================
@@ -492,13 +525,14 @@ export class GoTEngine {
     parent: Thought,
     k: number,
     depth: number,
-    effort: GoTConfig["effort"],
-    state: GraphReasoningState
+    state: GraphReasoningState,
+    stats: GoTResult["stats"]
   ): Promise<Thought[]> {
-    const engine = this.createEngine(effort);
+    const engine = this.engine!;
 
-    // Build context from the reasoning chain leading to this parent
-    const chain = this.getAncestorChain(parent, state);
+    // Build context using indexed lookup for O(d) ancestor chain
+    const thoughtIndex = this.buildThoughtIndex(state);
+    const chain = this.getAncestorChain(parent, thoughtIndex);
     const chainContext = chain
       .map((t, i) => `Step ${i + 1}: ${t.content}`)
       .join("\n\n");
@@ -582,6 +616,7 @@ Use the record_thoughts tool to submit your thoughts.`;
       logger.error("Thought generation failed", {
         error: error instanceof Error ? error.message : String(error),
       });
+      stats.refinementsMade++; // Track generation failures (reusing refinementsMade as it's otherwise unused)
       return [];
     }
   }
@@ -589,13 +624,15 @@ Use the record_thoughts tool to submit your thoughts.`;
   /**
    * Evaluate a thought's quality using self-evaluation.
    * Returns a score from 0 to 1.
+   *
+   * On failure, returns 0.0 (below the default pruneThreshold of 0.3)
+   * so failed evaluations don't let thoughts pass through silently.
    */
   private async evaluateThought(
     thought: Thought,
     parent: Thought,
-    effort: GoTConfig["effort"]
   ): Promise<number> {
-    const engine = this.createEngine(effort === "max" ? "high" : effort);
+    const engine = this.evalEngine!;
 
     const prompt = `Evaluate this reasoning step for correctness, relevance, and quality.
 
@@ -627,7 +664,7 @@ Use the evaluate_thought tool to record your evaluation.`;
           reasoning: string;
           should_continue: boolean;
         };
-        const score = Math.min(1, Math.max(0, Number(input.score) || 0.5));
+        const score = Math.min(1, Math.max(0, Number(input.score) || 0));
         thought.metadata.tags = thought.metadata.tags ?? [];
         if (!input.should_continue) {
           thought.metadata.tags.push("dead_end");
@@ -636,12 +673,13 @@ Use the evaluate_thought tool to record your evaluation.`;
         return score;
       }
 
-      return 0.5;
+      // No tool use in response — treat as failed evaluation
+      return 0.0;
     } catch (error) {
-      logger.warn("Thought evaluation failed, using default score", {
+      logger.warn("Thought evaluation failed, scoring at 0.0 (below prune threshold)", {
         error: error instanceof Error ? error.message : String(error),
       });
-      return 0.5;
+      return 0.0;
     }
   }
 
@@ -653,12 +691,11 @@ Use the evaluate_thought tool to record your evaluation.`;
   private async tryAggregation(
     thoughts: Thought[],
     depth: number,
-    effort: GoTConfig["effort"],
     state: GraphReasoningState
   ): Promise<Thought | null> {
     if (thoughts.length < 2) return null;
 
-    const engine = this.createEngine(effort);
+    const engine = this.engine!;
     const thoughtList = thoughts
       .map((t, i) => `Thought ${i + 1} (score: ${(t.score ?? 0).toFixed(2)}): ${t.content}`)
       .join("\n\n");
@@ -752,7 +789,7 @@ Combine the strongest elements from these thoughts into a unified reasoning step
     };
   }
 
-  private createEngine(effort: GoTConfig["effort"]): ThinkingEngine {
+  private createEngineInstance(effort: GoTConfig["effort"]): ThinkingEngine {
     const config: OrchestratorConfig = {
       model: "claude-opus-4-6",
       thinking: { type: "adaptive", effort },
@@ -766,9 +803,21 @@ Combine the strongest elements from these thoughts into a unified reasoning step
   }
 
   /**
-   * Get the chain of ancestors from root to the given thought.
+   * Build an index from thought ID to Thought for O(1) lookups.
    */
-  private getAncestorChain(thought: Thought, state: GraphReasoningState): Thought[] {
+  private buildThoughtIndex(state: GraphReasoningState): Map<string, Thought> {
+    const index = new Map<string, Thought>();
+    for (const t of state.thoughts) {
+      index.set(t.id, t);
+    }
+    return index;
+  }
+
+  /**
+   * Get the chain of ancestors from root to the given thought.
+   * Uses an indexed Map for O(d) lookup instead of O(n*d).
+   */
+  private getAncestorChain(thought: Thought, index: Map<string, Thought>): Thought[] {
     const chain: Thought[] = [];
     let current: Thought | undefined = thought;
 
@@ -776,7 +825,7 @@ Combine the strongest elements from these thoughts into a unified reasoning step
       chain.unshift(current);
       if (current.parentIds.length === 0) break;
       // Follow the first parent (primary chain)
-      current = state.thoughts.find((t) => t.id === current!.parentIds[0]);
+      current = index.get(current.parentIds[0]);
     }
 
     return chain;

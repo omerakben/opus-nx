@@ -9,7 +9,6 @@ const GoTRequestSchema = z.object({
   branchingFactor: z.number().int().min(1).max(10).default(3),
   maxThoughts: z.number().int().min(1).max(100).default(50),
   enableAggregation: z.boolean().default(true),
-  enableRefinement: z.boolean().default(true),
   effort: z.enum(["low", "medium", "high", "max"]).default("high"),
 });
 

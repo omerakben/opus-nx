@@ -368,7 +368,7 @@ Use the verify_step tool to record your evaluation.`;
     const confidences = verifications.map((v) => v.confidence);
     if (confidences.length >= 3) {
       const isDecreasing = confidences.every((c, i) =>
-        i === 0 || c <= confidences[i - 1] + 0.1
+        i === 0 || c <= confidences[i - 1]
       );
       if (isDecreasing && confidences[0] - confidences[confidences.length - 1] > 0.2) {
         patterns.push({

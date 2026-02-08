@@ -65,8 +65,6 @@ describe("GoT Types", () => {
         pruneThreshold: 0.3,
         maxThoughts: 50,
         enableAggregation: true,
-        enableRefinement: true,
-        maxRefinements: 2,
         effort: "high",
       };
 
@@ -76,7 +74,6 @@ describe("GoT Types", () => {
       expect(defaults.pruneThreshold).toBe(0.3);
       expect(defaults.maxThoughts).toBe(50);
       expect(defaults.enableAggregation).toBe(true);
-      expect(defaults.enableRefinement).toBe(true);
     });
   });
 

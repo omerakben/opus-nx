@@ -207,10 +207,6 @@ export const GoTConfigSchema = z.object({
   maxThoughts: z.number().int().min(1).default(50),
   /** Whether to allow thought aggregation (GoT-specific) */
   enableAggregation: z.boolean().default(true),
-  /** Whether to allow thought refinement (feedback loops) */
-  enableRefinement: z.boolean().default(true),
-  /** Number of refinement iterations allowed */
-  maxRefinements: z.number().int().min(0).max(5).default(2),
   /** Effort level for the LLM */
   effort: z.enum(["low", "medium", "high", "max"]).default("high"),
 });
