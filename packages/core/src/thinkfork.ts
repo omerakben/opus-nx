@@ -174,16 +174,42 @@ export class ThinkForkEngine {
     }
 
     // 1. Execute all branches concurrently (with per-branch human guidance)
+    // FIX: Use Promise.allSettled instead of Promise.all for resilience.
+    // This ensures partial results are returned even if some branches fail
+    // due to unexpected errors (OOM, stack overflow, etc.) that escape
+    // the internal try-catch in executeBranch.
     const branchPromises = styles.map((style) =>
       this.executeBranch(style, query, effort, additionalContext, guidanceMap.get(style))
     );
 
-    const branches = await Promise.all(branchPromises);
+    const settledResults = await Promise.allSettled(branchPromises);
 
-    // Collect branch errors
-    for (const branch of branches) {
-      if (branch.error) {
-        errors.push(`${branch.style}: ${branch.error}`);
+    // Process settled results - extract successful branches and handle rejections
+    const branches: ForkBranchResult[] = [];
+    for (let i = 0; i < settledResults.length; i++) {
+      const result = settledResults[i];
+      const style = styles[i];
+
+      if (result.status === "fulfilled") {
+        branches.push(result.value);
+        // Collect errors from branches that completed but have internal errors
+        if (result.value.error) {
+          errors.push(`${result.value.style}: ${result.value.error}`);
+        }
+      } else {
+        // Handle unexpected rejections (should be rare since executeBranch catches errors)
+        const errorMsg = result.reason instanceof Error
+          ? result.reason.message
+          : String(result.reason);
+        logger.error(`Branch ${style} rejected unexpectedly`, { error: errorMsg });
+        errors.push(`${style}: Unexpected failure - ${errorMsg}`);
+
+        // Create a failed branch result so we have consistent output
+        branches.push(this.createFailedBranchResult(
+          style,
+          `Unexpected failure: ${errorMsg}`,
+          0
+        ));
       }
     }
 

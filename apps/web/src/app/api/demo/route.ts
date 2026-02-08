@@ -8,11 +8,18 @@ import {
 } from "@/lib/db";
 import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
 import { generateAuthSignature } from "@/lib/auth";
+import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
+
+// Rate limit: 5 demo sessions per hour per IP
+const DEMO_RATE_LIMIT = {
+  windowMs: 60 * 60 * 1000, // 1 hour
+  maxRequests: 5,
+};
 
 /**
  * POST /api/demo
  * One-click demo: authenticates, seeds demo data, returns session ID.
- * Gated behind DEMO_MODE env flag to prevent abuse in production.
+ * Gated behind DEMO_MODE env flag and rate-limited to prevent abuse.
  */
 export async function POST(request: Request) {
   const correlationId = getCorrelationId(request);
@@ -24,6 +31,22 @@ export async function POST(request: Request) {
       code: "DEMO_DISABLED",
       message: "Demo mode is not enabled",
       correlationId,
+    });
+  }
+
+  // Rate limit check
+  const clientIP = getClientIP(request);
+  const rateCheck = checkRateLimit(clientIP, DEMO_RATE_LIMIT);
+  if (!rateCheck.allowed) {
+    return jsonError({
+      status: 429,
+      code: "RATE_LIMITED",
+      message: "Too many demo requests. Please try again later.",
+      correlationId,
+      recoverable: true,
+      details: {
+        retryAfter: Math.ceil((rateCheck.resetTime - Date.now()) / 1000),
+      },
     });
   }
 

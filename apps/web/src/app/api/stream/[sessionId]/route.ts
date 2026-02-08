@@ -1,5 +1,6 @@
 import { POST as streamPost } from "../../thinking/stream/route";
 import { getCorrelationId, jsonError } from "@/lib/api-response";
+import { isValidUuid } from "@/lib/validation";
 
 interface RouteParams {
   params: Promise<{ sessionId: string }>;
@@ -13,6 +14,18 @@ interface RouteParams {
 export async function GET(request: Request, { params }: RouteParams) {
   const correlationId = getCorrelationId(request);
   const { sessionId } = await params;
+
+  // FIX: Validate UUID format before forwarding to stream route.
+  // This prevents malformed session IDs from reaching the database layer.
+  if (!isValidUuid(sessionId)) {
+    return jsonError({
+      status: 400,
+      code: "INVALID_UUID_FORMAT",
+      message: "Invalid session ID format. Expected a valid UUID.",
+      correlationId,
+      recoverable: true,
+    });
+  }
 
   const url = new URL(request.url);
   const query = url.searchParams.get("query");

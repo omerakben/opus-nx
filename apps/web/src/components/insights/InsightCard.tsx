@@ -1,16 +1,15 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-import { formatRelativeTime, truncate } from "@/lib/utils";
+import { useState } from "react";
+import { cn, formatRelativeTime, truncate } from "@/lib/utils";
 import { Badge, Card, CardContent } from "@/components/ui";
 import {
   INSIGHT_COLORS,
   INSIGHT_ICONS,
   INSIGHT_LABELS,
-  type InsightType,
 } from "@/lib/colors";
 import type { Insight } from "@/lib/api";
-import { Link } from "lucide-react";
+import { Link, ChevronDown } from "lucide-react";
 
 interface InsightCardProps {
   insight: Insight;
@@ -18,14 +17,20 @@ interface InsightCardProps {
 }
 
 export function InsightCard({ insight, onEvidenceClick }: InsightCardProps) {
-  const icon = INSIGHT_ICONS[insight.insightType];
+  const [isEvidenceExpanded, setIsEvidenceExpanded] = useState(false);
+  const Icon = INSIGHT_ICONS[insight.insightType];
   const label = INSIGHT_LABELS[insight.insightType];
   const color = INSIGHT_COLORS[insight.insightType];
 
   const confidencePercent = Math.round(insight.confidence * 100);
+  const hasMoreEvidence = insight.evidence.length > 1;
+  const visibleEvidence = isEvidenceExpanded
+    ? insight.evidence
+    : insight.evidence.slice(0, 1);
+  const hiddenCount = insight.evidence.length - 1;
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden insight-card card-hover-glow">
       <CardContent className="p-3">
         {/* Header */}
         <div className="flex items-start justify-between gap-2 mb-2">
@@ -34,7 +39,7 @@ export function InsightCard({ insight, onEvidenceClick }: InsightCardProps) {
             className="text-[10px] px-1.5 py-0"
             style={{ borderColor: color, color }}
           >
-            {icon} {label}
+            <Icon className="w-3 h-3 mr-1" /> {label}
           </Badge>
           <span
             className="text-[10px] font-medium px-1.5 py-0.5 rounded"
@@ -56,12 +61,21 @@ export function InsightCard({ insight, onEvidenceClick }: InsightCardProps) {
               <Link className="w-3 h-3" />
               Evidence ({insight.evidence.length})
             </div>
-            <div className="space-y-1">
-              {insight.evidence.slice(0, 2).map((ev, i) => (
+
+            {/* Expandable evidence section */}
+            <div
+              className="space-y-1 overflow-hidden transition-[max-height] duration-300 ease-out"
+              style={{
+                maxHeight: isEvidenceExpanded
+                  ? `${insight.evidence.length * 80}px`
+                  : "72px",
+              }}
+            >
+              {visibleEvidence.map((ev, i) => (
                 <button
                   key={i}
                   onClick={() => onEvidenceClick?.(ev.nodeId)}
-                  className="w-full text-left p-1.5 rounded bg-[var(--muted)] hover:bg-[var(--border)] transition-colors"
+                  className="w-full text-left p-1.5 rounded bg-[var(--muted)] hover:bg-[var(--border)] transition-colors focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--card)] outline-none"
                 >
                   <p className="text-[11px] text-[var(--foreground)] line-clamp-2">
                     {truncate(ev.excerpt, 80)}
@@ -71,12 +85,25 @@ export function InsightCard({ insight, onEvidenceClick }: InsightCardProps) {
                   </p>
                 </button>
               ))}
-              {insight.evidence.length > 2 && (
-                <p className="text-[10px] text-[var(--muted-foreground)] text-center">
-                  +{insight.evidence.length - 2} more
-                </p>
-              )}
             </div>
+
+            {/* Show more / Show less toggle */}
+            {hasMoreEvidence && (
+              <button
+                onClick={() => setIsEvidenceExpanded(!isEvidenceExpanded)}
+                className="mt-1.5 flex items-center gap-1 text-[10px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--card)] outline-none rounded px-1 py-0.5"
+              >
+                <ChevronDown
+                  className={cn(
+                    "w-3 h-3 transition-transform duration-200",
+                    isEvidenceExpanded && "rotate-180"
+                  )}
+                />
+                {isEvidenceExpanded
+                  ? "Show less"
+                  : `Show ${hiddenCount} more`}
+              </button>
+            )}
           </div>
         )}
 

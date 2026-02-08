@@ -1,6 +1,6 @@
 "use client";
 
-import { Brain, GithubIcon, LogOut } from "lucide-react";
+import { GithubIcon, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface HeaderProps {
@@ -20,11 +20,19 @@ export function Header({ isMobile }: HeaderProps) {
     return (
       <header className="h-12 border-b border-[var(--border)] bg-[var(--card)] px-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
-          <div className="p-1 rounded-lg bg-gradient-to-br from-blue-500 to-violet-500">
-            <Brain className="w-4 h-4 text-white" />
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/opus_nx_icon.svg"
+            alt="Opus Nx"
+            width={28}
+            height={28}
+            className="rounded-lg"
+          />
           <span className="font-semibold text-base text-[var(--foreground)]">
             Opus Nx
+          </span>
+          <span className="text-[10px] text-[var(--muted-foreground)]">
+            Cognitive Architecture
           </span>
         </div>
 
@@ -54,10 +62,15 @@ export function Header({ isMobile }: HeaderProps) {
     <header className="h-14 border-b border-[var(--border)] bg-[var(--card)] px-4 flex items-center justify-between">
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-violet-500">
-            <Brain className="w-5 h-5 text-white" />
-          </div>
-          <span className="font-semibold text-lg text-[var(--foreground)]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/opus_nx_icon.svg"
+            alt="Opus Nx"
+            width={36}
+            height={36}
+            className="rounded-lg"
+          />
+          <span className="font-bold text-lg text-[var(--foreground)]">
             Opus Nx
           </span>
         </div>

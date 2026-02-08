@@ -107,6 +107,32 @@ export async function createSession(): Promise<ApiResponse<Session>> {
   });
 }
 
+export async function archiveSession(
+  sessionId: string
+): Promise<ApiResponse<Session>> {
+  return fetchApi<Session>(`/api/sessions/${sessionId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status: "archived" }),
+  });
+}
+
+export async function restoreSession(
+  sessionId: string
+): Promise<ApiResponse<Session>> {
+  return fetchApi<Session>(`/api/sessions/${sessionId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status: "active" }),
+  });
+}
+
+export async function deleteSession(
+  sessionId: string
+): Promise<ApiResponse<{ deleted: boolean }>> {
+  return fetchApi<{ deleted: boolean }>(`/api/sessions/${sessionId}`, {
+    method: "DELETE",
+  });
+}
+
 // ============================================================
 // Thinking API
 // ============================================================
@@ -306,4 +332,51 @@ export async function getSessionNodes(
   return fetchApi<{ nodes: ThinkingNode[]; edges: ReasoningEdge[] }>(
     `/api/sessions/${sessionId}/nodes`
   );
+}
+
+// ============================================================
+// Checkpoint API (Human-in-the-Loop Reasoning Correction)
+// ============================================================
+
+export type CheckpointVerdict = "verified" | "questionable" | "disagree";
+
+export interface CheckpointRequest {
+  verdict: CheckpointVerdict;
+  correction?: string;
+}
+
+export interface CheckpointAnnotation {
+  id: string;
+  verdict: CheckpointVerdict;
+  correction: string | null;
+  createdAt: string;
+}
+
+export interface AlternativeBranch {
+  nodeId: string;
+  reasoning: string;
+  confidence: number;
+}
+
+export interface CheckpointResponse {
+  annotation: CheckpointAnnotation;
+  alternativeBranch: AlternativeBranch | null;
+}
+
+/**
+ * Create a human checkpoint on a reasoning node.
+ *
+ * This enables human-in-the-loop reasoning correction:
+ * - Verify: Mark a step as correct
+ * - Questionable: Flag for review
+ * - Disagree: Provide correction and trigger re-reasoning
+ */
+export async function createCheckpoint(
+  nodeId: string,
+  request: CheckpointRequest
+): Promise<ApiResponse<CheckpointResponse>> {
+  return fetchApi<CheckpointResponse>(`/api/reasoning/${nodeId}/checkpoint`, {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
 }

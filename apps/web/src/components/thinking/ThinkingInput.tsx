@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback, type FormEvent } from "react";
-import { Button, Input } from "@/components/ui";
-import { Loader2, Send } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Input, NeuralSubmitButton } from "@/components/ui";
 
 interface ThinkingInputProps {
   onSubmit: (query: string) => void;
@@ -29,25 +29,18 @@ export function ThinkingInput({
   );
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
+    <form onSubmit={handleSubmit} className={cn("flex gap-2", isLoading && "animate-pulse")}>
       <Input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder={placeholder}
         disabled={isLoading}
-        className="flex-1"
+        className="flex-1 focus:border-[var(--accent)]/50 focus:shadow-[0_0_0_3px_rgba(139,92,246,0.1)]"
       />
-      <Button
-        type="submit"
-        disabled={!query.trim() || isLoading}
-        size="icon"
-      >
-        {isLoading ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          <Send className="w-4 h-4" />
-        )}
-      </Button>
+      <NeuralSubmitButton
+        disabled={!query.trim()}
+        isLoading={isLoading}
+      />
     </form>
   );
 }

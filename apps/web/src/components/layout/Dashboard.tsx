@@ -10,7 +10,7 @@ import { BottomPanel } from "./BottomPanel";
 import { MobileNav, type MobileView } from "./MobileNav";
 import { ThinkingGraph } from "@/components/graph";
 import { DemoTour } from "@/components/tour/DemoTour";
-import { useSession, useThinkingStream, useGraph, useLiveGraph, useIsMobile, useTour } from "@/lib/hooks";
+import { useSession, useThinkingStream, useGraph, useLiveGraph, useIsMobile, useTour, useSidebar, useRightSidebar } from "@/lib/hooks";
 import { getSessionInsights, type Insight } from "@/lib/api";
 
 export function Dashboard() {
@@ -25,7 +25,13 @@ export function Dashboard() {
     selectSession,
     createNewSession,
     refreshSessions,
+    archiveSession,
+    deleteSessionWithUndo,
   } = useSession();
+
+  // Sidebar state
+  const { isCollapsed: isSidebarCollapsed, toggle: toggleSidebar } = useSidebar();
+  const { isCollapsed: isRightCollapsed, toggle: toggleRightSidebar } = useRightSidebar();
 
   // Graph state
   const {
@@ -187,9 +193,9 @@ export function Dashboard() {
           {mobileView === "graph" && (
             <div className="h-full overflow-hidden relative animate-fade-in">
               {isStreaming && (
-                <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-[var(--card)]/90 border border-green-500/30 backdrop-blur-sm flex items-center gap-2 animate-pulse">
-                  <div className="w-2 h-2 rounded-full bg-green-500 animate-ping" />
-                  <span className="text-xs text-green-400 font-medium">
+                <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-[var(--card)]/90 border border-violet-500/30 backdrop-blur-sm flex items-center gap-2 animate-breathing">
+                  <div className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
+                  <span className="text-xs text-violet-400 font-medium">
                     Thinking...
                   </span>
                 </div>
@@ -241,6 +247,8 @@ export function Dashboard() {
                 onSelectSession={handleSelectSession}
                 onCreateSession={createNewSession}
                 onRefresh={refreshSessions}
+                onArchiveSession={archiveSession}
+                onDeleteSession={deleteSessionWithUndo}
                 isMobile
               />
             </div>
@@ -285,6 +293,10 @@ export function Dashboard() {
           onSelectSession={selectSession}
           onCreateSession={createNewSession}
           onRefresh={refreshSessions}
+          onArchiveSession={archiveSession}
+          onDeleteSession={deleteSessionWithUndo}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={toggleSidebar}
         />
 
         {/* Center: Graph + Stream */}
@@ -293,12 +305,12 @@ export function Dashboard() {
           <div className="flex-1 overflow-hidden relative" data-tour="reasoning-graph">
             {/* Streaming indicator overlay */}
             {isStreaming && (
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-[var(--card)]/90 border border-green-500/30 backdrop-blur-sm flex items-center gap-2 animate-pulse">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-ping" />
-                <span className="text-xs text-green-400 font-medium">
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-[var(--card)]/90 border border-violet-500/30 backdrop-blur-sm flex items-center gap-2 animate-breathing">
+                <div className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
+                <span className="text-xs text-violet-400 font-medium">
                   Claude is thinking...
                 </span>
-                <span className="text-[10px] text-[var(--muted-foreground)]">
+                <span className="text-[10px] text-[var(--muted-foreground)] opacity-70">
                   Graph updates on completion
                 </span>
               </div>
@@ -340,6 +352,9 @@ export function Dashboard() {
           sessionId={activeSession?.id ?? null}
           onEvidenceClick={handleEvidenceClick}
           onInsightsGenerated={handleInsightsGenerated}
+          isCollapsed={isRightCollapsed}
+          onToggleCollapse={toggleRightSidebar}
+          insightCount={insights.length}
         />
       </div>
 

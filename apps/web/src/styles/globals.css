@@ -10,6 +10,9 @@
   --muted-foreground: #a3a3a3;
   --accent: #3b82f6;
   --accent-foreground: #ffffff;
+  --neural-node-fill: #2A2228;
+  --neural-blue-fill: #7BA3BE;
+  --grid-dot: rgba(255, 255, 255, 0.06);
 }
 
 @media (prefers-color-scheme: light) {
@@ -23,6 +26,9 @@
     --muted-foreground: #737373;
     --accent: #3b82f6;
     --accent-foreground: #ffffff;
+    --neural-node-fill: #E8DDD8;
+    --neural-blue-fill: #5A8BA3;
+    --grid-dot: rgba(0, 0, 0, 0.05);
   }
 }
 
@@ -93,6 +99,22 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+/* Always-visible scrollbar for panels */
+.visible-scrollbar {
+  overflow-y: scroll;
+}
+.visible-scrollbar::-webkit-scrollbar-track {
+  background: var(--muted);
+  border-radius: 3px;
+}
+.visible-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+.visible-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--muted-foreground);
 }
 
@@ -230,6 +252,187 @@ body {
 /* Safe area for mobile bottom nav */
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Insight card stagger animation */
+@keyframes insightAppear {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.insight-card {
+  animation: insightAppear 0.5s ease-out backwards;
+}
+
+.insight-card:nth-child(1) { animation-delay: 0ms; }
+.insight-card:nth-child(2) { animation-delay: 100ms; }
+.insight-card:nth-child(3) { animation-delay: 200ms; }
+.insight-card:nth-child(4) { animation-delay: 300ms; }
+
+/* Button scale on press for tactile feedback */
+button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Focus ring for accessibility */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Card hover glow effect */
+.card-hover-glow {
+  transition: box-shadow 0.3s ease;
+}
+
+.card-hover-glow:hover {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.1);
+}
+
+/* Success checkmark animation */
+@keyframes checkmark {
+  0% { transform: scale(0); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.animate-checkmark {
+  animation: checkmark 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Skeleton shimmer effect */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--muted) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    var(--muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* ============================================================
+   Neural Submit Button
+   ============================================================ */
+
+/* Orbital spin for loading state satellites */
+@keyframes neuralOrbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Pulsing glow for loading state */
+@keyframes neuralPulse {
+  0%, 100% { opacity: 0.25; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.15); }
+}
+
+/* Particle outward drift on hover */
+@keyframes neuralParticleDrift {
+  0% { transform: translate(0, 0); opacity: 0.5; }
+  100% { transform: translate(var(--drift-x), var(--drift-y)); opacity: 0; }
+}
+
+/* Node brightness pulse on hover */
+@keyframes neuralNodeBrighten {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.4); }
+}
+
+.neural-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: var(--card);
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  flex-shrink: 0;
+}
+
+.neural-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.neural-btn:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.neural-btn:not(:disabled):hover {
+  border-color: #C4654A;
+  box-shadow: 0 0 12px rgba(196, 101, 74, 0.3);
+}
+
+.neural-btn:not(:disabled):hover .neural-particle {
+  animation: neuralParticleDrift 0.8s ease-out forwards;
+}
+
+.neural-btn:not(:disabled):hover .neural-node-brighten {
+  animation: neuralNodeBrighten 1.2s ease-in-out infinite;
+}
+
+.neural-glow {
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.neural-btn:not(:disabled):hover .neural-glow {
+  opacity: 0.5;
+  transform: scale(1.2);
+}
+
+.neural-orbit {
+  transform-origin: 20px 20px;
+}
+
+.neural-btn--loading .neural-orbit {
+  animation: neuralOrbit 2s linear infinite;
+}
+
+.neural-btn--loading .neural-glow {
+  animation: neuralPulse 1.5s ease-in-out infinite;
+}
+
+/* Safari MiniMap backdrop compatibility */
+.react-flow__minimap {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* Breathing animation for streaming banner */
+@keyframes breathing {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.animate-breathing {
+  animation: breathing 2.5s ease-in-out infinite;
+}
+
+/* Reduced motion guard */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Touch optimization for mobile */

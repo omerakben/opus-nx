@@ -63,10 +63,27 @@ export async function POST(request: Request) {
     // Create streaming response
     const encoder = new TextEncoder();
 
+    // Capture abort signal for cleanup on client disconnect
+    const abortSignal = request.signal;
+
     const stream = new ReadableStream({
       async start(controller) {
+        // Early exit if already aborted
+        if (abortSignal.aborted) {
+          controller.close();
+          return;
+        }
+
         try {
           let thinkingTokens = 0;
+          let isAborted = false;
+
+          // Listen for abort to stop processing
+          const abortHandler = () => {
+            isAborted = true;
+            console.log("[API] Client disconnected, stopping stream:", { correlationId });
+          };
+          abortSignal.addEventListener("abort", abortHandler, { once: true });
           let parentLinkStatus: "linked" | "not_applicable" | "lookup_failed" | "persist_failed" | "pending" = "not_applicable";
           let compactionPersistStatus: "not_applicable" | "persisted" | "failed" = "not_applicable";
           const streamWarnings: string[] = [];
@@ -89,6 +106,9 @@ export async function POST(request: Request) {
                 : undefined,
             },
             onThinkingStream: (chunk) => {
+              // Skip streaming if client disconnected
+              if (isAborted) return;
+
               thinkingTokens += Math.ceil(chunk.length / 4);
 
               const data = JSON.stringify({
@@ -100,6 +120,9 @@ export async function POST(request: Request) {
               controller.enqueue(encoder.encode(`data: ${data}\n\n`));
             },
             onCompactionStream: (summary) => {
+              // Skip streaming if client disconnected
+              if (isAborted) return;
+
               // Stream compaction events to the client
               const data = JSON.stringify({
                 type: "compaction",
@@ -116,12 +139,40 @@ export async function POST(request: Request) {
             [{ role: "user", content: query }]
           );
 
+          // Clean up abort listener
+          abortSignal.removeEventListener("abort", abortHandler);
+
+          // If client disconnected during thinking, close gracefully without persisting
+          if (isAborted) {
+            console.log("[API] Aborting stream - client disconnected during thinking:", { correlationId });
+            controller.close();
+            return;
+          }
+
           // Calculate actual thinking tokens from usage
           const actualThinkingTokens =
             (result.usage as unknown as { thinking_tokens?: number })
               .thinking_tokens ?? thinkingTokens;
 
-          // Find the latest node in this session to link as parent
+          // FIX: Race condition mitigation for parent node lookup.
+          //
+          // ISSUE: If two thinking requests run in parallel for the same session,
+          // both could get the same "latest" node and link to it as parent, creating
+          // a malformed graph where two nodes have the same parent (a fork where
+          // there should be a linear chain).
+          //
+          // MITIGATION: We look up the parent node BEFORE persisting, but the actual
+          // edge creation happens atomically inside persistThinkingNode. The database
+          // uses created_at ordering, so even if there's a race, the graph remains
+          // navigable (just with potential parallel branches). For a hackathon demo,
+          // this is acceptable - production would need a session-level mutex or
+          // database-level optimistic locking.
+          //
+          // FUTURE FIX: Use a Supabase RPC function that atomically:
+          // 1. Finds the latest node for the session
+          // 2. Creates the new node with that as parent
+          // 3. Creates the edge
+          // All in a single transaction with FOR UPDATE lock on the session.
           let parentNodeId: string | undefined;
           try {
             const latestNode = await getLatestThinkingNode(sessionId);

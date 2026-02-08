@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300" width="800" height="300">
+  <defs>
+    <!-- Subtle glow for nodes -->
+    <radialGradient id="nodeGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#C4654A" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#C4654A" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="centerGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#6B8FAD" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#6B8FAD" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- === NEURAL GRAPH ICON === -->
+  <g transform="translate(115, 150)">
+
+    <!-- Connection lines -->
+    <!-- Main node to top-right node -->
+    <line x1="0" y1="0" x2="45" y2="-65" stroke="#C4654A" stroke-width="1.8" stroke-opacity="0.35"/>
+    <!-- Main node to center-right node -->
+    <line x1="0" y1="0" x2="70" y2="0" stroke="#7BA3BE" stroke-width="1.5" stroke-opacity="0.4"/>
+    <!-- Main node to bottom-right node -->
+    <line x1="0" y1="0" x2="45" y2="65" stroke="#C4654A" stroke-width="1.8" stroke-opacity="0.35"/>
+
+    <!-- Curved arc connecting top and bottom through left -->
+    <path d="M 45 -65 Q -45 -55, 0 0 Q -45 55, 45 65" fill="none" stroke="#C4654A" stroke-width="1.5" stroke-opacity="0.3"/>
+
+    <!-- Small scatter lines from top-right node -->
+    <line x1="45" y1="-65" x2="75" y2="-90" stroke="#C4654A" stroke-width="0.8" stroke-opacity="0.25"/>
+    <line x1="45" y1="-65" x2="80" y2="-72" stroke="#C4654A" stroke-width="0.8" stroke-opacity="0.25"/>
+    <line x1="45" y1="-65" x2="60" y2="-95" stroke="#C4654A" stroke-width="0.8" stroke-opacity="0.2"/>
+
+    <!-- Small scatter lines from center-right node -->
+    <line x1="70" y1="0" x2="100" y2="-12" stroke="#7BA3BE" stroke-width="0.7" stroke-opacity="0.2"/>
+    <line x1="70" y1="0" x2="100" y2="8" stroke="#7BA3BE" stroke-width="0.7" stroke-opacity="0.2"/>
+    <line x1="70" y1="0" x2="95" y2="-3" stroke="#7BA3BE" stroke-width="0.7" stroke-opacity="0.18"/>
+
+    <!-- Small scatter lines from bottom-right node -->
+    <line x1="45" y1="65" x2="75" y2="88" stroke="#C4654A" stroke-width="0.8" stroke-opacity="0.25"/>
+    <line x1="45" y1="65" x2="80" y2="72" stroke="#C4654A" stroke-width="0.8" stroke-opacity="0.25"/>
+    <line x1="45" y1="65" x2="55" y2="92" stroke="#C4654A" stroke-width="0.8" stroke-opacity="0.2"/>
+
+    <!-- Small scatter from main node left -->
+    <line x1="0" y1="0" x2="-35" y2="-15" stroke="#C4654A" stroke-width="0.8" stroke-opacity="0.2"/>
+    <line x1="0" y1="0" x2="-30" y2="20" stroke="#C4654A" stroke-width="0.8" stroke-opacity="0.2"/>
+    <line x1="0" y1="0" x2="-38" y2="5" stroke="#C4654A" stroke-width="0.8" stroke-opacity="0.18"/>
+
+    <!-- Scatter dots (tiny particles) -->
+    <!-- Top area -->
+    <circle cx="78" cy="-93" r="2" fill="#C4654A" opacity="0.3"/>
+    <circle cx="85" cy="-75" r="1.5" fill="#C4654A" opacity="0.25"/>
+    <circle cx="63" cy="-98" r="1.2" fill="#C4654A" opacity="0.2"/>
+    <circle cx="90" cy="-82" r="1" fill="#C4654A" opacity="0.15"/>
+
+    <!-- Center-right area -->
+    <circle cx="103" cy="-14" r="1.5" fill="#7BA3BE" opacity="0.25"/>
+    <circle cx="105" cy="10" r="1.2" fill="#7BA3BE" opacity="0.2"/>
+    <circle cx="98" cy="-6" r="1" fill="#7BA3BE" opacity="0.18"/>
+
+    <!-- Bottom area -->
+    <circle cx="78" cy="91" r="2" fill="#C4654A" opacity="0.3"/>
+    <circle cx="85" cy="75" r="1.5" fill="#C4654A" opacity="0.25"/>
+    <circle cx="58" cy="95" r="1.2" fill="#C4654A" opacity="0.2"/>
+
+    <!-- Left scatter dots -->
+    <circle cx="-38" cy="-18" r="1.5" fill="#C4654A" opacity="0.2"/>
+    <circle cx="-33" cy="23" r="1.5" fill="#C4654A" opacity="0.2"/>
+    <circle cx="-42" cy="7" r="1" fill="#C4654A" opacity="0.15"/>
+
+    <!-- Node glows -->
+    <circle cx="0" cy="0" r="28" fill="url(#nodeGlow)"/>
+    <circle cx="45" cy="-65" r="22" fill="url(#nodeGlow)"/>
+    <circle cx="70" cy="0" r="18" fill="url(#centerGlow)"/>
+    <circle cx="45" cy="65" r="22" fill="url(#nodeGlow)"/>
+
+    <!-- === NODES === -->
+
+    <!-- Main node (left, largest) -->
+    <circle cx="0" cy="0" r="14" fill="#E8DDD8" stroke="#C4654A" stroke-width="2"/>
+    <circle cx="0" cy="0" r="6" fill="#C4654A"/>
+    <circle cx="0" cy="0" r="2.5" fill="#8B3D2E"/>
+
+    <!-- Top-right node -->
+    <circle cx="45" cy="-65" r="11" fill="#E8DDD8" stroke="#C4654A" stroke-width="1.8"/>
+    <circle cx="45" cy="-65" r="4.5" fill="#C4654A"/>
+    <circle cx="45" cy="-65" r="2" fill="#8B3D2E"/>
+
+    <!-- Center-right node (blue accent) -->
+    <circle cx="70" cy="0" r="9" fill="#E8F0F5" stroke="#7BA3BE" stroke-width="1.5"/>
+    <circle cx="70" cy="0" r="3.5" fill="#7BA3BE"/>
+    <circle cx="70" cy="0" r="1.5" fill="#4A7A96"/>
+
+    <!-- Bottom-right node -->
+    <circle cx="45" cy="65" r="11" fill="#E8DDD8" stroke="#C4654A" stroke-width="1.8"/>
+    <circle cx="45" cy="65" r="4.5" fill="#C4654A"/>
+    <circle cx="45" cy="65" r="2" fill="#8B3D2E"/>
+
+  </g>
+
+  <!-- === TYPOGRAPHY === -->
+
+  <!-- OPUS -->
+  <text x="350" y="162" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="72" font-weight="800" letter-spacing="3" fill="#1A1A1A">OPUS</text>
+
+  <!-- Nx -->
+  <text x="600" y="162" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="72" font-weight="600" letter-spacing="1" fill="#C4654A">Nx</text>
+
+  <!-- COGNITIVE ARCHITECTURE -->
+  <text x="355" y="190" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="14.5" font-weight="400" letter-spacing="7" fill="#A09890">COGNITIVE ARCHITECTURE</text>
+
+</svg>

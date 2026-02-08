@@ -11,6 +11,9 @@ export {
   updateSessionPlan,
   updateSessionContext,
   completeSession,
+  archiveSession,
+  restoreSession,
+  deleteSession,
   // Thinking nodes
   createThinkingNode,
   getThinkingNode,

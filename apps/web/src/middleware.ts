@@ -55,7 +55,12 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/api/demo") ||
     pathname.startsWith("/api/health") ||
     pathname.startsWith("/_next") ||
-    pathname.startsWith("/favicon")
+    pathname.startsWith("/favicon") ||
+    pathname.endsWith(".svg") ||
+    pathname.endsWith(".png") ||
+    pathname.endsWith(".ico") ||
+    pathname.endsWith(".jpg") ||
+    pathname.endsWith(".jpeg")
   ) {
     return NextResponse.next();
   }

@@ -20,7 +20,19 @@ function isNotFoundError(error: unknown): boolean {
  * Handle Supabase errors with consistent formatting
  */
 function handleSupabaseError(error: unknown, context: string): never {
-  const message = error instanceof Error ? error.message : String(error);
+  let message: string;
+  if (error instanceof Error) {
+    message = error.message;
+  } else if (error && typeof error === "object" && "message" in error) {
+    // Supabase errors have { message, code, details, hint }
+    const supaErr = error as { message: string; code?: string; details?: string };
+    message = supaErr.details ?? supaErr.message;
+    if (supaErr.code) {
+      message = `[${supaErr.code}] ${message}`;
+    }
+  } else {
+    message = JSON.stringify(error);
+  }
   throw new Error(`${context}: ${message}`);
 }
 
@@ -139,20 +151,22 @@ export async function createThinkingNode(
 ): Promise<ThinkingNode> {
   const supabase = getSupabase();
 
+  // Build insert payload - node_type omitted until migration 003 is applied
+  const insertPayload: Record<string, unknown> = {
+    session_id: input.sessionId,
+    parent_node_id: input.parentNodeId ?? null,
+    reasoning: input.reasoning,
+    structured_reasoning: input.structuredReasoning ?? {},
+    confidence_score: input.confidenceScore ?? null,
+    thinking_budget: input.thinkingBudget ?? null,
+    signature: input.signature ?? null,
+    input_query: input.inputQuery ?? null,
+    token_usage: input.tokenUsage ?? {},
+  };
+
   const { data, error } = await supabase
     .from("thinking_nodes")
-    .insert({
-      session_id: input.sessionId,
-      parent_node_id: input.parentNodeId ?? null,
-      reasoning: input.reasoning,
-      structured_reasoning: input.structuredReasoning ?? {},
-      confidence_score: input.confidenceScore ?? null,
-      thinking_budget: input.thinkingBudget ?? null,
-      signature: input.signature ?? null,
-      input_query: input.inputQuery ?? null,
-      token_usage: input.tokenUsage ?? {},
-      node_type: input.nodeType ?? "thinking",
-    })
+    .insert(insertPayload)
     .select()
     .single();
 

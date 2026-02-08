@@ -1,7 +1,15 @@
 "use client";
 
 import { useCallback, useState, useEffect, useRef } from "react";
-import { getSessions, createSession, type Session } from "@/lib/api";
+import {
+  getSessions,
+  createSession,
+  archiveSession as archiveSessionApi,
+  deleteSession as deleteSessionApi,
+  restoreSession as restoreSessionApi,
+  type Session,
+} from "@/lib/api";
+import { toast } from "@/components/ui/sonner";
 
 interface UseSessionReturn {
   sessions: Session[];
@@ -11,7 +19,12 @@ interface UseSessionReturn {
   selectSession: (sessionId: string) => void;
   createNewSession: () => Promise<Session | null>;
   refreshSessions: () => Promise<void>;
+  archiveSession: (sessionId: string) => Promise<void>;
+  deleteSessionWithUndo: (sessionId: string) => Promise<void>;
 }
+
+// Undo window duration in milliseconds
+const UNDO_DELAY_MS = 5000;
 
 export function useSession(): UseSessionReturn {
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -19,6 +32,9 @@ export function useSession(): UseSessionReturn {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const activeSessionIdRef = useRef(activeSessionId);
+
+  // Track pending deletions for undo functionality
+  const pendingDeletions = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   useEffect(() => {
     activeSessionIdRef.current = activeSessionId;
@@ -67,6 +83,103 @@ export function useSession(): UseSessionReturn {
     return null;
   }, []);
 
+  const archiveSession = useCallback(
+    async (sessionId: string) => {
+      // Find the session to get its name for the toast
+      const session = sessions.find((s) => s.id === sessionId);
+      const sessionName = session?.displayName || "Session";
+
+      // Optimistically remove from UI
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+
+      // If archived session was active, select next one
+      if (activeSessionId === sessionId) {
+        const remainingSessions = sessions.filter((s) => s.id !== sessionId);
+        setActiveSessionId(remainingSessions[0]?.id ?? null);
+      }
+
+      // Call API
+      const response = await archiveSessionApi(sessionId);
+
+      if (response.error) {
+        // Restore on error
+        await refreshSessions();
+        toast.error("Failed to archive session", {
+          description: response.error.message,
+        });
+        return;
+      }
+
+      toast.success("Session archived", {
+        description: sessionName,
+        action: {
+          label: "Undo",
+          onClick: async () => {
+            await restoreSessionApi(sessionId);
+            await refreshSessions();
+          },
+        },
+        duration: UNDO_DELAY_MS,
+      });
+    },
+    [sessions, activeSessionId, refreshSessions]
+  );
+
+  const deleteSessionWithUndo = useCallback(
+    async (sessionId: string) => {
+      // Find the session to get its name for the toast
+      const session = sessions.find((s) => s.id === sessionId);
+      const sessionName = session?.displayName || "Session";
+
+      // Optimistically remove from UI
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+
+      // If deleted session was active, select next one
+      if (activeSessionId === sessionId) {
+        const remainingSessions = sessions.filter((s) => s.id !== sessionId);
+        setActiveSessionId(remainingSessions[0]?.id ?? null);
+      }
+
+      // Set up delayed deletion
+      const timeoutId = setTimeout(async () => {
+        pendingDeletions.current.delete(sessionId);
+        const response = await deleteSessionApi(sessionId);
+        if (response.error) {
+          console.error("Failed to delete session:", response.error);
+        }
+      }, UNDO_DELAY_MS);
+
+      pendingDeletions.current.set(sessionId, timeoutId);
+
+      toast.success("Session deleted", {
+        description: sessionName,
+        action: {
+          label: "Undo",
+          onClick: () => {
+            // Cancel the pending deletion
+            const timeout = pendingDeletions.current.get(sessionId);
+            if (timeout) {
+              clearTimeout(timeout);
+              pendingDeletions.current.delete(sessionId);
+            }
+            // Restore to UI
+            refreshSessions();
+          },
+        },
+        duration: UNDO_DELAY_MS,
+      });
+    },
+    [sessions, activeSessionId, refreshSessions]
+  );
+
+  // Cleanup pending deletions on unmount
+  useEffect(() => {
+    return () => {
+      pendingDeletions.current.forEach((timeout) => clearTimeout(timeout));
+      pendingDeletions.current.clear();
+    };
+  }, []);
+
   useEffect(() => {
     refreshSessions();
   }, [refreshSessions]);
@@ -79,5 +192,7 @@ export function useSession(): UseSessionReturn {
     selectSession,
     createNewSession,
     refreshSessions,
+    archiveSession,
+    deleteSessionWithUndo,
   };
 }

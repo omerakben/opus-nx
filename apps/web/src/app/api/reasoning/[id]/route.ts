@@ -5,6 +5,7 @@ import {
   getEdgesToNode,
 } from "@/lib/db";
 import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
+import { isValidUuid } from "@/lib/validation";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -19,6 +20,20 @@ export async function GET(request: Request, { params }: RouteParams) {
 
   try {
     const { id } = await params;
+
+    // FIX: Validate UUID format before database query to prevent
+    // malformed IDs from reaching the database layer.
+    // This protects against SQL injection and provides better error messages.
+    if (!isValidUuid(id)) {
+      return jsonError({
+        status: 400,
+        code: "INVALID_UUID_FORMAT",
+        message: "Invalid reasoning node ID format. Expected a valid UUID.",
+        correlationId,
+        recoverable: true,
+      });
+    }
+
     const node = await getThinkingNode(id);
 
     if (!node) {

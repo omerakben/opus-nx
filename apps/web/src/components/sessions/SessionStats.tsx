@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui";
+import { Card, CardHeader, CardTitle, CardContent, Tooltip } from "@/components/ui";
 import { formatNumber } from "@/lib/utils";
 import type { GraphNode } from "@/lib/graph-utils";
 import { groupNodesByConfidence, calculateTotalTokens } from "@/lib/graph-utils";
@@ -8,9 +8,11 @@ import { AlertTriangle, Brain, TrendingUp, Zap } from "lucide-react";
 
 interface SessionStatsProps {
   nodes: GraphNode[];
+  /** Show compact view (for collapsed sidebar) */
+  isCompact?: boolean;
 }
 
-export function SessionStats({ nodes }: SessionStatsProps) {
+export function SessionStats({ nodes, isCompact = false }: SessionStatsProps) {
   const confidenceGroups = groupNodesByConfidence(nodes);
   const tokenTotals = calculateTotalTokens(nodes);
 
@@ -41,6 +43,35 @@ export function SessionStats({ nodes }: SessionStatsProps) {
     },
   ];
 
+  // Compact view for collapsed sidebar - show only primary metric with tooltip
+  if (isCompact) {
+    const primaryStat = stats[0]; // Thinking Nodes
+
+    return (
+      <Tooltip
+        content={
+          <div className="p-2 space-y-1.5">
+            <div className="font-medium text-sm mb-2">Session Stats</div>
+            {stats.map((stat) => (
+              <div key={stat.label} className="flex items-center justify-between gap-4 text-xs">
+                <span className="text-[var(--muted-foreground)]">{stat.label}</span>
+                <span className="font-medium">{stat.value}</span>
+              </div>
+            ))}
+          </div>
+        }
+      >
+        <div className="flex flex-col items-center gap-1 cursor-help">
+          <primaryStat.icon className={`w-5 h-5 ${primaryStat.color}`} />
+          <span className="text-sm font-semibold text-[var(--foreground)]">
+            {primaryStat.value}
+          </span>
+        </div>
+      </Tooltip>
+    );
+  }
+
+  // Full view
   return (
     <Card>
       <CardHeader className="py-3 px-4">

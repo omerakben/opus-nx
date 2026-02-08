@@ -134,6 +134,68 @@ export async function completeSession(sessionId: string): Promise<Session> {
 }
 
 /**
+ * Archive a session (soft delete - can be restored)
+ */
+export async function archiveSession(sessionId: string): Promise<Session> {
+  const supabase = getSupabase();
+
+  const { data, error } = await supabase
+    .from("sessions")
+    .update({
+      status: "archived",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", sessionId)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to archive session: ${error.message}`);
+  }
+
+  return mapSession(data);
+}
+
+/**
+ * Restore an archived session to active status
+ */
+export async function restoreSession(sessionId: string): Promise<Session> {
+  const supabase = getSupabase();
+
+  const { data, error } = await supabase
+    .from("sessions")
+    .update({
+      status: "active",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", sessionId)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to restore session: ${error.message}`);
+  }
+
+  return mapSession(data);
+}
+
+/**
+ * Permanently delete a session (cascade deletes related data)
+ */
+export async function deleteSession(sessionId: string): Promise<void> {
+  const supabase = getSupabase();
+
+  const { error } = await supabase
+    .from("sessions")
+    .delete()
+    .eq("id", sessionId);
+
+  if (error) {
+    throw new Error(`Failed to delete session: ${error.message}`);
+  }
+}
+
+/**
  * Get active sessions for a user
  */
 export async function getActiveSessions(userId?: string): Promise<Session[]> {

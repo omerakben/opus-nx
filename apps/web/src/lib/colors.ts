@@ -3,6 +3,9 @@
  * Centralized color system for confidence scores, edge types, and fork styles.
  */
 
+import { AlertTriangle, Search, Lightbulb } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+
 // ============================================================
 // Confidence Score Colors
 // ============================================================
@@ -91,37 +94,61 @@ export function getEdgeClass(edgeType: EdgeType): string {
 }
 
 // ============================================================
-// Fork Style Colors
+// Fork Style Colors (De-gimmicked: Path-based, not persona-based)
 // ============================================================
 
+/**
+ * Fork styles now represent independent reasoning paths, not personas.
+ * The API still uses these identifiers, but UI displays neutral labels.
+ */
 export type ForkStyle = "conservative" | "aggressive" | "balanced" | "contrarian";
 
+/**
+ * Map internal style names to neutral path identifiers.
+ * Only 3 paths are used in the de-gimmicked UI.
+ */
+export const FORK_PATH_MAP: Record<ForkStyle, { pathId: string; index: number }> = {
+  conservative: { pathId: "A", index: 0 },
+  aggressive: { pathId: "B", index: 1 },
+  balanced: { pathId: "C", index: 2 },
+  contrarian: { pathId: "D", index: 3 }, // Excluded in 3-path mode
+};
+
 export const FORK_COLORS: Record<ForkStyle, string> = {
-  conservative: "#64748b", // slate-500
-  aggressive: "#ef4444", // red-500
-  balanced: "#3b82f6", // blue-500
-  contrarian: "#8b5cf6", // violet-500
+  conservative: "#3b82f6", // blue-500
+  aggressive: "#8b5cf6", // violet-500
+  balanced: "#06b6d4", // cyan-500
+  contrarian: "#f59e0b", // amber-500
 };
 
+/**
+ * Path-based icons (neutral, no personas)
+ */
 export const FORK_ICONS: Record<ForkStyle, string> = {
-  conservative: "🛡️",
-  aggressive: "🚀",
-  balanced: "⚖️",
-  contrarian: "🔄",
+  conservative: "α",
+  aggressive: "β",
+  balanced: "γ",
+  contrarian: "δ",
 };
 
+/**
+ * Neutral path labels
+ */
 export const FORK_LABELS: Record<ForkStyle, string> = {
-  conservative: "Conservative",
-  aggressive: "Aggressive",
-  balanced: "Balanced",
-  contrarian: "Contrarian",
+  conservative: "Path A",
+  aggressive: "Path B",
+  balanced: "Path C",
+  contrarian: "Path D",
 };
 
+/**
+ * Assumption-focused descriptions (not persona descriptions)
+ */
 export const FORK_DESCRIPTIONS: Record<ForkStyle, string> = {
-  conservative: "Minimize risk, prefer proven approaches",
-  aggressive: "Push boundaries, explore edge cases",
-  balanced: "Tradeoff-aware, pragmatic approach",
-  contrarian: "Challenge assumptions, question consensus",
+  conservative: "Independent reasoning attempt with baseline assumptions",
+  aggressive: "Independent reasoning attempt with alternative assumptions",
+  balanced: "Independent reasoning attempt with hybrid assumptions",
+  contrarian: "Independent reasoning attempt with inverted assumptions",
 };
 
 /**
@@ -134,24 +161,24 @@ export function getForkStyleClasses(style: ForkStyle): {
 } {
   const classes: Record<ForkStyle, { border: string; bg: string; text: string }> = {
     conservative: {
-      border: "border-slate-500",
-      bg: "bg-slate-500/10",
-      text: "text-slate-500",
-    },
-    aggressive: {
-      border: "border-red-500",
-      bg: "bg-red-500/10",
-      text: "text-red-500",
-    },
-    balanced: {
       border: "border-blue-500",
       bg: "bg-blue-500/10",
       text: "text-blue-500",
     },
-    contrarian: {
+    aggressive: {
       border: "border-violet-500",
       bg: "bg-violet-500/10",
       text: "text-violet-500",
+    },
+    balanced: {
+      border: "border-cyan-500",
+      bg: "bg-cyan-500/10",
+      text: "text-cyan-500",
+    },
+    contrarian: {
+      border: "border-amber-500",
+      bg: "bg-amber-500/10",
+      text: "text-amber-500",
     },
   };
   return classes[style];
@@ -169,10 +196,10 @@ export const INSIGHT_COLORS: Record<InsightType, string> = {
   improvement_hypothesis: "#10b981", // emerald-500
 };
 
-export const INSIGHT_ICONS: Record<InsightType, string> = {
-  bias_detection: "⚠️",
-  pattern: "🔍",
-  improvement_hypothesis: "💡",
+export const INSIGHT_ICONS: Record<InsightType, LucideIcon> = {
+  bias_detection: AlertTriangle,
+  pattern: Search,
+  improvement_hypothesis: Lightbulb,
 };
 
 export const INSIGHT_LABELS: Record<InsightType, string> = {

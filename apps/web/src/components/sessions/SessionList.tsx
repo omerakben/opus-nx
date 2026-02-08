@@ -3,7 +3,7 @@
 import { SessionCard } from "./SessionCard";
 import { Button, Skeleton } from "@/components/ui";
 import type { Session } from "@/lib/api";
-import { Plus, RefreshCw } from "lucide-react";
+import { PanelLeftClose, Plus, RefreshCw } from "lucide-react";
 
 interface SessionListProps {
   sessions: Session[];
@@ -12,6 +12,9 @@ interface SessionListProps {
   onSelectSession: (sessionId: string) => void;
   onCreateSession: () => void;
   onRefresh: () => void;
+  onArchiveSession?: (sessionId: string) => void;
+  onDeleteSession?: (sessionId: string) => void;
+  onToggleCollapse?: () => void;
 }
 
 export function SessionList({
@@ -21,6 +24,9 @@ export function SessionList({
   onSelectSession,
   onCreateSession,
   onRefresh,
+  onArchiveSession,
+  onDeleteSession,
+  onToggleCollapse,
 }: SessionListProps) {
   return (
     <div className="flex flex-col h-full">
@@ -48,11 +54,29 @@ export function SessionList({
           >
             <Plus className="w-4 h-4" />
           </Button>
+          {onToggleCollapse && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleCollapse}
+              className="h-7 w-7"
+              title="Collapse sidebar"
+              aria-expanded={true}
+              aria-controls="sidebar-sessions"
+              aria-label="Collapse sidebar"
+            >
+              <PanelLeftClose className="w-4 h-4" />
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Session list */}
-      <div className="flex-1 overflow-y-auto space-y-2">
+      <div
+        className="flex-1 overflow-y-auto space-y-2"
+        role="listbox"
+        aria-label="Sessions"
+      >
         {isLoading ? (
           <>
             <Skeleton className="h-20 w-full rounded-lg" />
@@ -76,6 +100,16 @@ export function SessionList({
               session={session}
               isActive={session.id === activeSessionId}
               onClick={() => onSelectSession(session.id)}
+              onArchive={
+                onArchiveSession
+                  ? () => onArchiveSession(session.id)
+                  : undefined
+              }
+              onDelete={
+                onDeleteSession
+                  ? () => onDeleteSession(session.id)
+                  : undefined
+              }
               displayName={session.displayName ?? undefined}
             />
           ))

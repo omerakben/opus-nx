@@ -2,7 +2,6 @@
 
 import { useCallback } from "react";
 import { useReactFlow } from "@xyflow/react";
-import { Button } from "@/components/ui";
 import { Maximize, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 
 interface GraphControlsProps {
@@ -30,43 +29,38 @@ export function GraphControls({ onReset }: GraphControlsProps) {
   }, [setCenter, onReset]);
 
   return (
-    <div className="absolute bottom-4 left-4 flex flex-col gap-1 z-10">
-      <Button
-        variant="outline"
-        size="icon"
+    <div className="absolute bottom-4 left-4 z-10 flex items-center rounded-full bg-[var(--card)]/90 backdrop-blur-sm border border-[var(--border)] shadow-lg overflow-hidden">
+      <button
         onClick={handleZoomIn}
         title="Zoom in"
-        className="h-8 w-8 bg-[var(--card)]"
+        className="h-8 w-8 flex items-center justify-center hover:bg-[var(--muted)] transition-colors"
       >
-        <ZoomIn className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="outline"
-        size="icon"
+        <ZoomIn className="h-3.5 w-3.5" />
+      </button>
+      <div className="w-px h-4 bg-[var(--border)]" />
+      <button
         onClick={handleZoomOut}
         title="Zoom out"
-        className="h-8 w-8 bg-[var(--card)]"
+        className="h-8 w-8 flex items-center justify-center hover:bg-[var(--muted)] transition-colors"
       >
-        <ZoomOut className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="outline"
-        size="icon"
+        <ZoomOut className="h-3.5 w-3.5" />
+      </button>
+      <div className="w-px h-4 bg-[var(--border)]" />
+      <button
         onClick={handleFitView}
         title="Fit to view"
-        className="h-8 w-8 bg-[var(--card)]"
+        className="h-8 w-8 flex items-center justify-center hover:bg-[var(--muted)] transition-colors"
       >
-        <Maximize className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="outline"
-        size="icon"
+        <Maximize className="h-3.5 w-3.5" />
+      </button>
+      <div className="w-px h-4 bg-[var(--border)]" />
+      <button
         onClick={handleReset}
         title="Reset view"
-        className="h-8 w-8 bg-[var(--card)]"
+        className="h-8 w-8 flex items-center justify-center hover:bg-[var(--muted)] transition-colors"
       >
-        <RotateCcw className="h-4 w-4" />
-      </Button>
+        <RotateCcw className="h-3.5 w-3.5" />
+      </button>
     </div>
   );
 }

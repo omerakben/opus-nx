@@ -127,19 +127,24 @@ export function ThinkingStream({
         </div>
         <div className="flex items-center gap-1.5">
           <TokenCounter count={tokenCount} isStreaming={isStreaming} />
-          {/* Effort selector */}
+          {/* Effort selector — segmented control */}
           {!isStreaming && (
-            <div className="flex items-center gap-0.5 border border-[var(--border)] rounded-md overflow-hidden">
+            <div className="relative flex items-center rounded-lg bg-[var(--muted)]/30 p-0.5 overflow-hidden">
+              {/* Sliding indicator */}
+              <div
+                className="absolute top-0.5 bottom-0.5 w-1/4 bg-[var(--card)] shadow-sm rounded-md transition-transform duration-200 ease-out"
+                style={{ transform: `translateX(${(["low", "medium", "high", "max"] as const).indexOf(effort as "low" | "medium" | "high" | "max") * 100}%)` }}
+              />
               {(["low", "medium", "high", "max"] as const).map((e) => (
                 <button
                   key={e}
                   onClick={() => setEffort(e)}
                   className={cn(
-                    "px-1.5 py-0.5 text-[10px] transition-colors",
+                    "relative z-10 px-1.5 py-0.5 text-[10px] transition-colors",
                     isMobile && "px-2 py-1 text-xs",
                     effort === e
-                      ? "bg-[var(--accent)] text-white"
-                      : "hover:bg-[var(--muted)] text-[var(--muted-foreground)]"
+                      ? "text-[var(--foreground)]"
+                      : "text-[var(--muted-foreground)]"
                   )}
                   title={`${e} effort thinking${e === "max" ? " (Opus 4.6 exclusive)" : ""}`}
                 >
@@ -160,7 +165,7 @@ export function ThinkingStream({
             </Button>
           )}
           {thinking && !isStreaming && (
-            <Button variant="ghost" size="sm" onClick={onClear} className="h-6 px-2 text-[10px]">
+            <Button variant="ghost" size="sm" onClick={onClear} className="h-6 px-2 text-[10px] text-[var(--muted-foreground)]">
               Clear
             </Button>
           )}
@@ -176,7 +181,7 @@ export function ThinkingStream({
       </CardHeader>
 
       <CardContent className={cn(
-        "flex-1 flex flex-col p-0 overflow-hidden",
+        "flex-1 flex flex-col p-0 overflow-hidden transition-[max-height] duration-300 ease-out",
         !isMobile && isExpanded && "max-h-[50vh]"
       )}>
         {/* Phase progress bar */}
@@ -196,9 +201,8 @@ export function ThinkingStream({
                     <div className="flex items-center gap-1 w-full">
                       <div className={cn(
                         "h-1 flex-1 rounded-full transition-all duration-500",
-                        isActive && "animate-pulse",
                         (isActive || isPast) ? "" : "bg-[var(--border)]",
-                      )} style={(isActive || isPast) ? { backgroundColor: isActive ? undefined : "currentColor", background: isActive ? `linear-gradient(90deg, currentColor, transparent)` : undefined } : undefined}>
+                      )}>
                         {(isActive || isPast) && <div className={cn("h-full rounded-full", cfg.bgColor)} style={{ width: isActive ? "70%" : "100%" }} />}
                       </div>
                     </div>
@@ -206,8 +210,14 @@ export function ThinkingStream({
                       "flex items-center gap-0.5 transition-colors",
                       isActive ? cfg.color : isPast ? "text-[var(--muted-foreground)]" : "text-[var(--muted-foreground)] opacity-30"
                     )}>
-                      <PhIcon className={cn("w-2.5 h-2.5", isActive && "animate-pulse")} />
-                      <span className="text-[8px] font-medium">{cfg.label}</span>
+                      {isPast ? (
+                        <CheckCircle className="w-2.5 h-2.5" />
+                      ) : (
+                        <PhIcon className={cn("w-2.5 h-2.5", isActive && "animate-pulse shadow-[0_0_8px_currentColor]")} />
+                      )}
+                      <span className={cn(
+                        isActive ? "text-[9px] font-semibold" : "text-[8px] font-medium"
+                      )}>{cfg.label}</span>
                     </div>
                   </div>
                 );
@@ -230,17 +240,17 @@ export function ThinkingStream({
         <div
           ref={containerRef}
           className={cn(
-            "flex-1 overflow-y-auto p-4 font-mono text-sm leading-relaxed bg-gray-950/60 border-l-2 border-green-500/20",
+            "flex-1 overflow-y-auto p-4 font-mono text-sm leading-relaxed bg-[var(--background)] border-l-2 border-violet-500/30",
             isMobile && "text-xs p-3"
           )}
         >
           {error ? (
             <div className="text-red-400">Error: {error}</div>
           ) : thinking ? (
-            <div className="text-green-300 whitespace-pre-wrap leading-relaxed">
+            <div className="text-[var(--foreground)] whitespace-pre-wrap leading-relaxed">
               {thinking}
               {isStreaming && (
-                <span className="inline-block w-1.5 h-4 bg-green-400 animate-pulse ml-0.5 rounded-sm" />
+                <span className="inline-block w-1.5 h-4 bg-amber-400 animate-pulse ml-0.5 rounded-sm" />
               )}
             </div>
           ) : (

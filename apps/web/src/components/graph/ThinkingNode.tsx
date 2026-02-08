@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState } from "react";
+import { memo, useState, useCallback } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import {
@@ -11,18 +11,25 @@ import {
 import { formatNumber, truncate, formatRelativeTime } from "@/lib/utils";
 import type { GraphNode } from "@/lib/graph-utils";
 import {
+  createCheckpoint,
+  type CheckpointVerdict,
+  type CheckpointResponse,
+} from "@/lib/api";
+import {
   Brain,
   MessageSquare,
   Zap,
   Database,
   GitFork,
   User,
-  ThumbsUp,
-  ThumbsDown,
-  Compass,
-  StickyNote,
+  Check,
+  HelpCircle,
+  X,
   ChevronDown,
   ChevronUp,
+  Loader2,
+  Send,
+  AlertCircle,
 } from "lucide-react";
 
 interface ThinkingNodeData {
@@ -40,6 +47,8 @@ interface ThinkingNodeData {
   isSelected: boolean;
   decisionCount?: number;
   nodeType?: string;
+  /** Callback when a new branch is created via checkpoint correction */
+  onBranchCreated?: (response: CheckpointResponse) => void;
 }
 
 /** Get icon and styles based on node type */
@@ -84,11 +93,29 @@ function getNodeTypeConfig(nodeType?: string) {
   }
 }
 
-const ANNOTATION_ACTIONS = [
-  { action: "agree", icon: ThumbsUp, color: "text-green-400 hover:bg-green-500/20", title: "Mark local agreement (not saved)" },
-  { action: "disagree", icon: ThumbsDown, color: "text-red-400 hover:bg-red-500/20", title: "Mark local disagreement (not saved)" },
-  { action: "explore", icon: Compass, color: "text-blue-400 hover:bg-blue-500/20", title: "Mark for local exploration (not saved)" },
-  { action: "note", icon: StickyNote, color: "text-amber-400 hover:bg-amber-500/20", title: "Add local note marker (not saved)" },
+/** Checkpoint action configuration */
+const CHECKPOINT_ACTIONS = [
+  {
+    verdict: "verified" as CheckpointVerdict,
+    icon: Check,
+    color: "text-green-400 hover:bg-green-500/20",
+    activeColor: "bg-green-500/20 text-green-400",
+    title: "Verify this reasoning step",
+  },
+  {
+    verdict: "questionable" as CheckpointVerdict,
+    icon: HelpCircle,
+    color: "text-amber-400 hover:bg-amber-500/20",
+    activeColor: "bg-amber-500/20 text-amber-400",
+    title: "Flag as questionable",
+  },
+  {
+    verdict: "disagree" as CheckpointVerdict,
+    icon: X,
+    color: "text-red-400 hover:bg-red-500/20",
+    activeColor: "bg-red-500/20 text-red-400",
+    title: "Disagree and provide correction",
+  },
 ] as const;
 
 export const ThinkingNode = memo(function ThinkingNode({
@@ -96,6 +123,7 @@ export const ThinkingNode = memo(function ThinkingNode({
 }: NodeProps<GraphNode>) {
   const nodeData = data as unknown as ThinkingNodeData;
   const {
+    id,
     reasoning,
     confidence,
     tokenUsage,
@@ -104,10 +132,23 @@ export const ThinkingNode = memo(function ThinkingNode({
     isSelected,
     decisionCount,
     nodeType,
+    onBranchCreated,
   } = nodeData;
 
   const [isExpanded, setIsExpanded] = useState(false);
-  const [annotation, setAnnotation] = useState<string | null>(null);
+  const [checkpointState, setCheckpointState] = useState<{
+    verdict: CheckpointVerdict | null;
+    isLoading: boolean;
+    error: string | null;
+    saved: boolean;
+  }>({
+    verdict: null,
+    isLoading: false,
+    error: null,
+    saved: false,
+  });
+  const [showCorrectionInput, setShowCorrectionInput] = useState(false);
+  const [correctionText, setCorrectionText] = useState("");
 
   const isSpecialNode = nodeType && nodeType !== "thinking";
   const typeConfig = getNodeTypeConfig(nodeType);
@@ -119,6 +160,65 @@ export const ThinkingNode = memo(function ThinkingNode({
   const truncatedText = isExpanded ? displayText : truncate(displayText, 120);
   const canExpand = displayText.length > 120;
 
+  /** Handle checkpoint action */
+  const handleCheckpoint = useCallback(
+    async (verdict: CheckpointVerdict, correction?: string) => {
+      setCheckpointState((prev) => ({ ...prev, isLoading: true, error: null }));
+
+      const response = await createCheckpoint(id, {
+        verdict,
+        correction,
+      });
+
+      if (response.error) {
+        setCheckpointState((prev) => ({
+          ...prev,
+          isLoading: false,
+          error: response.error?.message ?? "Checkpoint failed",
+        }));
+        return;
+      }
+
+      setCheckpointState({
+        verdict,
+        isLoading: false,
+        error: null,
+        saved: true,
+      });
+      setShowCorrectionInput(false);
+      setCorrectionText("");
+
+      // Notify parent if a new branch was created
+      if (response.data?.alternativeBranch && onBranchCreated) {
+        onBranchCreated(response.data);
+      }
+    },
+    [id, onBranchCreated]
+  );
+
+  /** Handle verdict button click */
+  const handleVerdictClick = useCallback(
+    (verdict: CheckpointVerdict) => {
+      if (checkpointState.isLoading || checkpointState.saved) return;
+
+      if (verdict === "disagree") {
+        // Show correction input for disagree
+        setShowCorrectionInput(true);
+        setCheckpointState((prev) => ({ ...prev, verdict }));
+      } else {
+        // Directly submit for verified/questionable
+        handleCheckpoint(verdict);
+      }
+    },
+    [checkpointState.isLoading, checkpointState.saved, handleCheckpoint]
+  );
+
+  /** Submit correction */
+  const handleSubmitCorrection = useCallback(() => {
+    if (!correctionText.trim()) return;
+    handleCheckpoint("disagree", correctionText.trim());
+  }, [correctionText, handleCheckpoint]);
+
   return (
     <>
       <Handle
@@ -129,13 +229,16 @@ export const ThinkingNode = memo(function ThinkingNode({
 
       <div
         className={cn(
-          "min-w-[240px] max-w-[320px] rounded-lg border-2 bg-[var(--card)] shadow-lg transition-all group",
+          "min-w-[240px] max-w-[320px] rounded-lg border-2 bg-[var(--card)] shadow-lg transition-[box-shadow,transform] group card-hover-glow",
           isSelected
-            ? "ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--background)]"
-            : "hover:shadow-xl",
+            ? "ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--background)] shadow-[0_0_12px_rgba(139,92,246,0.15)]"
+            : "",
           isSpecialNode && typeConfig.borderClass,
           isSpecialNode && typeConfig.glowClass,
-          nodeType === "compaction" && "border-dashed"
+          nodeType === "compaction" && "border-dashed",
+          checkpointState.saved && checkpointState.verdict === "verified" && "ring-2 ring-green-500/50",
+          checkpointState.saved && checkpointState.verdict === "questionable" && "ring-2 ring-amber-500/50",
+          checkpointState.saved && checkpointState.verdict === "disagree" && "ring-2 ring-red-500/50"
         )}
         style={!isSpecialNode ? { borderColor: confidenceColor } : undefined}
       >
@@ -199,35 +302,113 @@ export const ThinkingNode = memo(function ThinkingNode({
           )}
         </div>
 
-        {/* Annotation bar - shows on hover for thinking nodes */}
-        {!isSpecialNode && (
+        {/* Checkpoint bar - shows on hover for thinking nodes */}
+        {!isSpecialNode && !checkpointState.saved && (
           <div className="opacity-0 group-hover:opacity-100 transition-opacity border-t border-[var(--border)] px-3 py-1.5 flex items-center gap-1">
-            <span className="text-[10px] text-[var(--muted-foreground)] mr-1">Local</span>
-            {ANNOTATION_ACTIONS.map(({ action, icon: ActionIcon, color, title }) => (
+            <span className="text-[10px] text-[var(--muted-foreground)] mr-1">Checkpoint</span>
+            {CHECKPOINT_ACTIONS.map(({ verdict, icon: ActionIcon, color, activeColor, title }) => (
               <button
-                key={action}
-                onClick={(e) => { e.stopPropagation(); setAnnotation(annotation === action ? null : action); }}
+                key={verdict}
+                onClick={(e) => { e.stopPropagation(); handleVerdictClick(verdict); }}
+                disabled={checkpointState.isLoading}
                 className={cn(
                   "p-1 rounded transition-colors",
-                  color,
-                  annotation === action && "bg-[var(--muted)]"
+                  checkpointState.isLoading ? "opacity-50 cursor-not-allowed" : color,
+                  checkpointState.verdict === verdict && activeColor
                 )}
                 title={title}
               >
-                <ActionIcon className="w-3 h-3" />
+                {checkpointState.isLoading && checkpointState.verdict === verdict ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <ActionIcon className="w-3 h-3" />
+                )}
               </button>
             ))}
           </div>
         )}
 
-        {/* Annotation feedback */}
-        {annotation && (
-          <div className="px-3 py-1.5 border-t border-[var(--border)] bg-cyan-500/5 animate-fade-in-up">
-            <div className="text-[10px] text-cyan-400 mb-1">
-              {annotation === "agree" && "Local marker: you agree with this reasoning"}
-              {annotation === "disagree" && "Local marker: you disagree with this reasoning"}
-              {annotation === "explore" && "Local marker: marked for deeper exploration"}
-              {annotation === "note" && "Local marker: note added to this node"}
+        {/* Correction input for disagree */}
+        {showCorrectionInput && !checkpointState.saved && (
+          <div className="px-3 py-2 border-t border-[var(--border)] bg-red-500/5">
+            <div className="text-[10px] text-red-400 mb-1.5 flex items-center gap-1">
+              <X className="w-3 h-3" />
+              Provide your correction
+            </div>
+            <div className="flex gap-1.5">
+              <input
+                type="text"
+                value={correctionText}
+                onChange={(e) => setCorrectionText(e.target.value)}
+                placeholder="What should the reasoning consider instead?"
+                className="flex-1 text-[11px] px-2 py-1.5 rounded border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-1 focus:ring-red-500/50"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && correctionText.trim()) {
+                    handleSubmitCorrection();
+                  } else if (e.key === "Escape") {
+                    setShowCorrectionInput(false);
+                    setCorrectionText("");
+                    setCheckpointState((prev) => ({ ...prev, verdict: null }));
+                  }
+                }}
+                autoFocus
+                disabled={checkpointState.isLoading}
+              />
+              <button
+                onClick={(e) => { e.stopPropagation(); handleSubmitCorrection(); }}
+                disabled={!correctionText.trim() || checkpointState.isLoading}
+                className={cn(
+                  "p-1.5 rounded transition-colors",
+                  correctionText.trim() && !checkpointState.isLoading
+                    ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                    : "opacity-50 cursor-not-allowed text-[var(--muted-foreground)]"
+                )}
+                title="Submit correction and trigger re-reasoning"
+              >
+                {checkpointState.isLoading ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Send className="w-3 h-3" />
+                )}
+              </button>
+            </div>
+            {checkpointState.isLoading && (
+              <div className="text-[10px] text-amber-400 mt-1.5 flex items-center gap-1">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Re-reasoning with your correction...
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Saved checkpoint feedback */}
+        {checkpointState.saved && (
+          <div className={cn(
+            "px-3 py-1.5 border-t border-[var(--border)] animate-fade-in-up",
+            checkpointState.verdict === "verified" && "bg-green-500/5",
+            checkpointState.verdict === "questionable" && "bg-amber-500/5",
+            checkpointState.verdict === "disagree" && "bg-red-500/5"
+          )}>
+            <div className={cn(
+              "text-[10px] flex items-center gap-1",
+              checkpointState.verdict === "verified" && "text-green-400",
+              checkpointState.verdict === "questionable" && "text-amber-400",
+              checkpointState.verdict === "disagree" && "text-red-400"
+            )}>
+              <Check className="w-3 h-3" />
+              {checkpointState.verdict === "verified" && "Verified by human operator"}
+              {checkpointState.verdict === "questionable" && "Flagged as questionable"}
+              {checkpointState.verdict === "disagree" && "Correction submitted — new branch created"}
+            </div>
+          </div>
+        )}
+
+        {/* Error feedback */}
+        {checkpointState.error && (
+          <div className="px-3 py-1.5 border-t border-[var(--border)] bg-red-500/5">
+            <div className="text-[10px] text-red-400 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              {checkpointState.error}
             </div>
           </div>
         )}
@@ -247,12 +428,12 @@ export const ThinkingNode = memo(function ThinkingNode({
             )}
           </div>
           {!isSpecialNode && (
-            <span className="text-[10px] opacity-50">
+            <span className="text-[10px] text-[var(--muted-foreground)]">
               {formatNumber(tokenUsage.inputTokens + tokenUsage.outputTokens)} total
             </span>
           )}
           {isSpecialNode && (
-            <span className="text-[10px] opacity-50">
+            <span className="text-[10px] text-[var(--muted-foreground)]">
               {formatRelativeTime(createdAt)}
             </span>
           )}

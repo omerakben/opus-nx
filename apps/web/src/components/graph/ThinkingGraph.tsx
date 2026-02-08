@@ -4,6 +4,7 @@ import { useCallback, useMemo } from "react";
 import {
   ReactFlow,
   Background,
+  BackgroundVariant,
   MiniMap,
   type NodeMouseHandler,
   type OnNodesChange,
@@ -152,15 +153,16 @@ export function ThinkingGraph({
       className="bg-[var(--background)]"
     >
       <Background
-        color="var(--border)"
-        gap={24}
-        size={1}
+        variant={BackgroundVariant.Dots}
+        color="var(--grid-dot)"
+        gap={20}
+        size={1.5}
       />
       {!isMobile && (
         <MiniMap
           nodeColor={nodeColor}
-          maskColor="rgba(0, 0, 0, 0.4)"
-          className="!bg-[var(--card)] !border-[var(--border)] !rounded-lg !shadow-lg"
+          maskColor="rgba(139, 92, 246, 0.08)"
+          className="!bg-[var(--card)]/80 !backdrop-blur-sm !border !border-[var(--border)]/50 !rounded-xl !shadow-lg"
           position="bottom-right"
           pannable
           zoomable
