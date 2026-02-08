@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Network, Brain, MessageSquare, Lightbulb, GitFork } from "lucide-react";
+import { Network, Brain, MessageSquare, Lightbulb } from "lucide-react";
 
 export type MobileView = "graph" | "think" | "sessions" | "insights";
 

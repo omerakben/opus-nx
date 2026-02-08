@@ -1,0 +1,1 @@
+export { GoTPanel } from "./GoTPanel";

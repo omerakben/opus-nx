@@ -37,7 +37,7 @@ export function Dashboard() {
   const {
     nodes,
     edges,
-    selectedNode,
+    selectedNode: _selectedNode,
     isLoading: isLoadingGraph,
     onNodesChange,
     onEdgesChange,
@@ -305,10 +305,10 @@ export function Dashboard() {
           <div className="flex-1 overflow-hidden relative" data-tour="reasoning-graph">
             {/* Streaming indicator overlay */}
             {isStreaming && (
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-[var(--card)]/90 border border-violet-500/30 backdrop-blur-sm flex items-center gap-2 animate-breathing">
-                <div className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
-                <span className="text-xs text-violet-400 font-medium">
-                  Claude is thinking...
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-[var(--card)]/90 border border-amber-500/30 backdrop-blur-sm flex items-center gap-2 animate-breathing">
+                <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                <span className="text-xs text-amber-400 font-medium">
+                  Opus is thinking...
                 </span>
                 <span className="text-[10px] text-[var(--muted-foreground)] opacity-70">
                   Graph updates on completion

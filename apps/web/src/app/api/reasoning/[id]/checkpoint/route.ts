@@ -156,13 +156,13 @@ function buildAnnotationReasoning(
   correction?: string
 ): string {
   if (verdict === "verified") {
-    return "[HUMAN CHECKPOINT: VERIFIED]\n\nThis reasoning step has been reviewed and verified by a human operator.";
+    return "[CHECKPOINT: VERIFIED]\n\nThis reasoning step has been reviewed and verified by the Opus operator.";
   }
   if (verdict === "questionable") {
-    return "[HUMAN CHECKPOINT: QUESTIONABLE]\n\nThis reasoning step has been flagged for review. The human operator has doubts about its validity.";
+    return "[CHECKPOINT: QUESTIONABLE]\n\nThis reasoning step has been flagged for review. The operator has doubts about its validity.";
   }
   // verdict === "disagree"
-  return `[HUMAN CHECKPOINT: DISAGREEMENT]\n\nThe human operator disagrees with this reasoning step.\n\n${
+  return `[CHECKPOINT: DISAGREEMENT]\n\nThe operator disagrees with this reasoning step.\n\n${
     correction
       ? `Correction provided:\n${correction}`
       : "No specific correction provided."
@@ -207,11 +207,11 @@ async function generateAlternativeBranch(
     .join("\n\n");
 
   // Build the re-reasoning prompt
-  const systemPrompt = `You are an advanced reasoning assistant engaged in a human-in-the-loop reasoning correction process.
+  const systemPrompt = `You are an advanced reasoning assistant engaged in a reasoning correction process.
 
-A human operator has reviewed one of your reasoning steps and provided a correction. Your task is to:
+An operator has reviewed one of your reasoning steps and provided a correction. Your task is to:
 1. Acknowledge the correction
-2. Re-analyze the problem incorporating the human's insight
+2. Re-analyze the problem incorporating the operator's insight
 3. Generate an improved reasoning path
 
 Be thorough but focused. This is a correction, not a complete restart.`;
@@ -225,10 +225,10 @@ ${chainContext || "No prior reasoning context available"}
 ## Original Reasoning Step (Flagged)
 ${targetNode.reasoning.slice(0, 1000)}
 
-## Human Correction
+## Operator Correction
 ${correction}
 
-Please provide corrected reasoning that incorporates the human's insight. Focus on how this changes your analysis and conclusions.`;
+Please provide corrected reasoning that incorporates the operator's insight. Focus on how this changes your analysis and conclusions.`;
 
   // Use medium effort for re-reasoning (balance cost vs quality)
   const engine = new ThinkingEngine({

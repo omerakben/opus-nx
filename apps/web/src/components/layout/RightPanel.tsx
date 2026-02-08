@@ -2,9 +2,12 @@
 
 import { InsightsPanel } from "@/components/insights";
 import { ForkPanel } from "@/components/fork";
+import { GoTPanel } from "@/components/got";
+import { VerificationPanel } from "@/components/verify";
+import { MemoryPanel } from "@/components/memory";
 import { Tabs, TabsList, TabsTrigger, TabsContent, Button, Tooltip } from "@/components/ui";
 import type { Insight } from "@/lib/api";
-import { GitFork, Lightbulb, PanelRightOpen, PanelRightClose } from "lucide-react";
+import { GitFork, Lightbulb, PanelRightOpen, PanelRightClose, BrainCircuit, ShieldCheck, Database } from "lucide-react";
 
 interface RightPanelProps {
   insights: Insight[];
@@ -34,7 +37,7 @@ export function RightPanel({
     return (
       <div className="h-full bg-[var(--background)] flex flex-col overflow-hidden">
         <Tabs defaultValue="insights" className="flex-1 flex flex-col min-h-0">
-          <TabsList className="mx-4 mt-3 justify-start">
+          <TabsList className="mx-4 mt-3 justify-start overflow-x-auto">
             <TabsTrigger value="insights" className="text-xs">
               <Lightbulb className="w-3 h-3 mr-1" />
               Insights
@@ -42,6 +45,18 @@ export function RightPanel({
             <TabsTrigger value="fork" className="text-xs">
               <GitFork className="w-3 h-3 mr-1" />
               ThinkFork
+            </TabsTrigger>
+            <TabsTrigger value="got" className="text-xs">
+              <BrainCircuit className="w-3 h-3 mr-1" />
+              GoT
+            </TabsTrigger>
+            <TabsTrigger value="verify" className="text-xs">
+              <ShieldCheck className="w-3 h-3 mr-1" />
+              PRM
+            </TabsTrigger>
+            <TabsTrigger value="memory" className="text-xs">
+              <Database className="w-3 h-3 mr-1" />
+              Memory
             </TabsTrigger>
           </TabsList>
 
@@ -58,6 +73,18 @@ export function RightPanel({
 
             <TabsContent value="fork" className="h-full m-0 mt-2">
               <ForkPanel sessionId={sessionId} />
+            </TabsContent>
+
+            <TabsContent value="got" className="h-full m-0 mt-2 overflow-y-auto">
+              <GoTPanel sessionId={sessionId} />
+            </TabsContent>
+
+            <TabsContent value="verify" className="h-full m-0 mt-2 overflow-y-auto">
+              <VerificationPanel sessionId={sessionId} />
+            </TabsContent>
+
+            <TabsContent value="memory" className="h-full m-0 mt-2 overflow-y-auto">
+              <MemoryPanel sessionId={sessionId} />
             </TabsContent>
           </div>
         </Tabs>
@@ -102,10 +129,31 @@ export function RightPanel({
             </div>
           </Tooltip>
 
-          {/* Fork status - static icon */}
+          {/* Fork status */}
           <Tooltip content="Divergent Path Analysis" side="left">
             <div className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-[var(--muted)] transition-colors">
               <GitFork className="w-4 h-4 text-violet-400" />
+            </div>
+          </Tooltip>
+
+          {/* GoT */}
+          <Tooltip content="Graph of Thoughts" side="left">
+            <div className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-[var(--muted)] transition-colors">
+              <BrainCircuit className="w-4 h-4 text-amber-500" />
+            </div>
+          </Tooltip>
+
+          {/* PRM */}
+          <Tooltip content="Step Verification" side="left">
+            <div className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-[var(--muted)] transition-colors">
+              <ShieldCheck className="w-4 h-4 text-blue-400" />
+            </div>
+          </Tooltip>
+
+          {/* Memory */}
+          <Tooltip content="Memory Hierarchy" side="left">
+            <div className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-[var(--muted)] transition-colors">
+              <Database className="w-4 h-4 text-cyan-400" />
             </div>
           </Tooltip>
         </div>
@@ -122,13 +170,13 @@ export function RightPanel({
   return (
     <aside
       id="right-panel-content"
-      className="w-80 border-l border-[var(--border)] bg-[var(--card)] flex flex-col h-full overflow-hidden transition-[width] duration-200 ease-out"
+      className="w-[28rem] border-l border-[var(--border)] bg-[var(--card)] flex flex-col h-full overflow-hidden transition-[width] duration-200 ease-out"
       role="complementary"
       aria-label="Analysis panel"
     >
       <Tabs defaultValue="insights" className="flex-1 flex flex-col min-h-0">
-        <div className="flex items-center mx-4 mt-3">
-          {/* Collapse button - leading */}
+        <div className="flex items-center gap-2 px-3 mt-3">
+          {/* Collapse button */}
           {onToggleCollapse && (
             <Button
               variant="ghost"
@@ -143,22 +191,29 @@ export function RightPanel({
             </Button>
           )}
 
-          {/* Centered tabs */}
-          <div className="flex-1 flex justify-center">
-            <TabsList>
-              <TabsTrigger value="insights" className="text-xs" data-tour="insights-tab">
-                <Lightbulb className="w-3 h-3 mr-1" />
-                Insights
-              </TabsTrigger>
-              <TabsTrigger value="fork" className="text-xs" data-tour="fork-tab">
-                <GitFork className="w-3 h-3 mr-1" />
-                ThinkFork
-              </TabsTrigger>
-            </TabsList>
-          </div>
-
-          {/* Spacer to balance the collapse button width for true centering */}
-          {onToggleCollapse && <div className="w-7 shrink-0" />}
+          {/* Tabs — fill remaining space */}
+          <TabsList className="flex-1">
+            <TabsTrigger value="insights" className="text-xs flex-1" data-tour="insights-tab">
+              <Lightbulb className="w-3 h-3 mr-1" />
+              Insights
+            </TabsTrigger>
+            <TabsTrigger value="fork" className="text-xs flex-1" data-tour="fork-tab">
+              <GitFork className="w-3 h-3 mr-1" />
+              Fork
+            </TabsTrigger>
+            <TabsTrigger value="got" className="text-xs flex-1">
+              <BrainCircuit className="w-3 h-3 mr-1" />
+              GoT
+            </TabsTrigger>
+            <TabsTrigger value="verify" className="text-xs flex-1">
+              <ShieldCheck className="w-3 h-3 mr-1" />
+              PRM
+            </TabsTrigger>
+            <TabsTrigger value="memory" className="text-xs flex-1">
+              <Database className="w-3 h-3 mr-1" />
+              Memory
+            </TabsTrigger>
+          </TabsList>
         </div>
 
         <div className="flex-1 min-h-0 overflow-hidden">
@@ -174,6 +229,18 @@ export function RightPanel({
 
           <TabsContent value="fork" className="h-full m-0 mt-2">
             <ForkPanel sessionId={sessionId} />
+          </TabsContent>
+
+          <TabsContent value="got" className="h-full m-0 mt-2 overflow-y-auto">
+            <GoTPanel sessionId={sessionId} />
+          </TabsContent>
+
+          <TabsContent value="verify" className="h-full m-0 mt-2 overflow-y-auto">
+            <VerificationPanel sessionId={sessionId} />
+          </TabsContent>
+
+          <TabsContent value="memory" className="h-full m-0 mt-2 overflow-y-auto">
+            <MemoryPanel sessionId={sessionId} />
           </TabsContent>
         </div>
       </Tabs>

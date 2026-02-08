@@ -4,10 +4,8 @@ import { useCallback, useState, useEffect } from "react";
 import {
   useNodesState,
   useEdgesState,
-  type Node,
-  type Edge,
 } from "@xyflow/react";
-import { getSessionNodes, type ThinkingNode, type ReasoningEdge } from "@/lib/api";
+import { getSessionNodes } from "@/lib/api";
 import {
   transformNodesToGraph,
   transformEdgesToGraph,

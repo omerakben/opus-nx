@@ -92,7 +92,6 @@ export default function LoginPage() {
       {/* Hero Section */}
       <div className="w-full max-w-2xl text-center mb-10">
         <div className="flex justify-center mb-6">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/opus_nx_icon.svg"
             alt="Opus Nx"

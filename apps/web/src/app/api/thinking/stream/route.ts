@@ -81,7 +81,7 @@ export async function POST(request: Request) {
           // Listen for abort to stop processing
           const abortHandler = () => {
             isAborted = true;
-            console.log("[API] Client disconnected, stopping stream:", { correlationId });
+            console.warn("[API] Client disconnected, stopping stream:", { correlationId });
           };
           abortSignal.addEventListener("abort", abortHandler, { once: true });
           let parentLinkStatus: "linked" | "not_applicable" | "lookup_failed" | "persist_failed" | "pending" = "not_applicable";
@@ -144,7 +144,7 @@ export async function POST(request: Request) {
 
           // If client disconnected during thinking, close gracefully without persisting
           if (isAborted) {
-            console.log("[API] Aborting stream - client disconnected during thinking:", { correlationId });
+            console.warn("[API] Aborting stream - client disconnected during thinking:", { correlationId });
             controller.close();
             return;
           }
