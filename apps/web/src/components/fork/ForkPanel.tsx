@@ -78,7 +78,7 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
   const [analysisId, setAnalysisId] = useState<string | null>(null);
 
   // Effort level selector (Improvement 2a)
-  const [effort, setEffort] = useState<EffortLevel>("high");
+  const [effort, setEffort] = useState<EffortLevel>("max");
 
   // Convergence assumption selections (Improvement 1)
   const [selectedAssumptions, setSelectedAssumptions] = useState<
@@ -447,17 +447,19 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
           {/* Effort Level Selector (Improvement 2a) */}
           <div className="flex items-center gap-2 mb-3">
             <span className="text-[11px] text-[var(--muted-foreground)] shrink-0">Effort:</span>
-            <div className="flex p-0.5 rounded-md bg-[var(--muted)]/20 border border-[var(--border)]">
+            <div className="flex gap-0.5 p-0.5 rounded-md bg-[var(--muted)]/20 border border-[var(--border)]">
               {effortOptions.map(({ value, label }) => (
                 <button
                   key={value}
                   type="button"
                   onClick={() => setEffort(value)}
                   className={cn(
-                    "px-2 py-0.5 text-[10px] rounded transition-colors",
-                    effort === value
-                      ? "bg-[var(--background)] text-[var(--foreground)] shadow-sm font-medium"
-                      : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                    "px-2.5 py-0.5 text-[10px] rounded transition-colors",
+                    effort === value && value === "max"
+                      ? "bg-[var(--brand-warm)]/15 text-[var(--brand-warm)] shadow-sm font-semibold border border-[var(--brand-warm)]/30"
+                      : effort === value
+                        ? "bg-[var(--background)] text-[var(--foreground)] shadow-sm font-medium"
+                        : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
                   )}
                 >
                   {label}

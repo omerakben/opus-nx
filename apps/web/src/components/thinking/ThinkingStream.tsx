@@ -115,7 +115,7 @@ export function ThinkingStream({
   warnings = [],
 }: ThinkingStreamProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [effort, setEffort] = useState<string>("high");
+  const [effort, setEffort] = useState<string>("max");
 
   // Auto-scroll to bottom as content streams in
   useEffect(() => {
@@ -209,33 +209,30 @@ export function ThinkingStream({
           ) : (
             <>
               <TokenCounter count={tokenCount} isStreaming={isStreaming} />
-              {/* Effort selector — segmented control */}
+              {/* Effort selector — pill-based control */}
               {!isStreaming && (
-                <div className="relative flex items-center rounded-lg border border-[var(--border)] bg-[var(--muted)]/40 p-0.5 overflow-hidden">
-                  {/* Sliding indicator */}
-                  <div
-                    className="absolute top-0.5 bottom-0.5 rounded-md bg-[var(--card)] shadow-sm border border-[var(--border)] transition-transform duration-200 ease-out"
-                    style={{
-                      width: `${100 / EFFORT_LEVELS.length}%`,
-                      transform: `translateX(${EFFORT_LEVELS.indexOf(effort as typeof EFFORT_LEVELS[number]) * 100}%)`,
-                    }}
-                  />
+                <div className={cn(
+                  "flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--muted)]/30 p-1",
+                  isMobile && "gap-0.5 p-0.5"
+                )}>
                   {EFFORT_LEVELS.map((e) => (
                     <button
                       key={e}
                       onClick={() => setEffort(e)}
                       className={cn(
-                        "relative z-10 px-2 py-0.5 text-[11px] font-medium rounded-md transition-colors cursor-pointer",
-                        isMobile && "px-2.5 py-1 text-xs",
-                        effort === e
-                          ? "text-[var(--foreground)]"
-                          : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                        "px-2.5 py-1 text-[11px] font-medium rounded-md transition-all cursor-pointer",
+                        isMobile && "px-3 py-1.5 text-xs",
+                        effort === e && e === "max"
+                          ? "bg-[var(--brand-warm)]/15 text-[var(--brand-warm)] shadow-sm border border-[var(--brand-warm)]/30 font-semibold"
+                          : effort === e
+                            ? "bg-[var(--card)] text-[var(--foreground)] shadow-sm border border-[var(--border)]"
+                            : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)]/40 border border-transparent"
                       )}
                       title={`${e} effort thinking${e === "max" ? " (Opus 4.6 exclusive)" : ""}`}
                     >
                       {e === "max" ? (
-                        <span className="flex items-center gap-0.5">
-                          <Sparkles className="w-2.5 h-2.5" />
+                        <span className="flex items-center gap-1">
+                          <Sparkles className={cn("w-2.5 h-2.5", effort === e && "text-[var(--brand-warm)]")} />
                           max
                         </span>
                       ) : e}
