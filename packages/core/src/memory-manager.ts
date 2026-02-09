@@ -1,3 +1,8 @@
+/**
+ * @module Memory Manager
+ * @scope future - Post-hackathon roadmap
+ * @description Voyage AI embeddings and semantic search
+ */
 import Anthropic from "@anthropic-ai/sdk";
 import { createLogger } from "@opus-nx/shared";
 import {

@@ -1,24 +1,29 @@
 # Opus Nx
 
-**AI reasoning you can see and steer.**
+## AI reasoning you can see, steer, and verify.
 
-Built for the [Cerebral Valley "Built with Opus 4.6" Hackathon](https://cv.inc/e/claude-code-hackathon) (Feb 10-16, 2026)
+Opus Nx transforms Claude Opus 4.6's extended thinking from an invisible black box into **persistent, navigable reasoning graphs**. Explore how your AI thinks, fork it into competing perspectives, and verify every step -- all in real time.
+
+**[Live Demo](https://opus-nx.vercel.app)** | Built for the [Cerebral Valley "Built with Opus 4.6" Hackathon](https://cv.inc/e/claude-code-hackathon) (Feb 2026)
 
 ---
 
-## The Innovation
+## Why Opus Nx?
 
-Every AI system today treats extended thinking as a black box: reasoning happens, a response comes out, and the thinking vanishes. Opus Nx transforms Claude Opus 4.6's extended thinking into **persistent reasoning graphs**. Steer parallel branches, verify each step, and build on past thinking across sessions.
+Every AI system today treats reasoning as disposable. Extended thinking improves the output, but the thinking itself vanishes the moment the response arrives. You get the answer -- never the journey.
 
-| What Others Do                       | What Opus Nx Does                                                |
-| ------------------------------------ | ---------------------------------------------------------------- |
-| Extended thinking improves responses | Extended thinking becomes **navigable and steerable**            |
-| AI conversations are stateless       | Every reasoning chain is **persistent and traversable**          |
-| "The AI said X"                      | "We reasoned A -> B -> C together to conclude X"                 |
-| Black box decisions                  | **Transparent reasoning** you can explore and redirect           |
-| Single reasoning path                | **Parallel branches** you steer with convergence analysis        |
-| Trust the final answer               | **Step-by-step verification** -- check each reasoning step       |
-| Fixed context window                 | **Hierarchical memory** -- sessions that never forget            |
+**The problem is trust.** When you cannot see *how* an AI reached its conclusion, you cannot verify it, steer it, or build on it. You are left with "the AI said X" instead of "we reasoned through A, B, and C to arrive at X."
+
+Opus Nx makes the invisible visible:
+
+| Status Quo | Opus Nx |
+| --- | --- |
+| Reasoning happens behind a wall | Reasoning becomes a **navigable graph** you can explore |
+| Single path to an answer | **Four concurrent perspectives** you steer in real time |
+| "Trust the final output" | **Step-by-step verification** with scored confidence |
+| Conversations are stateless | Every reasoning chain is **persistent and searchable** |
+| Fixed effort for every question | **Adaptive effort** -- simple questions get fast answers, complex ones get deep thinking |
+| No self-awareness | **Metacognitive self-audit** detects the AI's own biases and blind spots |
 
 ---
 
@@ -26,44 +31,38 @@ Every AI system today treats extended thinking as a black box: reasoning happens
 
 ### 1. ThinkGraph -- Navigate How Your AI Thinks
 
-Every extended thinking session is parsed into a persistent graph of reasoning nodes, decision points, and edges. Explore reasoning chains visually with `@xyflow/react`, see which alternatives were considered at each decision point, and query past reasoning with natural language. The graph persists to Supabase with graceful degradation when the database is unavailable.
+Extended thinking is parsed into a persistent graph of reasoning nodes, decision points, and directed edges. Each node carries content, confidence scores, and metadata. The graph renders as an interactive visualization powered by `@xyflow/react`, where you can click into any decision point to see what alternatives were considered and why the AI chose its path.
 
-### 2. Metacognitive Self-Audit -- Understand Your AI's Patterns
+Graphs persist to Supabase (PostgreSQL + pgvector) and degrade gracefully to in-memory storage when the database is unavailable.
 
-Using Opus 4.6's full 50k thinking token budget, the system turns reasoning inward -- analyzing its own patterns, detecting systematic biases, identifying recurring strategies, and generating self-improvement hypotheses. Together, you and the AI identify thinking habits and calibrate reasoning quality.
+### 2. ThinkFork -- Steer Competing Perspectives
 
-### 3. ThinkFork -- Steer Multiple Perspectives
-
-Complex decisions spawn up to four concurrent reasoning branches, each with a distinct perspective:
+Complex decisions spawn up to four concurrent reasoning branches, each approaching the problem from a distinct angle:
 
 - **Conservative** -- Risk-averse, precedent-focused analysis
 - **Aggressive** -- Opportunity-seeking, growth-oriented analysis
 - **Balanced** -- Weighted trade-off evaluation
 - **Contrarian** -- Challenges assumptions and conventional wisdom
 
-You steer the reasoning: debate mode makes branches argue against each other, branch steering lets you redirect mid-stream, and convergence metrics quantify where perspectives agree or diverge.
+**Debate mode** makes the branches argue against each other. **Branch steering** lets you redirect any branch mid-stream. **Convergence analysis** quantifies where perspectives agree, where they diverge, and what that means for your decision. Inspired by [Tree of Thoughts](https://arxiv.org/abs/2305.10601) (Yao et al., 2023).
 
-### 4. Graph of Thoughts (GoT) -- Deep Dive Complex Problems
+### 3. Metacognitive Self-Audit -- Understand Your AI's Patterns
 
-Goes beyond linear chains and trees to support arbitrary graph structures for reasoning. Implements BFS, DFS, and best-first search strategies over thought nodes, with aggregation operations that merge insights from multiple reasoning paths and refinement operations that improve existing thoughts.
+Using Opus 4.6's full 50,000-token thinking budget, the system turns reasoning inward. It analyzes its own patterns across sessions, detects systematic biases, identifies recurring strategies, and generates self-improvement hypotheses -- all with scored confidence and actionable recommendations.
 
-### 5. Process Reward Model (PRM) -- Verify Before You Trust
+This is only possible with Opus 4.6. No other model provides the extended thinking depth required for meaningful self-reflection.
 
-Rather than trusting final answers blindly, the PRM verifier lets you inspect each individual reasoning step. Uses geometric mean scoring to identify the weakest links in a reasoning chain. Steps are rated as correct, incorrect, or neutral, with detailed justification for each judgment.
+### 4. PRM Verifier -- Check Every Reasoning Step
 
-### 6. Hierarchical Memory -- Sessions That Never Forget
+Rather than trusting final answers, the Process Reward Model verifier inspects each individual step in a reasoning chain. Every step is rated as correct, incorrect, or neutral with a detailed justification. The chain's overall score uses geometric mean aggregation, which surfaces the weakest link rather than hiding it behind an average. Based on [Let's Verify Step by Step](https://arxiv.org/abs/2305.20050) (Lightman et al., 2023).
 
-Implements a three-tier memory architecture inspired by the MemGPT paper:
+### 5. Orchestrator -- Adaptive Effort Routing
 
-- **Main Context** -- Active working memory within the LLM context window
-- **Recall Storage** -- Recently accessed memories retrievable by semantic search
-- **Archival Storage** -- Long-term knowledge base with Voyage AI embeddings
+Not every question deserves the same thinking budget. The orchestrator classifies incoming tasks as simple, standard, or complex using dynamic pattern matching, then routes them to the appropriate effort level (`low` / `medium` / `high` / `max`). It manages token budgets, triggers context compaction for long sessions, and injects relevant knowledge context before each reasoning step.
 
-Build on past reasoning across sessions with automatic eviction paging that moves memories between tiers based on relevance and recency.
+### 6. ThinkingEngine -- The Opus 4.6 Foundation
 
-### 7. Orchestrator -- Adaptive Session Management
-
-The central brain that routes tasks to the appropriate thinking effort level using dynamic classification (simple, standard, complex). Manages token budgets, triggers context compaction for infinite sessions, and injects relevant knowledge context before each reasoning step.
+The core wrapper around Claude Opus 4.6 that makes everything else possible. Supports four effort levels with configurable thinking budgets, real-time SSE streaming of thinking deltas, and context compaction for sessions that exceed the context window. Every module in Opus Nx builds on this foundation.
 
 ---
 
@@ -72,64 +71,65 @@ The central brain that routes tasks to the appropriate thinking effort level usi
 ```
 +------------------------------------------------------------------+
 |                       Next.js 16 Dashboard                       |
-|  +------------+ +----------+ +-----------+ +--------+ +--------+ |
-|  | ThinkGraph | | ThinkFork| | Metacog   | | GoT    | | PRM    | |
-|  | Visualizer | | Panel    | | Insights  | | Panel  | | Verify | |
-|  +-----+------+ +----+-----+ +----+------+ +---+----+ +---+----+ |
-|        |              |            |            |          |       |
-+--------+--------------+------------+------------+----------+------+
-         |              |            |            |          |
-         v              v            v            v          v
+|  +------------+ +----------+ +-----------+ +--------+            |
+|  | ThinkGraph | | ThinkFork| | Metacog   | | PRM    |            |
+|  | Visualizer | | Panel    | | Insights  | | Verify |            |
+|  +-----+------+ +----+-----+ +----+------+ +---+----+            |
+|        |              |            |            |                 |
++--------+--------------+------------+------------+-----------------+
+         |              |            |            |
+         v              v            v            v
 +------------------------------------------------------------------+
-|                        @opus-nx/core                             |
+|                  @opus-nx/core  [Hackathon Core]                  |
 |                                                                  |
 |  +---------------+  +-------------+  +--------------+            |
 |  | Thinking      |  | ThinkGraph  |  | Metacognition|            |
 |  | Engine        |  |             |  | Engine       |            |
 |  +---------------+  +-------------+  +--------------+            |
 |                                                                  |
-|  +---------------+  +-------------+  +--------------+            |
-|  | ThinkFork     |  | GoT Engine  |  | PRM Verifier |            |
-|  | (4 branches)  |  | (BFS/DFS)   |  | (step-level) |            |
-|  +---------------+  +-------------+  +--------------+            |
+|  +---------------+  +--------------+  +--------------+           |
+|  | ThinkFork     |  | Orchestrator |  | PRM Verifier |           |
+|  | (4 branches)  |  | (routing)    |  | (step-level) |           |
+|  +---------------+  +--------------+  +--------------+           |
 |                                                                  |
-|  +---------------+  +-----------------------------------------+  |
-|  | Orchestrator  |  | Memory Manager + Memory Hierarchy       |  |
-|  | (routing)     |  | (Voyage AI embeddings, 3-tier paging)  |  |
-|  +---------------+  +-----------------------------------------+  |
+|  - - - - - - - - - [Future Scope] - - - - - - - - - - - - - -   |
+|  +-------------+  +------------------+  +------------------+     |
+|  | GoT Engine  |  | Memory Hierarchy |  | Memory Manager   |     |
+|  | (BFS/DFS)   |  | (3-tier paging)  |  | (Voyage AI)      |     |
+|  +-------------+  +------------------+  +------------------+     |
 +-------------------------------+----------------------------------+
                                 |
                                 v
 +------------------------------------------------------------------+
 |             Supabase (PostgreSQL + pgvector)                      |
 |  thinking_nodes | reasoning_edges | decision_points | sessions   |
-|  knowledge_entries | metacognitive_insights | contradictions     |
+|  metacognitive_insights | knowledge_entries (future)             |
 +------------------------------------------------------------------+
                                 |
                                 v
 +------------------------------------------------------------------+
-|  Claude Opus 4.6   |   Voyage AI Embeddings   |   Tavily Search  |
-|  (50k thinking)    |   (voyage-3, 1024-dim)   |   (web research)  |
+|  Claude Opus 4.6   |   Voyage AI (future)   |   Tavily (future)  |
+|  (50k thinking)    |   (voyage-3, 1024-dim) |   (web research)    |
 +------------------------------------------------------------------+
 ```
 
----
+### Monorepo Structure
 
-## Tech Stack
-
-| Layer             | Technology                                            |
-| ----------------- | ----------------------------------------------------- |
-| **LLM**           | Claude Opus 4.6 (extended thinking, up to 50k tokens) |
-| **Framework**     | Next.js 16 (App Router, Turbopack), React 19          |
-| **Styling**       | Tailwind CSS 4, shadcn/ui                             |
-| **Visualization** | @xyflow/react (react-flow)                            |
-| **Database**      | Supabase (PostgreSQL + pgvector, HNSW indexes)        |
-| **Embeddings**    | Voyage AI (voyage-3, 1024-dim)                        |
-| **Agents**        | LangChain + LangGraph                                 |
-| **Monorepo**      | Turborepo + pnpm 9.15                                 |
-| **Language**      | TypeScript 5.7+ (strict mode)                         |
-| **Runtime**       | Node.js 22+                                           |
-| **Testing**       | Vitest                                                |
+```text
+apps/web/              Next.js 16 dashboard (App Router, Turbopack)
+packages/
+  core/                ThinkingEngine, ThinkGraph, ThinkFork, Metacognition,
+                       PRM, Orchestrator  [+ GoT, Memory (future scope)]
+  db/                  Supabase client, query functions, types
+  agents/              LangChain/LangGraph agent implementations (future scope)
+  shared/              Shared types, utilities, config loaders
+configs/
+  agents.yaml          Agent definitions (future scope)
+  categories.yaml      Knowledge taxonomy
+  prompts/             System prompts (orchestrator, metacognition, thinkfork styles)
+supabase/
+  migrations/          Canonical SQL migrations (3 files)
+```
 
 ---
 
@@ -137,261 +137,156 @@ The central brain that routes tasks to the appropriate thinking effort level usi
 
 ### Prerequisites
 
-- **Node.js** 22 or later
-- **pnpm** 9.15 or later
+- **Node.js** 22+
+- **pnpm** 9.15+
 - **Supabase** account (PostgreSQL + pgvector)
-- **API Keys**: Anthropic (Claude Opus 4.6), Voyage AI, Tavily
+- **API Keys**: Anthropic (Claude Opus 4.6); Voyage AI *(optional -- future scope)*
 
 ### Installation
 
 ```bash
-# Clone the repository
 git clone https://github.com/omerakben/opus-nx.git
 cd opus-nx
-
-# Install dependencies
 pnpm install
-
-# Set up environment variables
 cp .env.example .env
 ```
 
 Edit `.env` with your credentials:
 
 ```bash
-# Anthropic API (Required)
-ANTHROPIC_API_KEY=sk-ant-...
-
-# App Auth (Required -- used for HMAC-signed cookie authentication)
-AUTH_SECRET=your-secret-here
-
-# Supabase (Required)
+ANTHROPIC_API_KEY=sk-ant-...       # Required -- Claude Opus 4.6
+AUTH_SECRET=your-secret-here        # Required -- login password + HMAC signing
 SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=...
 SUPABASE_ANON_KEY=...
-
-# Voyage AI Embeddings (Required for knowledge storage)
-VOYAGE_API_KEY=pa-...
-
-# Tavily Search (Required for Research Agent)
-TAVILY_API_KEY=tvly-...
+VOYAGE_API_KEY=pa-...               # Optional -- embeddings (future scope)
+TAVILY_API_KEY=tvly-...             # Optional -- web search agent
 ```
 
-Then build and run:
+Build and run:
 
 ```bash
-# Run database migrations
-pnpm db:migrate
-
-# Build all packages
-pnpm build
-
-# Start the development server
-pnpm dev
+pnpm db:migrate   # Run database migrations
+pnpm build        # Build all packages
+pnpm dev          # Start dev server at http://localhost:3000
 ```
-
-The dashboard will be available at `http://localhost:3000`.
-
-### Running Just the Web Dashboard
-
-```bash
-pnpm --filter @opus-nx/web dev
-```
-
----
-
-## Project Structure
-
-```
-opus-nx/
-├── apps/
-│   └── web/                          # Next.js 16 dashboard
-│       └── src/
-│           ├── app/
-│           │   └── api/              # 21 API routes
-│           │       ├── auth/         # Authentication (login, logout)
-│           │       ├── think/        # Extended thinking (alias)
-│           │       ├── thinking/     # Extended thinking (canonical + SSE stream)
-│           │       ├── fork/         # ThinkFork branches + steering
-│           │       ├── got/          # Graph of Thoughts reasoning
-│           │       ├── verify/       # PRM step-by-step verification
-│           │       ├── memory/       # Hierarchical memory operations
-│           │       ├── sessions/     # Session CRUD + node listing
-│           │       ├── reasoning/    # ThinkGraph queries + checkpoints
-│           │       ├── insights/     # Metacognitive insights
-│           │       ├── stream/       # SSE streaming (compatibility)
-│           │       ├── seed/         # Demo data seeding
-│           │       ├── demo/         # Demo mode
-│           │       └── health/       # Health check
-│           └── components/           # 37 React components
-│               ├── fork/             # BranchCard, Convergence, ForkPanel
-│               ├── got/              # GoTPanel
-│               ├── graph/            # ThinkingGraph, ThinkingNode, StreamingNode
-│               ├── insights/         # InsightCard, InsightsPanel
-│               ├── layout/           # Dashboard, Header, Panels, MobileNav
-│               ├── memory/           # MemoryPanel
-│               ├── sessions/         # SessionCard, SessionList, SessionStats
-│               ├── thinking/         # ThinkingInput, ThinkingStream, TokenCounter
-│               ├── tour/             # DemoTour
-│               ├── verify/           # VerificationPanel
-│               └── ui/               # shadcn/ui primitives
-├── packages/
-│   ├── core/                         # Core reasoning engine
-│   │   └── src/
-│   │       ├── thinking-engine.ts    # Claude Opus 4.6 wrapper (adaptive effort)
-│   │       ├── think-graph.ts        # Reasoning graph parser and persistence
-│   │       ├── orchestrator.ts       # Task routing and session management
-│   │       ├── metacognition.ts      # Self-reflection engine (50k budget)
-│   │       ├── thinkfork.ts          # 4-branch parallel reasoning
-│   │       ├── got-engine.ts         # Graph of Thoughts (BFS/DFS/best-first)
-│   │       ├── prm-verifier.ts       # Process Reward Model verification
-│   │       ├── memory-hierarchy.ts   # 3-tier MemGPT-style memory
-│   │       ├── memory-manager.ts     # Voyage AI embeddings and search
-│   │       └── types/                # Shared type definitions
-│   ├── agents/                       # LangChain/LangGraph agent implementations
-│   ├── db/                           # Supabase client, queries, and types
-│   │   └── migrations/               # Mirror of canonical migrations
-│   └── shared/                       # Shared utilities and config loaders
-├── configs/
-│   ├── agents.yaml                   # 5 agent definitions (research, code, knowledge, planning, communication)
-│   ├── categories.yaml               # Knowledge taxonomy (5 categories)
-│   └── prompts/                      # System prompts
-│       ├── orchestrator.md
-│       ├── metacognition.md
-│       ├── research.md
-│       ├── code.md
-│       ├── knowledge.md
-│       ├── planning.md
-│       ├── communication.md
-│       └── thinkfork/                # Per-branch reasoning prompts
-│           ├── conservative.md
-│           ├── aggressive.md
-│           ├── balanced.md
-│           ├── contrarian.md
-│           └── comparison.md
-├── supabase/
-│   └── migrations/                   # Canonical SQL migrations
-│       ├── 001_initial_schema.sql    # Core tables + pgvector HNSW index
-│       ├── 002_thinking_graph.sql    # ThinkGraph tables + RPC functions
-│       └── 003_node_type.sql         # Node type column extension
-├── CLAUDE.md                         # Claude Code project instructions
-├── ARCHITECTURE.md                   # Technical architecture document
-├── PRD.md                            # Product requirements document
-└── ROADMAP.md                        # Development plan
-```
-
----
-
-## Why Opus 4.6?
-
-Opus Nx is built exclusively for Claude Opus 4.6 because no other model provides the capabilities this system requires:
-
-| Capability           | Requirement                                              | Opus 4.6                    |
-| -------------------- | -------------------------------------------------------- | --------------------------- |
-| Metacognition        | 50,000 thinking tokens to reason about its own reasoning | Only model with this budget |
-| Infinite Sessions    | 1M token context window with compaction                  | Largest context available   |
-| Complex Meta-Prompts | Reliable instruction following for multi-layer prompts   | Best in class               |
-| Extended Thinking    | Native streaming with thinking deltas                    | Uniquely suited             |
-| 128K Output          | Long-form reasoning and analysis generation              | Maximum output capacity     |
-
----
-
-## Research Foundation
-
-Opus Nx implements algorithms from four foundational papers in LLM reasoning:
-
-| Paper                                                                           | Year | Module                          | Key Contribution                                                 |
-| ------------------------------------------------------------------------------- | ---- | ------------------------------- | ---------------------------------------------------------------- |
-| [Tree of Thoughts](https://arxiv.org/abs/2305.10601) (Yao et al.)               | 2023 | `thinkfork.ts`, `got-engine.ts` | BFS/DFS search over reasoning trees with state evaluation        |
-| [Graph of Thoughts](https://arxiv.org/abs/2308.09687) (Besta et al.)            | 2023 | `got-engine.ts`                 | Arbitrary thought graph topology with aggregation and refinement |
-| [Let's Verify Step by Step](https://arxiv.org/abs/2305.20050) (Lightman et al.) | 2023 | `prm-verifier.ts`               | Process supervision -- verify each reasoning step independently  |
-| [MemGPT](https://arxiv.org/abs/2310.08560) (Packer et al.)                      | 2023 | `memory-hierarchy.ts`           | Three-tier memory hierarchy with automatic paging between tiers  |
-
----
-
-## Development Commands
-
-### Core Workflow
-
-```bash
-pnpm install                          # Install all dependencies
-pnpm build                            # Build all packages (Turborepo)
-pnpm dev                              # Start all dev servers
-pnpm lint                             # Run linting across all packages
-pnpm typecheck                        # Type-check all packages
-pnpm test                             # Run tests (includes migration drift check)
-```
-
-### Database
-
-```bash
-pnpm db:migrate                       # Run Supabase migrations
-pnpm db:generate                      # Regenerate TypeScript types from Supabase
-pnpm check:migrations                 # Verify migration drift between supabase/ and packages/db/
-```
-
-### Package-Specific
-
-```bash
-pnpm --filter @opus-nx/web dev        # Start just the web dashboard
-pnpm --filter @opus-nx/web typecheck  # Type-check web package only
-pnpm --filter @opus-nx/core test      # Run core engine tests only
-```
-
-### Migration Workflow
-
-Migrations must exist in both locations and be identical:
-
-1. `supabase/migrations/` (canonical source)
-2. `packages/db/migrations/` (mirror)
-
-The `pnpm check:migrations` script enforces synchronization between these directories.
 
 ---
 
 ## API Reference
 
-| Route                             | Method           | Purpose                               |
-| --------------------------------- | ---------------- | ------------------------------------- |
-| `/api/health`                     | GET              | Health check                          |
-| `/api/auth`                       | POST             | Authenticate with AUTH_SECRET         |
-| `/api/auth/logout`                | POST             | Clear auth cookie                     |
-| `/api/thinking`                   | POST             | Extended thinking request (canonical) |
-| `/api/thinking/stream`            | POST             | SSE streaming for thinking deltas     |
-| `/api/think`                      | POST             | Extended thinking (alias)             |
-| `/api/stream/[sessionId]`         | GET              | SSE stream (compatibility endpoint)   |
-| `/api/fork`                       | POST             | Spawn ThinkFork parallel branches     |
-| `/api/fork/steer`                 | POST             | Redirect a branch mid-reasoning       |
-| `/api/got`                        | POST             | Graph of Thoughts reasoning           |
-| `/api/verify`                     | POST             | PRM step-by-step verification         |
-| `/api/memory`                     | GET/POST         | Hierarchical memory read/write        |
-| `/api/sessions`                   | GET/POST         | List or create sessions               |
-| `/api/sessions/[sessionId]`       | GET/PATCH/DELETE | Session CRUD                          |
-| `/api/sessions/[sessionId]/nodes` | GET              | List thinking nodes for a session     |
-| `/api/reasoning/[id]`             | GET              | Query ThinkGraph by ID                |
-| `/api/reasoning/[id]/checkpoint`  | POST             | Create reasoning checkpoint           |
-| `/api/insights`                   | GET/POST         | Metacognitive insights                |
-| `/api/demo`                       | POST             | Generate demo data                    |
-| `/api/seed`                       | POST             | Seed knowledge base                   |
-| `/api/seed/business-strategy`     | POST             | Seed business strategy scenario       |
+### Core Reasoning
+
+| Route | Method | Purpose |
+| --- | --- | --- |
+| `/api/thinking` | POST | Extended thinking request with adaptive effort |
+| `/api/thinking/stream` | POST | SSE streaming for real-time thinking deltas |
+| `/api/fork` | POST | Spawn ThinkFork parallel reasoning branches |
+| `/api/fork/steer` | POST | Redirect a branch mid-reasoning |
+| `/api/verify` | POST | PRM step-by-step verification |
+| `/api/got` | POST | Graph of Thoughts reasoning *(future scope)* |
+| `/api/insights` | GET/POST | Metacognitive self-audit |
+
+### Sessions and Data
+
+| Route | Method | Purpose |
+| --- | --- | --- |
+| `/api/sessions` | GET/POST | List or create sessions |
+| `/api/sessions/[sessionId]` | GET/PATCH/DELETE | Session CRUD |
+| `/api/sessions/[sessionId]/nodes` | GET | Thinking nodes for a session |
+| `/api/reasoning/[id]` | GET | ThinkGraph node details |
+| `/api/reasoning/[id]/checkpoint` | POST | Human-in-the-loop checkpoint |
+| `/api/memory` | GET/POST | Hierarchical memory read/write *(future scope)* |
+
+### System
+
+| Route | Method | Purpose |
+| --- | --- | --- |
+| `/api/auth` | POST | Authenticate with AUTH_SECRET |
+| `/api/auth/logout` | POST | Clear auth cookie |
+| `/api/health` | GET | Health check |
 
 ---
 
-## Documentation
+## Research Foundation
 
-- [ARCHITECTURE.md](./ARCHITECTURE.md) -- Technical architecture and system design
-- [PRD.md](./PRD.md) -- Product requirements document
-- [ROADMAP.md](./ROADMAP.md) -- Development plan and task breakdown
-- [CLAUDE.md](./CLAUDE.md) -- Claude Code project instructions
+Opus Nx's core hackathon features are grounded in peer-reviewed research on LLM reasoning:
+
+| Paper | Module | Key Idea |
+| --- | --- | --- |
+| [Tree of Thoughts](https://arxiv.org/abs/2305.10601) (Yao et al., 2023) | `thinkfork.ts` | BFS/DFS search over reasoning trees with state evaluation |
+| [Let's Verify Step by Step](https://arxiv.org/abs/2305.20050) (Lightman et al., 2023) | `prm-verifier.ts` | Process supervision -- verify each reasoning step independently |
+
+### Future Scope
+
+Two additional papers inform modules that are implemented but scoped as post-hackathon work:
+
+| Paper | Module | Direction |
+| --- | --- | --- |
+| [Graph of Thoughts](https://arxiv.org/abs/2308.09687) (Besta et al., 2023) | `got-engine.ts` | Arbitrary thought graph topology with aggregation and refinement |
+| [MemGPT](https://arxiv.org/abs/2310.08560) (Packer et al., 2023) | `memory-hierarchy.ts` | 3-tier memory hierarchy (main context / recall / archival) with paging |
+
+The GoT engine and MemGPT-inspired memory hierarchy are built and functional. Full integration into the dashboard workflow is planned for the next iteration.
+
+---
+
+## Why Opus 4.6?
+
+Opus Nx requires Claude Opus 4.6 specifically. No other model provides the combination of capabilities this system needs:
+
+| Capability | Why It Matters |
+| --- | --- |
+| **50k thinking tokens** | Metacognitive self-audit needs deep introspective reasoning |
+| **Extended thinking streaming** | Real-time ThinkGraph construction from thinking deltas |
+| **1M context window** | Infinite sessions with orchestrator-managed compaction |
+| **128K output** | Long-form reasoning and multi-branch analysis generation |
+| **Instruction fidelity** | Reliable execution of multi-layer meta-prompts |
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+| --- | --- |
+| **LLM** | Claude Opus 4.6 (extended thinking, up to 50k tokens) |
+| **Framework** | Next.js 16 (App Router, Turbopack), React 19 |
+| **Styling** | Tailwind CSS 4, shadcn/ui |
+| **Visualization** | @xyflow/react (react-flow) |
+| **Database** | Supabase (PostgreSQL + pgvector, HNSW indexes) |
+| **Embeddings** | Voyage AI (voyage-3, 1024-dim) |
+| **Agents** | LangChain + LangGraph |
+| **Monorepo** | Turborepo + pnpm |
+| **Language** | TypeScript 5.7+ (strict mode) |
+| **Runtime** | Node.js 22+ |
+| **Testing** | Vitest |
+
+---
+
+## Development
+
+```bash
+pnpm install          # Install dependencies
+pnpm build            # Build all packages (Turborepo)
+pnpm dev              # Start all dev servers
+pnpm lint             # Lint all packages
+pnpm typecheck        # Type-check all packages
+pnpm test             # Run tests
+pnpm db:migrate       # Run Supabase migrations
+pnpm check:migrations # Verify migration sync
+```
+
+---
+
+## Team
+
+**Ozzy** -- AI Engineer & Full-Stack Developer
+
+Built with Claude Code for the Cerebral Valley "Built with Opus 4.6" Hackathon
+
+**Category**: Most Creative Opus 4.6 Exploration
 
 ---
 
 ## License
 
 MIT
-
----
-
-Built with Claude Code for the Cerebral Valley "Built with Opus 4.6" Hackathon
-
-*Ozzy -- AI Engineer & Full-Stack Developer*

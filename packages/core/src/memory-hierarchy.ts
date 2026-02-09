@@ -1,3 +1,9 @@
+/**
+ * @module Memory Hierarchy
+ * @scope future - Post-hackathon roadmap
+ * @paper MemGPT (Packer et al., 2023)
+ * @description 3-tier memory with paging and auto-eviction
+ */
 import { createLogger } from "@opus-nx/shared";
 import type {
   MemoryEntry,

@@ -1,7 +1,10 @@
+/**
+ * @scope future - Post-hackathon roadmap
+ */
 import { z } from "zod";
 
 // ============================================================
-// Knowledge Categories
+// [Future Scope] Knowledge Categories
 // ============================================================
 
 export const KnowledgeCategorySchema = z.enum([

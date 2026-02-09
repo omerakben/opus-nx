@@ -1,20 +1,48 @@
 # Opus Nx: Technical Architecture
 
-**Version**: 2.0
-**Last Updated**: February 8, 2026
+**Version**: 2.1
+**Last Updated**: February 9, 2026
+
+---
+
+## Scope
+
+Opus Nx was built for the Cerebral Valley "Built with Opus 4.6" Hackathon (Feb 10-16, 2026). The architecture spans two tiers of scope:
+
+### Hackathon Core
+
+The following modules, API routes, and UI components constitute the hackathon deliverable -- the fully integrated, demo-ready system:
+
+| Layer | Components |
+|-------|-----------|
+| **Core Modules** | ThinkingEngine, ThinkGraph, Orchestrator, MetacognitionEngine, ThinkForkEngine, PRMVerifier |
+| **API Routes** | `/api/thinking`, `/api/thinking/stream`, `/api/think` (alias), `/api/stream/[sessionId]`, `/api/fork`, `/api/fork/steer`, `/api/fork/stream`, `/api/verify`, `/api/sessions/*`, `/api/insights/*`, `/api/reasoning/*`, `/api/health`, `/api/auth/*`, `/api/demo` |
+| **UI Panels** | ThinkingGraph, ForkPanel, InsightsPanel, VerificationPanel, SessionList, ThinkingStream |
+
+### Future Scope
+
+The following modules were implemented during the hackathon but are not part of the core demo flow. They are architecturally complete and tested, but are designated for post-hackathon integration and polish:
+
+| Layer | Components |
+|-------|-----------|
+| **Core Modules** | GoTEngine, MemoryHierarchy, MemoryManager |
+| **API Routes** | `/api/got`, `/api/memory`, `/api/seed`, `/api/seed/business-strategy` |
+| **UI Panels** | GoTPanel, MemoryPanel |
+| **Package** | `packages/agents/` (LangChain/LangGraph agent implementations) |
 
 ---
 
 ## Table of Contents
 
-1. [System Overview](#system-overview)
-2. [Component Responsibilities](#component-responsibilities)
-3. [Database Schema](#database-schema)
-4. [Data Flows](#data-flows)
-5. [Technology Stack](#technology-stack)
-6. [API Contracts](#api-contracts)
-7. [Security](#security)
-8. [Performance](#performance)
+1. [Scope](#scope)
+2. [System Overview](#system-overview)
+3. [Component Responsibilities](#component-responsibilities)
+4. [Database Schema](#database-schema)
+5. [Data Flows](#data-flows)
+6. [Technology Stack](#technology-stack)
+7. [API Contracts](#api-contracts)
+8. [Security](#security)
+9. [Performance](#performance)
 
 ---
 
@@ -144,9 +172,9 @@ Opus Nx makes AI reasoning visible, steerable, and persistent. It transforms Cla
 
 ## Component Responsibilities
 
-### Core Layer -- All 9 Modules
+### Core Layer -- 9 Modules (6 Hackathon Core + 3 Future Scope)
 
-#### 1. ThinkingEngine (`packages/core/src/thinking-engine.ts` -- 352 lines)
+#### [Hackathon Core] 1. ThinkingEngine (`packages/core/src/thinking-engine.ts` -- 352 lines)
 
 The wrapper around the Claude Opus 4.6 API. This is the "brain" that all other modules delegate to when they need LLM reasoning.
 
@@ -176,7 +204,7 @@ class ThinkingEngine {
 
 ---
 
-#### 2. ThinkGraph (`packages/core/src/think-graph.ts` -- 935 lines)
+#### [Hackathon Core] 2. ThinkGraph (`packages/core/src/think-graph.ts` -- 935 lines)
 
 The core innovation of Opus Nx. Transforms raw extended thinking text into a persistent, queryable graph. Every thinking session becomes a node with structured metadata.
 
@@ -205,7 +233,7 @@ The core innovation of Opus Nx. Transforms raw extended thinking text into a per
 
 ---
 
-#### 3. Orchestrator (`packages/core/src/orchestrator.ts` -- 773 lines)
+#### [Hackathon Core] 3. Orchestrator (`packages/core/src/orchestrator.ts` -- 773 lines)
 
 The central brain that coordinates all other modules. Handles the complete lifecycle from user message to persisted reasoning graph.
 
@@ -231,7 +259,7 @@ standard: everything else (default), plus messages 50-500 chars
 
 ---
 
-#### 4. MetacognitionEngine (`packages/core/src/metacognition.ts` -- 619 lines)
+#### [Hackathon Core] 4. MetacognitionEngine (`packages/core/src/metacognition.ts` -- 619 lines)
 
 Self-reflection engine. Uses the full 50k thinking budget to analyze the AI's own reasoning patterns across a session.
 
@@ -263,7 +291,7 @@ Self-reflection engine. Uses the full 50k thinking budget to analyze the AI's ow
 
 ---
 
-#### 5. ThinkForkEngine (`packages/core/src/thinkfork.ts` -- 1164 lines)
+#### [Hackathon Core] 5. ThinkForkEngine (`packages/core/src/thinkfork.ts` -- 1164 lines)
 
 Concurrent multi-perspective reasoning with 4 cognitive styles. The largest module, implementing fork, debate, steering, and convergence analysis.
 
@@ -294,49 +322,7 @@ Concurrent multi-perspective reasoning with 4 cognitive styles. The largest modu
 
 ---
 
-#### 6. GoTEngine (`packages/core/src/got-engine.ts` -- 871 lines)
-
-Graph of Thoughts reasoning framework. Goes beyond Tree of Thoughts by supporting arbitrary graph topologies with thought aggregation.
-
-**Three search strategies:**
-
-```
-BFS (Breadth-First)                    DFS (Depth-First)
-
-  [Root]                                 [Root]
-  / | \                                    |
-[A][B][C]  <- evaluate, keep top-k       [A] <- best
-/ | \                                      |
-...   <- next level                      [D] <- recurse
-                                           |
-                                         [G] <- backtrack
-                                              if bad
-
-Best-First (Priority Queue)
-
-  Open set: sorted by score (descending)
-  Always expand highest-scored thought
-  O(log n) insertion via binary search
-```
-
-**Thought lifecycle:** `generated` -> `evaluated` -> `verified` or `rejected` or `aggregated`
-
-**Core operations:**
-
-| Operation   | Description                                                                   |
-| ----------- | ----------------------------------------------------------------------------- |
-| Generation  | Create k diverse thoughts from a parent using `record_thoughts` tool          |
-| Evaluation  | Score each thought (0-1) using `evaluate_thought` tool. Failed evals get 0.0. |
-| Aggregation | Merge 2+ thoughts into a stronger synthesis using `aggregate_thoughts` tool   |
-| Pruning     | Thoughts below `pruneThreshold` (default 0.3) are rejected                    |
-
-**Key GoT innovation:** Thought recycling -- partial solutions from different branches can be combined via aggregation, which is impossible in a tree structure.
-
-**Engine reuse:** Creates ThinkingEngine instances once per `reason()` call and reuses them across all thought generation/evaluation calls within that session.
-
----
-
-#### 7. PRMVerifier (`packages/core/src/prm-verifier.ts` -- 478 lines)
+#### [Hackathon Core] 6. PRMVerifier (`packages/core/src/prm-verifier.ts` -- 478 lines)
 
 Process Reward Model for step-by-step reasoning verification. Based on "Let's Verify Step by Step" (Lightman et al., 2023).
 
@@ -378,7 +364,49 @@ isValid = overallScore >= correctnessThreshold (default 0.7)
 
 ---
 
-#### 8. MemoryHierarchy (`packages/core/src/memory-hierarchy.ts` -- 633 lines)
+#### [Future Scope] 7. GoTEngine (`packages/core/src/got-engine.ts` -- 871 lines)
+
+Graph of Thoughts reasoning framework. Goes beyond Tree of Thoughts by supporting arbitrary graph topologies with thought aggregation.
+
+**Three search strategies:**
+
+```
+BFS (Breadth-First)                    DFS (Depth-First)
+
+  [Root]                                 [Root]
+  / | \                                    |
+[A][B][C]  <- evaluate, keep top-k       [A] <- best
+/ | \                                      |
+...   <- next level                      [D] <- recurse
+                                           |
+                                         [G] <- backtrack
+                                              if bad
+
+Best-First (Priority Queue)
+
+  Open set: sorted by score (descending)
+  Always expand highest-scored thought
+  O(log n) insertion via binary search
+```
+
+**Thought lifecycle:** `generated` -> `evaluated` -> `verified` or `rejected` or `aggregated`
+
+**Core operations:**
+
+| Operation   | Description                                                                   |
+| ----------- | ----------------------------------------------------------------------------- |
+| Generation  | Create k diverse thoughts from a parent using `record_thoughts` tool          |
+| Evaluation  | Score each thought (0-1) using `evaluate_thought` tool. Failed evals get 0.0. |
+| Aggregation | Merge 2+ thoughts into a stronger synthesis using `aggregate_thoughts` tool   |
+| Pruning     | Thoughts below `pruneThreshold` (default 0.3) are rejected                    |
+
+**Key GoT innovation:** Thought recycling -- partial solutions from different branches can be combined via aggregation, which is impossible in a tree structure.
+
+**Engine reuse:** Creates ThinkingEngine instances once per `reason()` call and reuses them across all thought generation/evaluation calls within that session.
+
+---
+
+#### [Future Scope] 8. MemoryHierarchy (`packages/core/src/memory-hierarchy.ts` -- 633 lines)
 
 MemGPT-inspired 3-tier memory system with explicit memory management operations.
 
@@ -430,7 +458,7 @@ MemGPT-inspired 3-tier memory system with explicit memory management operations.
 
 ---
 
-#### 9. MemoryManager (`packages/core/src/memory-manager.ts` -- 253 lines)
+#### [Future Scope] 9. MemoryManager (`packages/core/src/memory-manager.ts` -- 253 lines)
 
 Handles knowledge storage and semantic search using Voyage AI embeddings. The persistence layer for the knowledge base.
 
@@ -826,7 +854,7 @@ POST /api/fork/steer { originalResult, action }
     +---> action: "refork"   --> Re-run all with new context
 ```
 
-### Flow 4: Graph of Thoughts Reasoning
+### [Future Scope] Flow 4: Graph of Thoughts Reasoning
 
 ```
 POST /api/got { problem, strategy, maxDepth, branchingFactor, ... }
@@ -927,7 +955,7 @@ Return ChainVerification
   summary, patterns[], metadata }
 ```
 
-### Flow 6: Memory Hierarchy Operations
+### [Future Scope] Flow 6: Memory Hierarchy Operations
 
 ```
 POST /api/memory { operation, sessionId, ... }
@@ -1214,7 +1242,7 @@ Steer a fork analysis with human feedback.
 { action: "refork",    newContext: string }
 ```
 
-### POST /api/got
+### [Future Scope] POST /api/got
 
 Run Graph of Thoughts reasoning.
 
@@ -1349,7 +1377,7 @@ Human-in-the-loop checkpoint for reasoning nodes.
 }
 ```
 
-### POST /api/memory
+### [Future Scope] POST /api/memory
 
 Execute memory operations against the hierarchical memory system.
 
@@ -1596,7 +1624,7 @@ Compaction limit: maxCompactions reached (returns compaction message)
 - **UUID validation:** Malformed parent node IDs are caught before database operations to avoid unnecessary round-trips.
 - **Zod validation:** Structured reasoning and token usage are validated with Zod schemas before DB insertion to prevent malformed JSONB.
 
-### GoTEngine Performance Optimizations
+### [Future Scope] GoTEngine Performance Optimizations
 
 - **Engine reuse:** ThinkingEngine instances are created once per `reason()` call and reused across all thought generation and evaluation calls within that session, avoiding repeated Anthropic client instantiation.
 - **Sorted insertion:** Best-first search maintains a sorted open set with O(log n) binary search insertion rather than re-sorting the entire array on each insert.
@@ -1611,10 +1639,10 @@ Opus Nx implements algorithms from four foundational papers:
 | Paper                                                                                 | Module(s)                       | Key Algorithm                                                    |
 | ------------------------------------------------------------------------------------- | ------------------------------- | ---------------------------------------------------------------- |
 | [Tree of Thoughts](https://arxiv.org/abs/2305.10601) (Yao et al., 2023)               | `thinkfork.ts`, `got-engine.ts` | BFS/DFS search over reasoning trees with state evaluation        |
-| [Graph of Thoughts](https://arxiv.org/abs/2308.09687) (Besta et al., 2023)            | `got-engine.ts`                 | Arbitrary thought graph topology with aggregation and refinement |
+| [Graph of Thoughts](https://arxiv.org/abs/2308.09687) (Besta et al., 2023)            | `got-engine.ts` [Future Scope]  | Arbitrary thought graph topology with aggregation and refinement |
 | [Let's Verify Step by Step](https://arxiv.org/abs/2305.20050) (Lightman et al., 2023) | `prm-verifier.ts`               | Process supervision -- verify each reasoning step independently  |
-| [MemGPT](https://arxiv.org/abs/2310.08560) (Packer et al., 2023)                      | `memory-hierarchy.ts`           | 3-tier memory hierarchy with paging and auto-eviction            |
+| [MemGPT](https://arxiv.org/abs/2310.08560) (Packer et al., 2023)                      | `memory-hierarchy.ts` [Future Scope] | 3-tier memory hierarchy with paging and auto-eviction       |
 
 ---
 
-*Version 2.0 -- February 8, 2026*
+*Version 2.1 -- February 9, 2026*

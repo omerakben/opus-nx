@@ -2,8 +2,8 @@
 
 ## Product Requirements Document
 
-**Version**: 2.0
-**Last Updated**: February 8, 2026
+**Version**: 2.1
+**Last Updated**: February 9, 2026
 **Author**: Ozzy
 **Status**: Hackathon Build Complete
 **Hackathon**: Built with Opus 4.6 - Claude Code Hackathon (Cerebral Valley, Feb 10-16, 2026)
@@ -20,19 +20,27 @@ Opus Nx makes **AI reasoning visible, steerable, and persistent**. While other A
 
 ## Implementation Status
 
-| Feature                       | Status                 | Module                           | Lines |
-| ----------------------------- | ---------------------- | -------------------------------- | ----- |
-| ThinkGraph                    | Implemented            | `think-graph.ts`                 | 935   |
-| Metacognitive Self-Audit      | Implemented            | `metacognition.ts`               | 619   |
-| ThinkFork (4 styles + debate) | Implemented (expanded) | `thinkfork.ts`                   | 1,164 |
-| Contradiction Resolution      | **Descoped**           | --                               | --    |
-| Graph of Thoughts             | Implemented (new)      | `got-engine.ts`                  | 871   |
-| PRM Verifier                  | Implemented (new)      | `prm-verifier.ts`                | 478   |
-| Hierarchical Memory           | Implemented (new)      | `memory-hierarchy.ts`            | 633   |
-| Dynamic Effort Routing        | Implemented (new)      | `orchestrator.ts`                | --    |
-| Context Compaction            | Implemented (new)      | `thinking-engine.ts`             | --    |
-| Checkpoint System             | Implemented (new)      | `/api/reasoning/[id]/checkpoint` | --    |
-| Dashboard UI (37 components)  | Implemented            | `apps/web/`                      | --    |
+| Feature                       | Status                 | Scope               | Module                           | Lines |
+| ----------------------------- | ---------------------- | -------------------- | -------------------------------- | ----- |
+| ThinkGraph                    | Implemented            | Hackathon Core       | `think-graph.ts`                 | 935   |
+| Metacognitive Self-Audit      | Implemented            | Hackathon Core       | `metacognition.ts`               | 619   |
+| ThinkFork (4 styles + debate) | Implemented (expanded) | Hackathon Core       | `thinkfork.ts`                   | 1,164 |
+| PRM Verifier                  | Implemented (new)      | Hackathon Core       | `prm-verifier.ts`                | 478   |
+| Dynamic Effort Routing        | Implemented (new)      | Hackathon Core       | `orchestrator.ts`                | --    |
+| Context Compaction            | Implemented (new)      | Hackathon Core       | `thinking-engine.ts`             | --    |
+| Checkpoint System             | Implemented (new)      | Hackathon Core       | `/api/reasoning/[id]/checkpoint` | --    |
+| Dashboard UI (37 components)  | Implemented            | Hackathon Core       | `apps/web/`                      | --    |
+| Graph of Thoughts             | Implemented (new)      | **Future Scope**     | `got-engine.ts`                  | 871   |
+| Hierarchical Memory           | Implemented (new)      | **Future Scope**     | `memory-hierarchy.ts`            | 633   |
+| Contradiction Resolution      | **Descoped**           | --                   | --                               | --    |
+
+### Hackathon Deliverables vs Future Scope
+
+**Hackathon Deliverables** are the features that form the core demo flow and are fully integrated end-to-end: ThinkGraph (reasoning persistence), ThinkFork (parallel reasoning with debate and steering), Metacognition (self-reflection), PRM Verifier (step-by-step verification), Dynamic Effort Routing, Context Compaction, Checkpoint System, and the Dashboard UI.
+
+**Future Scope** features are architecturally complete and tested but are designated for post-hackathon integration: Graph of Thoughts (GoT) and Hierarchical Memory. These modules are implemented, have API routes, and have corresponding UI panels, but are not part of the hackathon core demo flow.
+
+**Descoped** features were removed from the hackathon plan entirely: Contradiction Resolution Engine (database schema preserved, no runtime module built).
 
 ---
 
@@ -132,7 +140,7 @@ Claude Opus 4.6 introduces capabilities that make this possible for the first ti
 
 ## 3. Core Features
 
-### 3.1 ThinkGraph - Reasoning as Data Structure -- IMPLEMENTED
+### 3.1 ThinkGraph - Reasoning as Data Structure -- IMPLEMENTED [Hackathon Core]
 
 **Status**: Fully implemented in `packages/core/src/think-graph.ts` (935 lines)
 
@@ -187,7 +195,7 @@ interface DecisionPoint {
 
 ---
 
-### 3.2 Metacognitive Self-Audit -- IMPLEMENTED
+### 3.2 Metacognitive Self-Audit -- IMPLEMENTED [Hackathon Core]
 
 **Status**: Fully implemented in `packages/core/src/metacognition.ts` (619 lines)
 
@@ -225,7 +233,7 @@ Using the maximum 50k thinking token budget, the system analyzes its own reasoni
 
 ---
 
-### 3.3 ThinkFork - Parallel Reasoning Branches -- IMPLEMENTED (EXPANDED)
+### 3.3 ThinkFork - Parallel Reasoning Branches -- IMPLEMENTED (EXPANDED) [Hackathon Core]
 
 **Status**: Fully implemented and expanded in `packages/core/src/thinkfork.ts` (1,164 lines)
 
@@ -267,7 +275,7 @@ Complex decisions spawn parallel reasoning branches with different assumptions, 
 
 ---
 
-### 3.4 Contradiction Resolution Engine -- DESCOPED
+### 3.4 Contradiction Resolution Engine -- DESCOPED [Descoped]
 
 **Status**: Descoped from hackathon build.
 
@@ -310,7 +318,7 @@ When new information conflicts with existing knowledge, the system uses extended
 
 ---
 
-### 3.5 Graph of Thoughts (GoT) -- IMPLEMENTED (NEW)
+### 3.5 Graph of Thoughts (GoT) -- IMPLEMENTED (NEW) [Future Scope]
 
 **Status**: Fully implemented in `packages/core/src/got-engine.ts` (871 lines). Not in original PRD.
 
@@ -349,7 +357,7 @@ Search strategies control exploration order. Best-first search uses a scored pri
 
 ---
 
-### 3.6 Process Reward Model (PRM) Verification -- IMPLEMENTED (NEW)
+### 3.6 Process Reward Model (PRM) Verification -- IMPLEMENTED (NEW) [Hackathon Core]
 
 **Status**: Fully implemented in `packages/core/src/prm-verifier.ts` (478 lines). Not in original PRD.
 
@@ -387,7 +395,7 @@ Each step receives a score and a natural-language explanation. Steps scoring bel
 
 ---
 
-### 3.7 Hierarchical Memory (MemGPT-inspired) -- IMPLEMENTED (NEW)
+### 3.7 Hierarchical Memory (MemGPT-inspired) -- IMPLEMENTED (NEW) [Future Scope]
 
 **Status**: Fully implemented in `packages/core/src/memory-hierarchy.ts` (633 lines). Not in original PRD.
 
@@ -424,7 +432,7 @@ Implements a three-tier memory hierarchy inspired by operating system virtual me
 
 ---
 
-### 3.8 Dynamic Effort Routing & Context Compaction -- IMPLEMENTED (NEW)
+### 3.8 Dynamic Effort Routing & Context Compaction -- IMPLEMENTED (NEW) [Hackathon Core]
 
 **Status**: Implemented within `packages/core/src/orchestrator.ts` and `packages/core/src/thinking-engine.ts`. Not in original PRD.
 
@@ -446,7 +454,7 @@ Two complementary features that optimize token usage and enable unbounded sessio
 
 ---
 
-### 3.9 Checkpoint System -- IMPLEMENTED (NEW)
+### 3.9 Checkpoint System -- IMPLEMENTED (NEW) [Hackathon Core]
 
 **Status**: Implemented via `/api/reasoning/[id]/checkpoint` API route. Not in original PRD.
 
@@ -565,6 +573,12 @@ The following features are explicitly NOT included in the hackathon version:
 - Automated testing of reasoning quality
 - **Contradiction Resolution Engine** (descoped; see Section 3.4)
 
+**Future Scope** (implemented but not part of hackathon core demo):
+
+- **Graph of Thoughts** (see Section 3.5) -- Module complete, API route at `/api/got`, GoTPanel UI exists
+- **Hierarchical Memory** (see Section 3.7) -- Module complete, API route at `/api/memory`, MemoryPanel UI exists
+- **Agents package** (`packages/agents/`) -- LangChain/LangGraph agent implementations
+
 ---
 
 ## 8. Risks & Mitigations
@@ -620,6 +634,7 @@ Opus Nx implements algorithms from four foundational papers:
 | ------- | ----------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 1.0     | Feb 6, 2026 | Ozzy   | Initial PRD for hackathon                                                                                                                                                                                                                                                                                                                                                            |
 | 2.0     | Feb 8, 2026 | Ozzy   | Updated to reflect actual build: marked feature statuses, descoped Contradiction Resolution (Section 3.4), added Graph of Thoughts (3.5), PRM Verification (3.6), Hierarchical Memory (3.7), Dynamic Effort Routing & Context Compaction (3.8), Checkpoint System (3.9), Research Foundation (Section 9), updated acceptance criteria checkboxes, corrected filenames and tech stack |
+| 2.1     | Feb 9, 2026 | Ozzy   | Refined hackathon scope: added Hackathon Core vs Future Scope markers to all features, moved GoT (3.5) and Memory (3.7) to Future Scope, added Hackathon Deliverables section, updated Implementation Status table with scope column |
 
 ---
 
@@ -723,4 +738,4 @@ Return aggregated conclusion + full thought graph
 
 ---
 
-*This PRD is a living document. Version 2.0 reflects the actual state of the codebase as of February 8, 2026.*
+*This PRD is a living document. Version 2.1 reflects the actual state of the codebase as of February 9, 2026.*

@@ -1,7 +1,10 @@
+/**
+ * @scope future - Post-hackathon roadmap
+ */
 import { z } from "zod";
 
 // ============================================================
-// MemGPT-Inspired Hierarchical Memory Types
+// [Future Scope] MemGPT-Inspired Hierarchical Memory Types
 // ============================================================
 // Based on: "MemGPT: Towards LLMs as Operating Systems"
 // (Packer et al., 2023 — arXiv:2310.08560)

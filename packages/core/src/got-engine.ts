@@ -1,3 +1,9 @@
+/**
+ * @module GoT Engine - Graph of Thoughts
+ * @scope future - Post-hackathon roadmap
+ * @paper Graph of Thoughts (Besta et al., 2023)
+ * @description Arbitrary thought graph topology with BFS/DFS/best-first search
+ */
 import { createLogger } from "@opus-nx/shared";
 import { ThinkingEngine } from "./thinking-engine.js";
 import type {
