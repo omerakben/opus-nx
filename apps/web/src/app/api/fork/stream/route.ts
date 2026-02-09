@@ -3,7 +3,7 @@ import { ThinkForkEngine } from "@opus-nx/core";
 import { getCorrelationId, jsonError } from "@/lib/api-response";
 import { createForkAnalysis } from "@/lib/db";
 
-export const maxDuration = 900;
+export const maxDuration = 800;
 
 const ForkStyleSchema = z.enum(["conservative", "aggressive", "balanced", "contrarian"]);
 
