@@ -12,7 +12,7 @@
 
 ## Executive Summary
 
-Opus Nx makes **AI reasoning visible, steerable, and persistent**. While other AI systems treat extended thinking as a black box to improve response quality, Opus Nx transforms reasoning into a first-class, navigable data structure -- navigate decision points, steer parallel branches, verify each step, and build on past thinking across sessions.
+Opus Nx makes **AI reasoning visible, steerable, and persistent**. While other AI systems treat extended thinking as a black box to improve response quality, Opus Nx transforms reasoning into a first-class, navigable data structure -- steer parallel branches, verify each step, and build on past thinking across sessions.
 
 **Tagline**: *AI reasoning you can see and steer*
 
