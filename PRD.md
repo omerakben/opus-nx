@@ -12,9 +12,9 @@
 
 ## Executive Summary
 
-Opus Nx is a **human + AI co-thinking platform** where reasoning is persistent, steerable, and self-improving. While other AI systems treat extended thinking as a black box to improve response quality, Opus Nx transforms reasoning into a first-class, navigable data structure that humans can steer, explore, and shape in real time.
+Opus Nx makes **AI reasoning visible, steerable, and persistent**. While other AI systems treat extended thinking as a black box to improve response quality, Opus Nx transforms reasoning into a first-class, navigable data structure -- navigate decision points, steer parallel branches, verify each step, and build on past thinking across sessions.
 
-**Tagline**: *Human + AI co-thinking -- steer, explore, and shape AI reasoning in real time*
+**Tagline**: *AI reasoning you can see and steer*
 
 ---
 
@@ -610,7 +610,7 @@ Opus Nx implements algorithms from four foundational papers:
 | **Checkpoint**               | Human-in-the-loop pause point for reviewing and redirecting reasoning      |
 | **Contradiction Resolution** | Process of reconciling conflicting knowledge with audit trail (descoped)   |
 | **Extended Thinking**        | Claude Opus 4.6's ability to "think" with configurable token budgets       |
-| **Co-Thinking**              | Human + AI collaborative reasoning through steerable, persistent graphs   |
+| **Steerable Reasoning**      | AI reasoning made visible, navigable, and controllable by humans          |
 
 ---
 

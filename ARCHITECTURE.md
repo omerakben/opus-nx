@@ -20,7 +20,7 @@
 
 ## System Overview
 
-Opus Nx is a human + AI co-thinking platform. It transforms Claude Opus 4.6's extended thinking into persistent, steerable reasoning graphs. Every time the AI thinks, that reasoning becomes a navigable data structure that humans can search, steer, verify, and build upon.
+Opus Nx makes AI reasoning visible, steerable, and persistent. It transforms Claude Opus 4.6's extended thinking into persistent reasoning graphs. Every time the AI thinks, that reasoning becomes a navigable data structure you can search, steer, verify, and build upon.
 
 ```
 +-----------------------------------------------------------------------------+

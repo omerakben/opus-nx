@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Opus Nx is a human + AI co-thinking platform that transforms Claude Opus 4.6's extended thinking into persistent, steerable reasoning graphs. Built for the Cerebral Valley Hackathon (Feb 2026).
+Opus Nx makes AI reasoning visible, steerable, and persistent. It transforms Claude Opus 4.6's extended thinking into navigable reasoning graphs. Built for the Cerebral Valley Hackathon (Feb 2026).
 
-**Key Innovation**: Humans steer, explore, and shape AI reasoning in real time -- extended thinking becomes persistent "ThinkGraph" nodes that can be navigated, verified, and built upon across sessions.
+**Key Innovation**: Extended thinking becomes persistent "ThinkGraph" nodes you can see, steer, verify, and build upon across sessions.
 
 ## Commands
 

@@ -1,6 +1,6 @@
 # Opus Nx
 
-**Human + AI co-thinking** -- Steer, explore, and shape AI reasoning in real time.
+**AI reasoning you can see and steer.**
 
 Built for the [Cerebral Valley "Built with Opus 4.6" Hackathon](https://cv.inc/e/claude-code-hackathon) (Feb 10-16, 2026)
 
@@ -8,7 +8,7 @@ Built for the [Cerebral Valley "Built with Opus 4.6" Hackathon](https://cv.inc/e
 
 ## The Innovation
 
-Every AI system today treats extended thinking as a black box: reasoning happens, a response comes out, and the thinking vanishes. Opus Nx puts **humans in the driver's seat of AI reasoning**. It transforms Claude Opus 4.6's extended thinking into a **persistent, steerable data structure** where you co-think with AI -- steering branches, verifying steps, and shaping conclusions together.
+Every AI system today treats extended thinking as a black box: reasoning happens, a response comes out, and the thinking vanishes. Opus Nx transforms Claude Opus 4.6's extended thinking into **persistent reasoning graphs**. Navigate decision points, steer parallel branches, verify each step, and build on past thinking across sessions.
 
 | What Others Do                       | What Opus Nx Does                                                |
 | ------------------------------------ | ---------------------------------------------------------------- |
