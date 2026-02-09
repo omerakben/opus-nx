@@ -14,6 +14,8 @@
   --neural-node-fill: #2A2228;
   --neural-blue-fill: #7BA3BE;
   --grid-dot: rgba(255, 255, 255, 0.06);
+  --brand-warm: #C4654A;
+  --brand-cool: #7BA3BE;
 }
 
 @media (prefers-color-scheme: light) {
@@ -30,6 +32,8 @@
     --neural-node-fill: #E8DDD8;
     --neural-blue-fill: #5A8BA3;
     --grid-dot: rgba(0, 0, 0, 0.05);
+    --brand-warm: #C4654A;
+    --brand-cool: #7BA3BE;
   }
 }
 
@@ -221,8 +225,8 @@ body {
 
 /* Streaming node pulse */
 @keyframes streamingPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
-  50% { box-shadow: 0 0 20px 4px rgba(139, 92, 246, 0.15); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(196, 101, 74, 0); }
+  50% { box-shadow: 0 0 20px 4px rgba(196, 101, 74, 0.15); }
 }
 
 /* Ripple effect for streaming node */
@@ -293,7 +297,7 @@ button:active:not(:disabled) {
 }
 
 .card-hover-glow:hover {
-  box-shadow: 0 0 20px rgba(139, 92, 246, 0.1);
+  box-shadow: 0 0 20px rgba(196, 101, 74, 0.12);
 }
 
 /* Success checkmark animation */

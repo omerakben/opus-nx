@@ -83,6 +83,7 @@ export function Dashboard() {
     currentIndex,
     totalSteps,
     startTour,
+    restartTour,
     nextStep,
     previousStep,
     skipTour,
@@ -212,7 +213,7 @@ export function Dashboard() {
   if (isMobile) {
     return (
       <div className="h-[100dvh] flex flex-col overflow-hidden bg-[var(--background)]">
-        <Header isMobile />
+        <Header isMobile onReplayTour={restartTour} />
 
         <div className="flex-1 overflow-hidden relative">
           {/* Graph View */}
@@ -315,7 +316,7 @@ export function Dashboard() {
   // Desktop layout
   return (
     <div className="h-screen flex flex-col overflow-hidden">
-      <Header />
+      <Header onReplayTour={restartTour} />
 
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel: Sessions & Stats */}

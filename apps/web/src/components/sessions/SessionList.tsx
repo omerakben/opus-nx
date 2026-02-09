@@ -51,6 +51,7 @@ export function SessionList({
             onClick={onCreateSession}
             className="h-7 w-7"
             title="New session"
+            data-tour="new-session"
           >
             <Plus className="w-4 h-4" />
           </Button>

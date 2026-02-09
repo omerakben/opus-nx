@@ -134,11 +134,11 @@ export function DemoTour({
               left: spotlight.left,
               width: spotlight.width,
               height: spotlight.height,
-              boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.75)",
+              boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.7)",
             }}
           />
         ) : (
-          <div className="absolute inset-0 bg-black/75" />
+          <div className="absolute inset-0 bg-black/70" />
         )}
       </div>
 
@@ -152,7 +152,7 @@ export function DemoTour({
         style={tooltipStyle}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl p-5">
+        <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl p-5" style={{ borderLeft: "3px solid #C4654A" }}>
           {/* Progress bar */}
           <div className="flex items-center gap-1 mb-3">
             {Array.from({ length: totalSteps }).map((_, i) => (
@@ -160,9 +160,10 @@ export function DemoTour({
                 key={i}
                 className={`h-1 flex-1 rounded-full transition-colors ${
                   i <= currentIndex
-                    ? "bg-gradient-to-r from-blue-500 to-violet-500"
+                    ? ""
                     : "bg-[var(--border)]"
                 }`}
+                style={i <= currentIndex ? { background: "linear-gradient(to right, #C4654A, #7BA3BE)" } : undefined}
               />
             ))}
           </div>
@@ -187,7 +188,7 @@ export function DemoTour({
 
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-[var(--muted)]">
-                {currentIndex + 1} / {totalSteps}
+                <span style={{ color: "#C4654A", fontWeight: 600 }}>{currentIndex + 1}</span> / {totalSteps}
               </span>
 
               {currentIndex > 0 && (
@@ -201,7 +202,8 @@ export function DemoTour({
 
               <button
                 onClick={onNext}
-                className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-500 to-violet-500 text-white text-xs font-medium hover:opacity-90 transition-opacity flex items-center gap-1"
+                className="px-3 py-1.5 rounded-lg text-white text-xs font-medium hover:opacity-90 transition-opacity flex items-center gap-1"
+                style={{ background: "linear-gradient(to right, #C4654A, #7BA3BE)" }}
               >
                 {currentIndex === totalSteps - 1 ? "Done" : "Next"}
                 {currentIndex < totalSteps - 1 && (

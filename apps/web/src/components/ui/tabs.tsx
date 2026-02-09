@@ -63,14 +63,14 @@ function TabsList({ children, className }: TabsListProps) {
   );
 }
 
-interface TabsTriggerProps {
+interface TabsTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   value: string;
   children: ReactNode;
   className?: string;
   disabled?: boolean;
 }
 
-function TabsTrigger({ value, children, className, disabled }: TabsTriggerProps) {
+function TabsTrigger({ value, children, className, disabled, ...rest }: TabsTriggerProps) {
   const { value: selectedValue, onValueChange } = useTabs();
   const isSelected = selectedValue === value;
 
@@ -88,6 +88,7 @@ function TabsTrigger({ value, children, className, disabled }: TabsTriggerProps)
           : "hover:bg-[var(--background)]/50",
         className
       )}
+      {...rest}
     >
       {children}
     </button>

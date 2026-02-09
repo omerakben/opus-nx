@@ -30,6 +30,11 @@ const config: Config = {
           balanced: "#3b82f6",     // blue-500
           contrarian: "#8b5cf6",   // violet-500
         },
+        // Brand colors
+        brand: {
+          warm: "#C4654A",    // terracotta - primary brand
+          cool: "#7BA3BE",    // slate blue - secondary brand
+        },
       },
       animation: {
         "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",

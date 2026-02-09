@@ -1,13 +1,14 @@
 "use client";
 
-import { GithubIcon, LogOut } from "lucide-react";
+import { GithubIcon, LogOut, HelpCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface HeaderProps {
   isMobile?: boolean;
+  onReplayTour?: () => void;
 }
 
-export function Header({ isMobile }: HeaderProps) {
+export function Header({ isMobile, onReplayTour }: HeaderProps) {
   const router = useRouter();
 
   async function handleLogout() {
@@ -36,6 +37,15 @@ export function Header({ isMobile }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-1">
+          {onReplayTour && (
+            <button
+              onClick={onReplayTour}
+              className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-[var(--muted)] transition-colors"
+              title="Replay tour"
+            >
+              <HelpCircle className="w-4 h-4" />
+            </button>
+          )}
           <a
             href="https://github.com/omerakben/opus-nx"
             target="_blank"
@@ -81,6 +91,15 @@ export function Header({ isMobile }: HeaderProps) {
         <span className="text-xs text-[var(--muted-foreground)]">
           Powered by Claude Opus 4.6
         </span>
+        {onReplayTour && (
+          <button
+            onClick={onReplayTour}
+            className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-[var(--muted)] transition-colors"
+            title="Replay tour"
+          >
+            <HelpCircle className="w-4 h-4" />
+          </button>
+        )}
         <a
           href="https://github.com/omerakben/opus-nx"
           target="_blank"

@@ -32,10 +32,10 @@ function EdgeMiniLine({ type }: { type: EdgeType }) {
 }
 
 export function GraphLegend() {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   return (
-    <div className="absolute bottom-14 left-4 z-10" data-tour="graph-legend">
+    <div className="absolute top-4 left-4 z-10" data-tour="graph-legend">
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
         aria-expanded={!isCollapsed}

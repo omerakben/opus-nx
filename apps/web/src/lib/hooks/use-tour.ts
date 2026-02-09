@@ -16,31 +16,39 @@ const TOUR_STEPS: TourStep[] = [
     target: "[data-tour='reasoning-graph']",
     title: "Welcome to Opus Nx",
     description:
-      "Opus Nx makes AI reasoning visible, steerable, and persistent. You're looking at a live reasoning graph — every node is a step in Claude Opus 4.6's extended thinking.",
+      "See how AI actually thinks. This is a live reasoning graph \u2014 every node is a real step from Claude\u2019s extended thinking, not a black box.",
     placement: "bottom",
   },
   {
-    id: "graph-overview",
-    target: "[data-tour='graph-legend']",
-    title: "Reasoning Graph",
+    id: "extended-thinking",
+    target: "[data-tour='thinking-input']",
+    title: "Start with Any Question",
     description:
-      "Nodes connect via 5 edge types: influences, supports, refines, supersedes, and contradicts. Special node types show compaction boundaries, fork branches, and human annotations.",
+      "Ask anything complex. Opus Nx sends it to Claude Opus 4.6 with up to 50,000 thinking tokens, then captures every reasoning step as navigable graph nodes.",
     placement: "top",
   },
   {
-    id: "node-checkpoints",
+    id: "thinking-nodes",
     target: ".react-flow__node-thinking",
-    title: "Human-in-the-Loop Checkpoints",
+    title: "Live Reasoning Nodes",
     description:
-      "Hover any thinking node to verify, question, or disagree with the reasoning. Disagreements trigger re-reasoning and create a new branch in the graph.",
+      "Each node is a discrete thinking step \u2014 extracted, scored for confidence, and connected to show how ideas flow, branch, and build on each other.",
+    placement: "right",
+  },
+  {
+    id: "human-steering",
+    target: ".react-flow__node-thinking",
+    title: "Steer the Reasoning",
+    description:
+      "Hover any node to verify, question, or challenge it. Your feedback creates new branches \u2014 the AI re-reasons from that point with your input baked in.",
     placement: "right",
   },
   {
     id: "fork-panel",
     target: "[data-tour='fork-tab']",
-    title: "ThinkFork — 4 Divergent Paths",
+    title: "ThinkFork \u2014 4 Perspectives",
     description:
-      "Fork any question into 4 reasoning perspectives with different assumptions. Toggle to Debate mode for multi-round adversarial reasoning where perspectives challenge each other.",
+      "Fork any question into 4 concurrent reasoning styles: conservative, aggressive, balanced, and contrarian. Enable Debate mode for adversarial cross-examination.",
     placement: "left",
   },
   {
@@ -48,16 +56,24 @@ const TOUR_STEPS: TourStep[] = [
     target: "[data-tour='insights-tab']",
     title: "Metacognitive Insights",
     description:
-      "Claude analyzes its own reasoning patterns for biases, recurring structures, and improvement hypotheses — AI self-reflection powered by 50k thinking tokens.",
+      "The AI analyzes its own reasoning for biases, patterns, and blind spots. Click any evidence link to jump directly to the source thinking node.",
     placement: "left",
   },
   {
-    id: "evidence-nav",
-    target: "[data-tour='insights-tab']",
-    title: "Evidence Navigation",
+    id: "sessions",
+    target: "[data-tour='session-stats']",
+    title: "Persistent Reasoning",
     description:
-      "Click any evidence link in an insight to animate the graph to the referenced reasoning node. Every insight is grounded in specific thinking steps.",
-    placement: "left",
+      "Every session\u2019s reasoning graph is saved. Return anytime to review, extend, or fork from any previous thinking path. Your reasoning library grows over time.",
+    placement: "right",
+  },
+  {
+    id: "new-session",
+    target: "[data-tour='new-session']",
+    title: "Start a New Session",
+    description:
+      "You\u2019re all set! Click the + button to create a fresh reasoning session and start exploring. Each session gets its own graph.",
+    placement: "bottom",
   },
 ];
 
@@ -69,6 +85,7 @@ interface UseTourReturn {
   currentIndex: number;
   totalSteps: number;
   startTour: () => void;
+  restartTour: () => void;
   nextStep: () => void;
   previousStep: () => void;
   skipTour: () => void;
@@ -113,12 +130,21 @@ export function useTour(): UseTourReturn {
     completeTour();
   }, [completeTour]);
 
+  const restartTour = useCallback(() => {
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem(TOUR_STORAGE_KEY);
+    }
+    setCurrentIndex(0);
+    setIsActive(true);
+  }, []);
+
   return {
     isActive,
     currentStep: isActive ? TOUR_STEPS[currentIndex] : null,
     currentIndex,
     totalSteps: TOUR_STEPS.length,
     startTour,
+    restartTour,
     nextStep,
     previousStep,
     skipTour,
