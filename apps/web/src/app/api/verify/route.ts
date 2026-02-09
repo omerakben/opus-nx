@@ -2,6 +2,8 @@ import { z } from "zod";
 import { PRMVerifier } from "@opus-nx/core";
 import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
 
+export const maxDuration = 300;
+
 const StepSchema = z.object({
   stepNumber: z.number(),
   content: z.string(),
@@ -11,7 +13,7 @@ const StepSchema = z.object({
 const VerifyRequestSchema = z.object({
   steps: z.array(StepSchema).min(1).max(50),
   thinkingNodeId: z.string().uuid().optional(),
-  originalQuery: z.string().optional(),
+  originalQuery: z.string().max(10000).optional(),
   effort: z.enum(["low", "medium", "high", "max"]).default("high"),
   correctnessThreshold: z.number().min(0).max(1).default(0.7),
 });

@@ -1,6 +1,8 @@
 import { getSessionInsights, getRecentInsights, type InsightType } from "@/lib/db";
 import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
 
+export const maxDuration = 300;
+
 /**
  * GET /api/insights
  * Get metacognitive insights for a session or recent insights

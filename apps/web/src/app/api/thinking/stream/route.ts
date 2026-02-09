@@ -3,8 +3,10 @@ import { ThinkingEngine, ThinkGraph } from "@opus-nx/core";
 import { getSession, createSession, getLatestThinkingNode } from "@/lib/db";
 import { getCorrelationId, jsonError } from "@/lib/api-response";
 
+export const maxDuration = 300;
+
 const StreamRequestSchema = z.object({
-  query: z.string().min(1),
+  query: z.string().min(1).max(10000),
   sessionId: z.string().uuid().optional(),
   effort: z.enum(["low", "medium", "high", "max"]).default("high"),
   compactionEnabled: z.boolean().default(false),

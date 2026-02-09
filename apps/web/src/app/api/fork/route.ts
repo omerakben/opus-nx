@@ -3,10 +3,12 @@ import { ThinkForkEngine } from "@opus-nx/core";
 import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
 import { createForkAnalysis, getSessionForkAnalysesDb } from "@/lib/db";
 
+export const maxDuration = 300;
+
 const ForkStyleSchema = z.enum(["conservative", "aggressive", "balanced", "contrarian"]);
 
 const ForkRequestSchema = z.object({
-  query: z.string().min(1),
+  query: z.string().min(1).max(10000),
   sessionId: z.string().uuid().optional(),
   styles: z.array(ForkStyleSchema).min(2).optional(),
   effort: z.enum(["low", "medium", "high", "max"]).default("high"),
@@ -138,7 +140,6 @@ export async function POST(request: Request) {
       metaInsight: result.metaInsight,
       recommendedApproach: result.recommendedApproach,
       appliedGuidance: result.appliedGuidance,
-      fallbackPromptsUsed: result.fallbackPromptsUsed,
     };
 
     // Persist to database if sessionId provided

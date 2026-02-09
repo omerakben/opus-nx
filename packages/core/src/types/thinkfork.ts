@@ -116,8 +116,6 @@ export const ThinkForkResultSchema = z.object({
   totalDurationMs: z.number(),
   /** Errors encountered during analysis */
   errors: z.array(z.string()).optional(),
-  /** Styles that used fallback prompts instead of file-based prompts */
-  fallbackPromptsUsed: z.array(ForkStyleSchema).optional(),
   /** Human guidance that was applied to branches */
   appliedGuidance: z.array(BranchGuidanceSchema).optional(),
 });

@@ -7,6 +7,8 @@ export { useTour } from "./use-tour";
 export { useSidebar } from "./use-sidebar";
 export { useRightSidebar } from "./use-right-sidebar";
 export { useReasoningDetail } from "./use-reasoning-detail";
+export { useForkStream } from "./use-fork-stream";
+export type { ForkStreamPhase, StreamingBranch, ForkStreamParams, DebateStreamParams } from "./use-fork-stream";
 export type {
   ReasoningDetailData,
   ReasoningNode,

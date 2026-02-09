@@ -9,6 +9,8 @@ import {
 import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
 import { isValidUuid } from "@/lib/validation";
 
+export const maxDuration = 300;
+
 /**
  * Human checkpoint verdicts for reasoning nodes.
  * - verified: Human agrees with this reasoning step

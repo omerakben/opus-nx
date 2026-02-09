@@ -3,6 +3,8 @@ import { ThinkForkEngine } from "@opus-nx/core";
 import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
 import { appendSteeringResult } from "@/lib/db";
 
+export const maxDuration = 300;
+
 const ForkStyleSchema = z.enum(["conservative", "aggressive", "balanced", "contrarian"]);
 
 const SteerRequestSchema = z.object({

@@ -2,8 +2,10 @@ import { z } from "zod";
 import { GoTEngine } from "@opus-nx/core";
 import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
 
+export const maxDuration = 300;
+
 const GoTRequestSchema = z.object({
-  problem: z.string().min(1),
+  problem: z.string().min(1).max(10000),
   strategy: z.enum(["bfs", "dfs", "best_first"]).default("bfs"),
   maxDepth: z.number().int().min(1).max(20).default(5),
   branchingFactor: z.number().int().min(1).max(10).default(3),

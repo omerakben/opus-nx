@@ -8,11 +8,8 @@ import {
   CardTitle,
   Input,
   NeuralSubmitButton,
-  Skeleton,
 } from "@/components/ui";
 import {
-  runForkAnalysis,
-  runDebateAnalysis,
   steerForkAnalysis,
   getSessionForkAnalyses,
   type ForkResponse,
@@ -20,6 +17,7 @@ import {
   type SteeringResult,
   type ApiError,
 } from "@/lib/api";
+import { useForkStream } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import {
   FORK_COLORS,
@@ -69,13 +67,19 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
   const [result, setResult] = useState<ForkResponse | null>(null);
   const [steeringHistory, setSteeringHistory] = useState<SteeringResult[]>([]);
   const [expandedSteeringIdx, setExpandedSteeringIdx] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState(false);
   const [isSteering, setIsSteering] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
   const [errorTimestamp, setErrorTimestamp] = useState<Date | null>(null);
   const [mode, setMode] = useState<"fork" | "debate">("fork");
   const [debateResult, setDebateResult] = useState<DebateResponse | null>(null);
   const [analysisId, setAnalysisId] = useState<string | null>(null);
+
+  // SSE streaming hook
+  const forkStream = useForkStream();
+  const isStreamInProgress =
+    forkStream.phase === "branches" ||
+    forkStream.phase === "comparison" ||
+    forkStream.phase === "debate_rounds";
 
   // Effort level selector (Improvement 2a)
   const [effort, setEffort] = useState<EffortLevel>("max");
@@ -115,34 +119,58 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
     let cancelled = false;
 
     async function loadSaved() {
-      const response = await getSessionForkAnalyses(sessionId!);
-      if (cancelled || !response.data?.analyses?.length) return;
+      try {
+        const response = await getSessionForkAnalyses(sessionId!);
+        if (cancelled) return;
+        if (response.error) {
+          console.warn("[ForkPanel] Failed to load saved analyses:", response.error.message);
+          return;
+        }
+        if (!response.data?.analyses?.length) return;
 
-      const latest = response.data.analyses[0];
-      setQuery(latest.query);
-      setMode(latest.mode);
-      setAnalysisId(latest.id);
+        const latest = response.data.analyses[0];
+        setQuery(latest.query);
+        setMode(latest.mode);
+        setAnalysisId(latest.id);
 
-      if (latest.mode === "debate") {
-        const debateData = latest.result as DebateResponse;
-        setDebateResult(debateData);
-        setResult(debateData.initialFork);
-      } else {
-        setResult(latest.result as ForkResponse);
-      }
+        if (latest.mode === "debate") {
+          const debateData = latest.result as DebateResponse;
+          setDebateResult(debateData);
+          setResult(debateData.initialFork);
+        } else {
+          setResult(latest.result as ForkResponse);
+        }
 
-      // Restore steering history if any
-      if (latest.steeringHistory.length > 0) {
-        setSteeringHistory(
-          (latest.steeringHistory as SteeringResult[]).slice().reverse()
-        );
-        setExpandedSteeringIdx(0);
+        // Restore steering history if any
+        if (latest.steeringHistory.length > 0) {
+          setSteeringHistory(
+            (latest.steeringHistory as SteeringResult[]).slice().reverse()
+          );
+          setExpandedSteeringIdx(0);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.warn("[ForkPanel] Error loading saved analyses:", err);
+        }
       }
     }
 
     loadSaved();
     return () => { cancelled = true; };
   }, [sessionId]);
+
+  // Sync streaming results to local state when done
+  useEffect(() => {
+    if (forkStream.phase === "done") {
+      if (forkStream.result) setResult(forkStream.result);
+      if (forkStream.debateResult) setDebateResult(forkStream.debateResult);
+      if (forkStream.analysisId) setAnalysisId(forkStream.analysisId);
+    }
+    if (forkStream.phase === "error" && forkStream.error) {
+      setError({ message: forkStream.error, code: "STREAM_ERROR" });
+      setErrorTimestamp(new Date());
+    }
+  }, [forkStream.phase, forkStream.result, forkStream.debateResult, forkStream.analysisId, forkStream.error]);
 
   // Steering input state
   const [steerInput, setSteerInput] = useState("");
@@ -195,11 +223,11 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
   );
 
   const handleSubmit = useCallback(
-    async (e: React.FormEvent) => {
+    (e: React.FormEvent) => {
       e.preventDefault();
-      if (!query.trim() || isLoading) return;
+      if (!query.trim() || forkStream.isStreaming) return;
 
-      setIsLoading(true);
+      forkStream.clear();
       setError(null);
       setErrorTimestamp(null);
       setResult(null);
@@ -212,51 +240,28 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
       setLastSubmittedQuery(query.trim());
 
       if (mode === "debate") {
-        const response = await runDebateAnalysis({
+        forkStream.startDebate({
           query: query.trim(),
           sessionId: sessionId ?? undefined,
           styles: ["conservative", "aggressive", "balanced", "contrarian"],
           effort,
           debateRounds: 2,
         });
-
-        if (response.error) {
-          setError(response.error);
-          setErrorTimestamp(new Date());
-        } else if (response.data) {
-          setDebateResult(response.data);
-          setResult(response.data.initialFork);
-          if (response.data.analysisId) {
-            setAnalysisId(response.data.analysisId);
-          }
-        }
       } else {
         const guidance = Object.entries(branchGuidances)
           .filter(([, g]) => g.trim())
           .map(([style, guidance]) => ({ style, guidance }));
 
-        const response = await runForkAnalysis({
+        forkStream.startFork({
           query: query.trim(),
           sessionId: sessionId ?? undefined,
           styles: ["conservative", "aggressive", "balanced", "contrarian"],
           effort,
           branchGuidance: guidance.length > 0 ? guidance : undefined,
         });
-
-        if (response.error) {
-          setError(response.error);
-          setErrorTimestamp(new Date());
-        } else if (response.data) {
-          setResult(response.data);
-          if (response.data.analysisId) {
-            setAnalysisId(response.data.analysisId);
-          }
-        }
       }
-
-      setIsLoading(false);
     },
-    [query, sessionId, isLoading, mode, branchGuidances, effort],
+    [query, sessionId, forkStream.isStreaming, forkStream.clear, forkStream.startDebate, forkStream.startFork, mode, branchGuidances, effort],
   );
 
   // Retry handler (Improvement 2d)
@@ -278,61 +283,69 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
 
     setIsSteering(true);
 
-    let action;
-    if (steerAction === "expand") {
-      action = {
-        action: "expand" as const,
-        style: steerTarget,
-        direction: steerInput || undefined,
-      };
-    } else if (steerAction === "merge") {
-      const styles = result.branches.map((b) => b.style);
-      action = {
-        action: "merge" as const,
-        styles,
-        focusArea: steerInput || undefined,
-      };
-    } else if (steerAction === "challenge") {
-      action = {
-        action: "challenge" as const,
-        style: steerTarget,
-        challenge: steerInput,
-      };
-    } else {
-      // Include selected assumptions as context for re-analysis
-      const assumptionContext = Object.entries(selectedAssumptions)
-        .map(
-          ([topic, { style, position }]) =>
-            `[${topic}]: Use ${style} assumption — "${position}"`
-        )
-        .join("\n");
-      const fullContext = [steerInput, assumptionContext]
-        .filter(Boolean)
-        .join("\n\nSelected assumptions:\n");
-      action = {
-        action: "refork" as const,
-        newContext: fullContext,
-        keepOriginal: true,
-      };
-    }
+    try {
+      let action;
+      if (steerAction === "expand") {
+        action = {
+          action: "expand" as const,
+          style: steerTarget,
+          direction: steerInput || undefined,
+        };
+      } else if (steerAction === "merge") {
+        const styles = result.branches.map((b) => b.style);
+        action = {
+          action: "merge" as const,
+          styles,
+          focusArea: steerInput || undefined,
+        };
+      } else if (steerAction === "challenge") {
+        action = {
+          action: "challenge" as const,
+          style: steerTarget,
+          challenge: steerInput,
+        };
+      } else {
+        // Include selected assumptions as context for re-analysis
+        const assumptionContext = Object.entries(selectedAssumptions)
+          .map(
+            ([topic, { style, position }]) =>
+              `[${topic}]: Use ${style} assumption — "${position}"`
+          )
+          .join("\n");
+        const fullContext = [steerInput, assumptionContext]
+          .filter(Boolean)
+          .join("\n\nSelected assumptions:\n");
+        action = {
+          action: "refork" as const,
+          newContext: fullContext,
+          keepOriginal: true,
+        };
+      }
 
-    const response = await steerForkAnalysis(
-      result,
-      action,
-      analysisId ?? undefined
-    );
+      const response = await steerForkAnalysis(
+        result,
+        action,
+        analysisId ?? undefined
+      );
 
-    if (response.error) {
-      setError(response.error);
+      if (response.error) {
+        setError(response.error);
+        setErrorTimestamp(new Date());
+      } else if (response.data) {
+        setSteeringHistory(prev => [response.data!, ...prev]);
+        setExpandedSteeringIdx(0);
+        setSteerAction(null);
+        setSteerInput("");
+      }
+    } catch (err) {
+      setError({
+        message: err instanceof Error ? err.message : "Steering request failed",
+        code: "STEER_NETWORK_ERROR",
+      });
       setErrorTimestamp(new Date());
-    } else if (response.data) {
-      setSteeringHistory(prev => [response.data!, ...prev]);
-      setExpandedSteeringIdx(0);
-      setSteerAction(null);
-      setSteerInput("");
+    } finally {
+      setIsSteering(false);
     }
-
-    setIsSteering(false);
   }, [result, steerAction, steerTarget, steerInput, isSteering, analysisId, selectedAssumptions]);
 
   // Toggle debate entry expand/collapse (Improvement 1a)
@@ -534,12 +547,12 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Enter a decision to analyze..."
-              disabled={isLoading}
+              disabled={forkStream.isStreaming}
               className="flex-1 text-xs"
             />
             <NeuralSubmitButton
               disabled={!query.trim()}
-              isLoading={isLoading}
+              isLoading={forkStream.isStreaming}
             />
           </div>
           <p className="text-[11px] text-[var(--muted-foreground)] mt-2">
@@ -551,36 +564,132 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
 
         {/* Results */}
         <div className="flex-1 overflow-y-auto p-4">
-          {isLoading ? (
+          {isStreamInProgress ? (
             <div className="space-y-4">
-              {/* Loading animation */}
-              <div className="text-center py-4">
-                <div className="relative w-16 h-16 mx-auto mb-3">
+              {/* Phase indicator */}
+              <div className="text-center py-2">
+                <div className="relative w-12 h-12 mx-auto mb-2">
                   <div className="absolute inset-0 rounded-full border-2 border-violet-500/20 animate-ping" />
-                  <div className="absolute inset-2 rounded-full border-2 border-violet-500/40 animate-pulse" />
                   <div className="absolute inset-0 flex items-center justify-center">
                     {mode === "debate" ? (
-                      <Swords className="w-6 h-6 text-amber-400 animate-pulse" />
+                      <Swords className="w-5 h-5 text-amber-400 animate-pulse" />
                     ) : (
-                      <Split className="w-6 h-6 text-violet-400 animate-pulse" />
+                      <Split className="w-5 h-5 text-violet-400 animate-pulse" />
                     )}
                   </div>
                 </div>
-                <p className="text-xs text-violet-400 animate-pulse">
-                  {mode === "debate"
-                    ? "Running debate between 4 perspectives..."
-                    : "Running 4 divergent reasoning paths..."}
+                <p className="text-xs text-violet-400">
+                  {forkStream.phase === "branches" && (
+                    <>Analyzing paths ({forkStream.completedBranches.length}/{forkStream.branches.size})</>
+                  )}
+                  {forkStream.phase === "comparison" && "Synthesizing convergence..."}
+                  {forkStream.phase === "debate_rounds" && (
+                    <>Debate round {forkStream.currentRound} of {forkStream.totalRounds}</>
+                  )}
                 </p>
-                <LoadingProgress mode={mode} />
+                <p className="text-[10px] text-[var(--muted-foreground)] mt-0.5">
+                  {(forkStream.elapsedMs / 1000).toFixed(0)}s elapsed
+                </p>
               </div>
+
+              {/* Progressive branch cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[0, 1, 2, 3].map((i) => (
-                  <Skeleton
-                    key={i}
-                    className="h-32 rounded-lg"
-                    style={{ animationDelay: `${i * 150}ms` }}
-                  />
-                ))}
+                {Array.from(forkStream.branches.values()).map((sb) => {
+                  if (sb.status === "complete" && sb.result) {
+                    return <BranchCard key={sb.style} branch={sb.result} />;
+                  }
+                  if (sb.status === "error") {
+                    return (
+                      <BranchCard
+                        key={sb.style}
+                        branch={{
+                          style: sb.style,
+                          conclusion: "",
+                          confidence: 0,
+                          keyInsights: [],
+                          error: sb.error ?? "Unknown error",
+                        }}
+                      />
+                    );
+                  }
+                  return (
+                    <BranchCard
+                      key={sb.style}
+                      branch={{
+                        style: sb.style,
+                        conclusion: "",
+                        confidence: 0,
+                        keyInsights: [],
+                      }}
+                      isStreaming={sb.status === "thinking"}
+                      isPending={sb.status === "pending"}
+                    />
+                  );
+                })}
+              </div>
+
+              {/* Comparison phase indicator */}
+              {forkStream.phase === "comparison" && (
+                <Card className="bg-violet-500/10 border-violet-500/30">
+                  <CardContent className="p-3 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-violet-400 animate-pulse" />
+                    <span className="text-xs text-violet-400">
+                      Analyzing convergence and divergence points...
+                    </span>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Debate rounds streaming progress */}
+              {forkStream.phase === "debate_rounds" && forkStream.debateRounds.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Swords className="w-4 h-4 text-amber-400" />
+                    <span className="text-sm font-medium text-[var(--foreground)]">
+                      Debate in progress
+                    </span>
+                  </div>
+                  {forkStream.debateRounds.map((entry, idx) => {
+                    const branchStyle = entry.style as ForkStyle;
+                    const branchColor = FORK_COLORS[branchStyle] ?? "var(--border)";
+                    return (
+                      <Card
+                        key={`${entry.style}-${entry.round}-${idx}`}
+                        className="border-l-2 overflow-hidden"
+                        style={{ borderLeftColor: branchColor }}
+                      >
+                        <CardContent className="p-2.5">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className="text-sm" style={{ color: branchColor }}>
+                              {FORK_ICONS[branchStyle]}
+                            </span>
+                            <span className="text-xs font-medium" style={{ color: branchColor }}>
+                              R{entry.round} — {entry.style.charAt(0).toUpperCase() + entry.style.slice(1)}
+                            </span>
+                            <span className="text-[11px] text-[var(--muted-foreground)] ml-auto">
+                              {Math.round(entry.confidence * 100)}%
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-[var(--foreground)] leading-relaxed line-clamp-3">
+                            {entry.response.length > 200 ? entry.response.slice(0, 200) + "..." : entry.response}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Stop button */}
+              <div className="flex justify-center">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs gap-1 text-[var(--muted-foreground)]"
+                  onClick={forkStream.stop}
+                >
+                  Stop analysis
+                </Button>
               </div>
             </div>
           ) : error ? (

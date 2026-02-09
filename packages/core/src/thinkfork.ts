@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
 import { createLogger } from "@opus-nx/shared";
 import { ThinkingEngine } from "./thinking-engine.js";
 import {
@@ -17,20 +14,16 @@ import {
   type ThinkForkOptions,
   type ConvergencePoint,
   type DivergencePoint,
-  type BranchGuidance,
   type BranchSteeringAction,
   type SteeringResult,
   type DebateOptions,
   type DebateResult,
   type DebateRoundEntry,
 } from "./types/thinkfork.js";
+import { STYLE_PROMPTS, COMPARISON_PROMPT } from "./prompts/thinkfork-prompts.js";
 import type { OrchestratorConfig, ToolUseBlock } from "./types/orchestrator.js";
 
 const logger = createLogger("ThinkFork");
-
-// Resolve prompts directory once at module load
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const PROMPTS_DIR = join(__dirname, "..", "..", "..", "configs", "prompts", "thinkfork");
 
 // ============================================================
 // ThinkFork Engine Options
@@ -45,10 +38,21 @@ export interface ThinkForkEngineOptions {
   onThinkingStream?: (style: ForkStyle, thinking: string) => void;
   /** Callback when comparison analysis starts */
   onComparisonStart?: () => void;
+  /** Callback when comparison analysis completes */
+  onComparisonComplete?: (result: {
+    convergencePoints: ConvergencePoint[];
+    divergencePoints: DivergencePoint[];
+    metaInsight: string;
+    recommendedApproach?: ThinkForkResult["recommendedApproach"];
+  }) => void;
   /** Callback when a debate round starts */
   onDebateRoundStart?: (round: number, style: ForkStyle) => void;
   /** Callback when a debate round entry completes */
   onDebateRoundComplete?: (entry: DebateRoundEntry) => void;
+  /** Callback when debate mode begins (after initial fork) */
+  onDebateStart?: (totalRounds: number) => void;
+  /** Callback when all styles in a debate round finish */
+  onDebateRoundAllComplete?: (round: number) => void;
 }
 
 // Tool for structured debate responses
@@ -107,7 +111,6 @@ export class ThinkForkEngine {
   private prompts: Map<ForkStyle, string>;
   private comparisonPrompt: string;
   private options: ThinkForkEngineOptions;
-  private fallbackPromptsUsed: Set<ForkStyle> = new Set();
 
   constructor(options: ThinkForkEngineOptions = {}) {
     this.options = options;
@@ -116,7 +119,6 @@ export class ThinkForkEngine {
 
     logger.debug("ThinkForkEngine initialized", {
       stylesLoaded: Array.from(this.prompts.keys()),
-      fallbacksUsed: Array.from(this.fallbackPromptsUsed),
     });
   }
 
@@ -233,6 +235,12 @@ export class ThinkForkEngine {
         if (comparison.error) {
           errors.push(comparison.error);
         }
+        this.options.onComparisonComplete?.({
+          convergencePoints,
+          divergencePoints,
+          metaInsight,
+          recommendedApproach,
+        });
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         logger.error("Comparison analysis failed", { error: errorMsg });
@@ -256,9 +264,6 @@ export class ThinkForkEngine {
       totalTokensUsed,
       totalDurationMs,
       errors: errors.length > 0 ? errors : undefined,
-      fallbackPromptsUsed: this.fallbackPromptsUsed.size > 0
-        ? Array.from(this.fallbackPromptsUsed)
-        : undefined,
       appliedGuidance: branchGuidance,
     };
 
@@ -698,7 +703,7 @@ Expand on your reasoning with additional detail, evidence, and implications. Use
     });
 
     const result = await engine.think(
-      this.prompts.get(style) ?? this.getFallbackPrompt(style),
+      this.prompts.get(style) ?? STYLE_PROMPTS[style],
       [{ role: "user", content: expandPrompt }],
       [BRANCH_CONCLUSION_TOOL]
     );
@@ -797,7 +802,7 @@ Respond to this challenge. If the challenge has merit, revise your conclusion. I
     });
 
     const result = await engine.think(
-      this.prompts.get(style) ?? this.getFallbackPrompt(style),
+      this.prompts.get(style) ?? STYLE_PROMPTS[style],
       [{ role: "user", content: challengePrompt }],
       [BRANCH_CONCLUSION_TOOL]
     );
@@ -836,72 +841,24 @@ Respond to this challenge. If the challenge has merit, revise your conclusion. I
   }
 
   /**
-   * Load style-specific prompts from files.
+   * Load style-specific prompts from embedded module constants.
    */
   private loadPrompts(): Map<ForkStyle, string> {
     const prompts = new Map<ForkStyle, string>();
     const styles: ForkStyle[] = ["conservative", "aggressive", "balanced", "contrarian"];
 
     for (const style of styles) {
-      const prompt = this.loadPromptFile(`${style}.md`, () => {
-        this.fallbackPromptsUsed.add(style);
-        return this.getFallbackPrompt(style);
-      });
-      prompts.set(style, prompt);
+      prompts.set(style, STYLE_PROMPTS[style]);
     }
 
     return prompts;
   }
 
   /**
-   * Load the comparison prompt.
+   * Load the comparison prompt from embedded module constant.
    */
   private loadComparisonPrompt(): string {
-    return this.loadPromptFile("comparison.md", () => this.getFallbackComparisonPrompt());
-  }
-
-  /**
-   * Load a prompt file with fallback support.
-   */
-  private loadPromptFile(filename: string, getFallback: () => string): string {
-    const promptPath = join(PROMPTS_DIR, filename);
-    try {
-      const prompt = readFileSync(promptPath, "utf-8");
-      logger.debug(`Loaded prompt: ${filename}`);
-      return prompt;
-    } catch (error) {
-      logger.warn(`Using fallback prompt for ${filename}`, {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return getFallback();
-    }
-  }
-
-  /**
-   * Fallback prompt for a style.
-   */
-  private getFallbackPrompt(style: ForkStyle): string {
-    const description = FORK_STYLE_DESCRIPTIONS[style];
-    return `You are analyzing a problem with a ${style} reasoning approach.
-
-Your mindset: ${description}
-
-Analyze the problem thoroughly, then use the record_conclusion tool to capture your conclusion, confidence level, and key insights.`;
-  }
-
-  /**
-   * Fallback comparison prompt.
-   */
-  private getFallbackComparisonPrompt(): string {
-    return `You are analyzing conclusions from multiple reasoning approaches.
-
-Compare the different perspectives and use the record_comparison tool to capture:
-1. Points where approaches converge (agree)
-2. Points where approaches diverge (disagree)
-3. A meta-insight about what the comparison reveals
-4. Optionally, which approach seems most suitable
-
-{BRANCH_RESULTS}`;
+    return COMPARISON_PROMPT;
   }
 
   // ============================================================
@@ -928,7 +885,15 @@ Compare the different perspectives and use the record_comparison tool to capture
     query: string,
     options: Partial<DebateOptions> = {}
   ): Promise<DebateResult> {
-    const parsed = DebateOptionsSchema.parse(options);
+    const parseResult = DebateOptionsSchema.safeParse(options);
+    if (!parseResult.success) {
+      const errorMessages = parseResult.error.errors.map(
+        (e) => `${e.path.join(".")}: ${e.message}`
+      );
+      logger.error("Invalid debate options", { errors: errorMessages });
+      throw new Error(`Invalid debate options: ${errorMessages.join(", ")}`);
+    }
+    const parsed = parseResult.data;
     const startTime = Date.now();
     let totalTokens = 0;
 
@@ -964,6 +929,7 @@ Compare the different perspectives and use the record_comparison tool to capture
     }
 
     // Step 2: Run debate rounds
+    this.options.onDebateStart?.(parsed.rounds);
     const allRoundEntries: DebateRoundEntry[] = [];
 
     for (let round = 1; round <= parsed.rounds; round++) {
@@ -978,11 +944,15 @@ Compare the different perspectives and use the record_comparison tool to capture
 
       const roundResults = await Promise.allSettled(roundPromises);
 
-      for (const result of roundResults) {
+      const activeDebateStyles = parsed.styles.filter((s) => currentPositions.has(s));
+      for (let i = 0; i < roundResults.length; i++) {
+        const result = roundResults[i];
+        const resultStyle = activeDebateStyles[i];
+
         if (result.status === "fulfilled" && result.value) {
           const entry = result.value;
           allRoundEntries.push(entry);
-          totalTokens += entry.response.length; // approximate
+          totalTokens += entry.response.length; // approximate (character count)
 
           // Update position if it changed
           currentPositions.set(entry.style, {
@@ -992,8 +962,27 @@ Compare the different perspectives and use the record_comparison tool to capture
           });
 
           this.options.onDebateRoundComplete?.(entry);
+        } else if (result.status === "rejected") {
+          const errorMsg = result.reason instanceof Error
+            ? result.reason.message
+            : String(result.reason);
+          logger.error(`Debate round ${round} rejected for ${resultStyle}`, { error: errorMsg });
+
+          const failedEntry: DebateRoundEntry = {
+            style: resultStyle,
+            round,
+            response: `[Error in round ${round}: ${errorMsg}]`,
+            confidence: currentPositions.get(resultStyle)?.confidence ?? 0.5,
+            positionChanged: false,
+            keyCounterpoints: [],
+            concessions: [],
+          };
+          allRoundEntries.push(failedEntry);
+          this.options.onDebateRoundComplete?.(failedEntry);
         }
       }
+
+      this.options.onDebateRoundAllComplete?.(round);
     }
 
     // Step 3: Determine final positions and consensus
@@ -1064,7 +1053,12 @@ Compare the different perspectives and use the record_comparison tool to capture
     this.options.onDebateRoundStart?.(round, style);
 
     const config = this.createThinkingConfig(effort);
-    const engine = new ThinkingEngine({ config });
+    const engine = new ThinkingEngine({
+      config,
+      onThinkingStream: (thinking) => {
+        this.options.onThinkingStream?.(style, thinking);
+      },
+    });
 
     // Build the debate prompt with other branches' positions
     const otherPositions = Array.from(currentPositions.entries())
@@ -1103,8 +1097,6 @@ Be intellectually honest — it's better to change your mind when warranted than
 
     const systemPrompt = `You are engaging in a structured intellectual debate from the ${style} perspective. ${FORK_STYLE_DESCRIPTIONS[style]}. Think deeply about the arguments presented and respond with intellectual rigor and honesty.`;
 
-    const startTime = Date.now();
-
     try {
       const result = await engine.think(
         systemPrompt,
@@ -1134,7 +1126,8 @@ Be intellectually honest — it's better to change your mind when warranted than
         };
       }
 
-      // Fallback: extract from text
+      // Fallback: extract from text (model did not use structured tool)
+      logger.warn(`Debate round ${round} for ${style}: model did not use record_debate_response tool, falling back to text extraction`);
       const textResponse = result.textBlocks.map((b) => b.text).join("\n");
       return {
         style,

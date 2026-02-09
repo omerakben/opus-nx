@@ -19,9 +19,13 @@ interface BranchCardProps {
   branch: ForkBranch;
   isRecommended?: boolean;
   defaultExpanded?: boolean;
+  /** Branch is currently running (pulsing indicator) */
+  isStreaming?: boolean;
+  /** Branch is waiting to start (skeleton state) */
+  isPending?: boolean;
 }
 
-export function BranchCard({ branch, isRecommended, defaultExpanded }: BranchCardProps) {
+export function BranchCard({ branch, isRecommended, defaultExpanded, isStreaming, isPending }: BranchCardProps) {
   const style = branch.style as ForkStyle;
   const icon = FORK_ICONS[style];
   const label = FORK_LABELS[style];
@@ -29,6 +33,55 @@ export function BranchCard({ branch, isRecommended, defaultExpanded }: BranchCar
 
   const confidencePercent = Math.round(branch.confidence * 100);
   const [isExpanded, setIsExpanded] = useState(defaultExpanded ?? false);
+
+  // Pending state: branch hasn't started yet
+  if (isPending) {
+    return (
+      <Card className="overflow-hidden border-l-4 border-[var(--muted-foreground)]/20 transition-all opacity-50">
+        <CardContent className="p-3">
+          <div className="flex items-center gap-1.5 mb-3">
+            <span className="text-base">{icon}</span>
+            <span className="text-sm font-medium text-[var(--muted-foreground)]">{label}</span>
+          </div>
+          <div className="space-y-2">
+            <div className="h-3 bg-[var(--muted-foreground)]/10 rounded animate-pulse" />
+            <div className="h-3 bg-[var(--muted-foreground)]/10 rounded animate-pulse w-3/4" />
+            <div className="h-3 bg-[var(--muted-foreground)]/10 rounded animate-pulse w-1/2" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Streaming state: branch is actively reasoning
+  if (isStreaming) {
+    return (
+      <Card
+        className="overflow-hidden transition-all animate-pulse"
+        style={{
+          borderLeft: "4px solid transparent",
+          borderImage: `linear-gradient(to bottom, ${FORK_COLORS[style]}, ${FORK_COLORS[style]}33) 1`,
+        }}
+      >
+        <CardContent className="p-3">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-1.5">
+              <span className="text-base">{icon}</span>
+              <span className={cn("text-sm font-medium", classes.text)}>{label}</span>
+            </div>
+            <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", classes.border, classes.text)}>
+              Reasoning...
+            </Badge>
+          </div>
+          <div className="space-y-2">
+            <div className="h-3 bg-[var(--muted-foreground)]/10 rounded" style={{ width: "90%" }} />
+            <div className="h-3 bg-[var(--muted-foreground)]/10 rounded" style={{ width: "70%" }} />
+            <div className="h-3 bg-[var(--muted-foreground)]/10 rounded" style={{ width: "45%" }} />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Error state: branch failed
   if (branch.error) {

@@ -222,7 +222,6 @@ export interface ForkResponse {
     confidence: number;
   };
   appliedGuidance?: BranchGuidance[];
-  fallbackPromptsUsed?: string[];
   analysisId?: string;
 }
 

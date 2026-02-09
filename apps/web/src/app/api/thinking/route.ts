@@ -2,6 +2,8 @@ import { ThinkingEngine, ThinkGraph } from "@opus-nx/core";
 import { createSession, getSession } from "@/lib/db";
 import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
 
+export const maxDuration = 300;
+
 interface ThinkingRequest {
   query: string;
   sessionId?: string;
@@ -23,6 +25,16 @@ export async function POST(request: Request) {
         status: 400,
         code: "INVALID_QUERY",
         message: "Query is required",
+        correlationId,
+        recoverable: true,
+      });
+    }
+
+    if (query.length > 10000) {
+      return jsonError({
+        status: 400,
+        code: "QUERY_TOO_LONG",
+        message: "Query must not exceed 10,000 characters",
         correlationId,
         recoverable: true,
       });
