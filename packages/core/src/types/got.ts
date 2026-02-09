@@ -1,8 +1,11 @@
+/**
+ * @scope future - Post-hackathon roadmap
+ */
 import { z } from "zod";
 import { EdgeTypeSchema } from "./thinking.js";
 
 // ============================================================
-// Graph of Thoughts (GoT) Types
+// [Future Scope] Graph of Thoughts (GoT) Types
 // ============================================================
 // Based on: "Graph of Thoughts: Solving Elaborate Problems with LLMs"
 // (Besta et al., 2023 — arXiv:2308.09687)

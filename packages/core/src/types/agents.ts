@@ -1,7 +1,10 @@
+/**
+ * @scope future - Post-hackathon roadmap
+ */
 import { z } from "zod";
 
 // ============================================================
-// Agent Model Configuration
+// [Future Scope] Agent Model Configuration
 // ============================================================
 
 export const AgentModelSchema = z.enum([
