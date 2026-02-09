@@ -10,15 +10,15 @@ Built for the [Cerebral Valley "Built with Opus 4.6" Hackathon](https://cv.inc/e
 
 Every AI system today treats extended thinking as a black box: reasoning happens, a response comes out, and the thinking vanishes. Opus Nx does something fundamentally different. It transforms Claude Opus 4.6's extended thinking into a **persistent, navigable data structure** that can be searched, analyzed, forked, verified, and learned from across sessions.
 
-| What Others Do | What Opus Nx Does |
-|----------------|-------------------|
-| Extended thinking improves responses | Extended thinking becomes **queryable history** |
-| AI conversations are stateless | Every reasoning chain is **persistent and traversable** |
-| "The AI said X" | "The AI reasoned A -> B -> C to conclude X" |
-| Black box decisions | **Transparent decision archaeology** |
-| Single reasoning path | **Parallel branches** with convergence analysis |
-| Trust the final answer | **Step-by-step verification** of each reasoning step |
-| Fixed context window | **Hierarchical memory** with automatic eviction and retrieval |
+| What Others Do                       | What Opus Nx Does                                             |
+| ------------------------------------ | ------------------------------------------------------------- |
+| Extended thinking improves responses | Extended thinking becomes **queryable history**               |
+| AI conversations are stateless       | Every reasoning chain is **persistent and traversable**       |
+| "The AI said X"                      | "The AI reasoned A -> B -> C to conclude X"                   |
+| Black box decisions                  | **Transparent decision archaeology**                          |
+| Single reasoning path                | **Parallel branches** with convergence analysis               |
+| Trust the final answer               | **Step-by-step verification** of each reasoning step          |
+| Fixed context window                 | **Hierarchical memory** with automatic eviction and retrieval |
 
 ---
 
@@ -117,19 +117,19 @@ The central brain that routes tasks to the appropriate thinking effort level usi
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| **LLM** | Claude Opus 4.6 (extended thinking, up to 50k tokens) |
-| **Framework** | Next.js 16 (App Router, Turbopack), React 19 |
-| **Styling** | Tailwind CSS 4, shadcn/ui |
-| **Visualization** | @xyflow/react (react-flow) |
-| **Database** | Supabase (PostgreSQL + pgvector, HNSW indexes) |
-| **Embeddings** | Voyage AI (voyage-3, 1024-dim) |
-| **Agents** | LangChain + LangGraph |
-| **Monorepo** | Turborepo + pnpm 9.15 |
-| **Language** | TypeScript 5.7+ (strict mode) |
-| **Runtime** | Node.js 22+ |
-| **Testing** | Vitest |
+| Layer             | Technology                                            |
+| ----------------- | ----------------------------------------------------- |
+| **LLM**           | Claude Opus 4.6 (extended thinking, up to 50k tokens) |
+| **Framework**     | Next.js 16 (App Router, Turbopack), React 19          |
+| **Styling**       | Tailwind CSS 4, shadcn/ui                             |
+| **Visualization** | @xyflow/react (react-flow)                            |
+| **Database**      | Supabase (PostgreSQL + pgvector, HNSW indexes)        |
+| **Embeddings**    | Voyage AI (voyage-3, 1024-dim)                        |
+| **Agents**        | LangChain + LangGraph                                 |
+| **Monorepo**      | Turborepo + pnpm 9.15                                 |
+| **Language**      | TypeScript 5.7+ (strict mode)                         |
+| **Runtime**       | Node.js 22+                                           |
+| **Testing**       | Vitest                                                |
 
 ---
 
@@ -286,13 +286,13 @@ opus-nx/
 
 Opus Nx is built exclusively for Claude Opus 4.6 because no other model provides the capabilities this system requires:
 
-| Capability | Requirement | Opus 4.6 |
-|------------|-------------|----------|
-| Metacognition | 50,000 thinking tokens to reason about its own reasoning | Only model with this budget |
-| Infinite Sessions | 1M token context window with compaction | Largest context available |
-| Complex Meta-Prompts | Reliable instruction following for multi-layer prompts | Best in class |
-| Extended Thinking | Native streaming with thinking deltas | Uniquely suited |
-| 128K Output | Long-form reasoning and analysis generation | Maximum output capacity |
+| Capability           | Requirement                                              | Opus 4.6                    |
+| -------------------- | -------------------------------------------------------- | --------------------------- |
+| Metacognition        | 50,000 thinking tokens to reason about its own reasoning | Only model with this budget |
+| Infinite Sessions    | 1M token context window with compaction                  | Largest context available   |
+| Complex Meta-Prompts | Reliable instruction following for multi-layer prompts   | Best in class               |
+| Extended Thinking    | Native streaming with thinking deltas                    | Uniquely suited             |
+| 128K Output          | Long-form reasoning and analysis generation              | Maximum output capacity     |
 
 ---
 
@@ -300,12 +300,12 @@ Opus Nx is built exclusively for Claude Opus 4.6 because no other model provides
 
 Opus Nx implements algorithms from four foundational papers in LLM reasoning:
 
-| Paper | Year | Module | Key Contribution |
-|-------|------|--------|-----------------|
-| [Tree of Thoughts](https://arxiv.org/abs/2305.10601) (Yao et al.) | 2023 | `thinkfork.ts`, `got-engine.ts` | BFS/DFS search over reasoning trees with state evaluation |
-| [Graph of Thoughts](https://arxiv.org/abs/2308.09687) (Besta et al.) | 2023 | `got-engine.ts` | Arbitrary thought graph topology with aggregation and refinement |
-| [Let's Verify Step by Step](https://arxiv.org/abs/2305.20050) (Lightman et al.) | 2023 | `prm-verifier.ts` | Process supervision -- verify each reasoning step independently |
-| [MemGPT](https://arxiv.org/abs/2310.08560) (Packer et al.) | 2023 | `memory-hierarchy.ts` | Three-tier memory hierarchy with automatic paging between tiers |
+| Paper                                                                           | Year | Module                          | Key Contribution                                                 |
+| ------------------------------------------------------------------------------- | ---- | ------------------------------- | ---------------------------------------------------------------- |
+| [Tree of Thoughts](https://arxiv.org/abs/2305.10601) (Yao et al.)               | 2023 | `thinkfork.ts`, `got-engine.ts` | BFS/DFS search over reasoning trees with state evaluation        |
+| [Graph of Thoughts](https://arxiv.org/abs/2308.09687) (Besta et al.)            | 2023 | `got-engine.ts`                 | Arbitrary thought graph topology with aggregation and refinement |
+| [Let's Verify Step by Step](https://arxiv.org/abs/2305.20050) (Lightman et al.) | 2023 | `prm-verifier.ts`               | Process supervision -- verify each reasoning step independently  |
+| [MemGPT](https://arxiv.org/abs/2310.08560) (Packer et al.)                      | 2023 | `memory-hierarchy.ts`           | Three-tier memory hierarchy with automatic paging between tiers  |
 
 ---
 
@@ -351,29 +351,29 @@ The `pnpm check:migrations` script enforces synchronization between these direct
 
 ## API Reference
 
-| Route | Method | Purpose |
-|-------|--------|---------|
-| `/api/health` | GET | Health check |
-| `/api/auth` | POST | Authenticate with AUTH_SECRET |
-| `/api/auth/logout` | POST | Clear auth cookie |
-| `/api/thinking` | POST | Extended thinking request (canonical) |
-| `/api/thinking/stream` | POST | SSE streaming for thinking deltas |
-| `/api/think` | POST | Extended thinking (alias) |
-| `/api/stream/[sessionId]` | GET | SSE stream (compatibility endpoint) |
-| `/api/fork` | POST | Spawn ThinkFork parallel branches |
-| `/api/fork/steer` | POST | Redirect a branch mid-reasoning |
-| `/api/got` | POST | Graph of Thoughts reasoning |
-| `/api/verify` | POST | PRM step-by-step verification |
-| `/api/memory` | GET/POST | Hierarchical memory read/write |
-| `/api/sessions` | GET/POST | List or create sessions |
-| `/api/sessions/[sessionId]` | GET/PATCH/DELETE | Session CRUD |
-| `/api/sessions/[sessionId]/nodes` | GET | List thinking nodes for a session |
-| `/api/reasoning/[id]` | GET | Query ThinkGraph by ID |
-| `/api/reasoning/[id]/checkpoint` | POST | Create reasoning checkpoint |
-| `/api/insights` | GET/POST | Metacognitive insights |
-| `/api/demo` | POST | Generate demo data |
-| `/api/seed` | POST | Seed knowledge base |
-| `/api/seed/business-strategy` | POST | Seed business strategy scenario |
+| Route                             | Method           | Purpose                               |
+| --------------------------------- | ---------------- | ------------------------------------- |
+| `/api/health`                     | GET              | Health check                          |
+| `/api/auth`                       | POST             | Authenticate with AUTH_SECRET         |
+| `/api/auth/logout`                | POST             | Clear auth cookie                     |
+| `/api/thinking`                   | POST             | Extended thinking request (canonical) |
+| `/api/thinking/stream`            | POST             | SSE streaming for thinking deltas     |
+| `/api/think`                      | POST             | Extended thinking (alias)             |
+| `/api/stream/[sessionId]`         | GET              | SSE stream (compatibility endpoint)   |
+| `/api/fork`                       | POST             | Spawn ThinkFork parallel branches     |
+| `/api/fork/steer`                 | POST             | Redirect a branch mid-reasoning       |
+| `/api/got`                        | POST             | Graph of Thoughts reasoning           |
+| `/api/verify`                     | POST             | PRM step-by-step verification         |
+| `/api/memory`                     | GET/POST         | Hierarchical memory read/write        |
+| `/api/sessions`                   | GET/POST         | List or create sessions               |
+| `/api/sessions/[sessionId]`       | GET/PATCH/DELETE | Session CRUD                          |
+| `/api/sessions/[sessionId]/nodes` | GET              | List thinking nodes for a session     |
+| `/api/reasoning/[id]`             | GET              | Query ThinkGraph by ID                |
+| `/api/reasoning/[id]/checkpoint`  | POST             | Create reasoning checkpoint           |
+| `/api/insights`                   | GET/POST         | Metacognitive insights                |
+| `/api/demo`                       | POST             | Generate demo data                    |
+| `/api/seed`                       | POST             | Seed knowledge base                   |
+| `/api/seed/business-strategy`     | POST             | Seed business strategy scenario       |
 
 ---
 

@@ -13,23 +13,23 @@ All planned hackathon features have been built, plus significant additional feat
 
 ### What was built
 
-| Feature | Module | Status | Lines |
-|---------|--------|--------|-------|
-| ThinkGraph (reasoning as persistent graph) | `think-graph.ts` | Complete | 936 |
-| Metacognitive Self-Audit (50k thinking budget) | `metacognition.ts` | Complete | 620 |
-| ThinkFork (4 styles + debate + steering) | `thinkfork.ts` | Complete (expanded) | 1,165 |
-| Graph of Thoughts (BFS/DFS/best-first) | `got-engine.ts` | Complete (new) | 872 |
-| PRM Verifier (step-by-step verification) | `prm-verifier.ts` | Complete (new) | 479 |
-| Hierarchical Memory (3-tier MemGPT-inspired) | `memory-hierarchy.ts` | Complete (new) | 634 |
-| Dynamic Effort Routing | `orchestrator.ts` | Complete (new) | -- |
-| Context Compaction | `thinking-engine.ts` | Complete (new) | -- |
-| Checkpoint System | `/api/reasoning/[id]/checkpoint` | Complete (new) | -- |
-| Dashboard UI (37 components) | `apps/web/` | Complete | -- |
+| Feature                                        | Module                           | Status              | Lines |
+| ---------------------------------------------- | -------------------------------- | ------------------- | ----- |
+| ThinkGraph (reasoning as persistent graph)     | `think-graph.ts`                 | Complete            | 935   |
+| Metacognitive Self-Audit (50k thinking budget) | `metacognition.ts`               | Complete            | 619   |
+| ThinkFork (4 styles + debate + steering)       | `thinkfork.ts`                   | Complete (expanded) | 1,164 |
+| Graph of Thoughts (BFS/DFS/best-first)         | `got-engine.ts`                  | Complete (new)      | 871   |
+| PRM Verifier (step-by-step verification)       | `prm-verifier.ts`                | Complete (new)      | 478   |
+| Hierarchical Memory (3-tier MemGPT-inspired)   | `memory-hierarchy.ts`            | Complete (new)      | 633   |
+| Dynamic Effort Routing                         | `orchestrator.ts`                | Complete (new)      | --    |
+| Context Compaction                             | `thinking-engine.ts`             | Complete (new)      | --    |
+| Checkpoint System                              | `/api/reasoning/[id]/checkpoint` | Complete (new)      | --    |
+| Dashboard UI (37 components)                   | `apps/web/`                      | Complete            | --    |
 
 ### What was descoped
 
-| Feature | Reason | Artifact |
-|---------|--------|----------|
+| Feature                         | Reason                                            | Artifact                                                           |
+| ------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------ |
 | Contradiction Resolution Engine | Time redirected to GoT, PRM, and Memory Hierarchy | DB schema exists (migration 002), types defined, no runtime module |
 
 ---
@@ -49,13 +49,13 @@ Day 1         Day 2         Day 3         Day 4         Day 5+
   persists      generate       branches       explorer      ready
 ```
 
-| Day | Focus | Hours | Milestone | Status |
-|-----|-------|-------|-----------|--------|
-| 1 | ThinkGraph Foundation | 8 | Reasoning persistence working | Complete |
-| 2 | Metacognition Engine | 8 | Self-audit generating insights | Complete |
-| 3 | ThinkFork + GoT + PRM + Memory | 8 | Parallel branches + research features | Complete |
-| 4 | Dashboard UI | 8 | Visual reasoning explorer live | Complete |
-| 5+ | Polish + New Features + Demo | 8+ | Submission ready | Complete |
+| Day | Focus                          | Hours | Milestone                             | Status   |
+| --- | ------------------------------ | ----- | ------------------------------------- | -------- |
+| 1   | ThinkGraph Foundation          | 8     | Reasoning persistence working         | Complete |
+| 2   | Metacognition Engine           | 8     | Self-audit generating insights        | Complete |
+| 3   | ThinkFork + GoT + PRM + Memory | 8     | Parallel branches + research features | Complete |
+| 4   | Dashboard UI                   | 8     | Visual reasoning explorer live        | Complete |
+| 5+  | Polish + New Features + Demo   | 8+    | Submission ready                      | Complete |
 
 ---
 
@@ -212,7 +212,7 @@ describe('ThinkGraph', () => {
 - [x] `packages/db/migrations/002_thinking_graph.sql` - Schema
 - [x] `packages/core/src/types/thinking.ts` - Types
 - [x] `packages/db/src/thinking-nodes.ts` - DB queries
-- [x] `packages/core/src/think-graph.ts` - Core logic (936 lines)
+- [x] `packages/core/src/think-graph.ts` - Core logic (935 lines)
 - [x] Modified `packages/core/src/thinking-engine.ts`
 - [x] `packages/core/src/tests/think-graph.test.ts`
 
@@ -267,7 +267,7 @@ describe('ThinkGraph', () => {
 
 **Acceptance Criteria**:
 
-- [x] MetacognitionEngine class implemented (620 lines)
+- [x] MetacognitionEngine class implemented (619 lines)
 - [x] gatherReasoningHistory, analyzePatterns, detectBiases, generateImprovements methods
 - [x] Full getSelfReflection pipeline
 
@@ -316,7 +316,7 @@ describe('ThinkGraph', () => {
 - [x] Extended `packages/db/migrations/002_thinking_graph.sql`
 - [x] `packages/core/src/types/metacognition.ts`
 - [x] `configs/prompts/metacognition.md`
-- [x] `packages/core/src/metacognition.ts` (620 lines)
+- [x] `packages/core/src/metacognition.ts` (619 lines)
 - [x] Modified `packages/core/src/orchestrator.ts`
 - [x] `packages/core/src/tests/metacognition.test.ts`
 
@@ -353,7 +353,7 @@ describe('ThinkGraph', () => {
 - [x] ThinkFork class with 4 branch styles (conservative/aggressive/balanced/contrarian)
 - [x] Debate mode where branches argue against each other
 - [x] Branch steering for user-directed exploration
-- [x] 1,165 lines of implementation (expanded beyond original spec)
+- [x] 1,164 lines of implementation (expanded beyond original spec)
 
 ---
 
@@ -392,7 +392,7 @@ describe('ThinkGraph', () => {
 - [x] Thought refinement (iterative improvement)
 - [x] Arbitrary graph topology support
 - [x] State evaluation scoring
-- [x] 872 lines of implementation
+- [x] 871 lines of implementation
 
 ---
 
@@ -407,7 +407,7 @@ describe('ThinkGraph', () => {
 - [x] Natural-language explanations for each step verdict
 - [x] Overall chain validity score
 - [x] Threshold-based flagging for human review
-- [x] 479 lines of implementation
+- [x] 478 lines of implementation
 
 ---
 
@@ -422,7 +422,7 @@ describe('ThinkGraph', () => {
 - [x] Automatic promotion and demotion between tiers
 - [x] Semantic search via Voyage AI embeddings in archival tier
 - [x] Context compaction auto-summarization
-- [x] 634 lines of implementation
+- [x] 633 lines of implementation
 
 ---
 
@@ -447,10 +447,10 @@ describe('ThinkFork', () => {
 ### Day 3 Deliverables
 
 - [x] `packages/core/src/types/think-fork.ts`
-- [x] `packages/core/src/thinkfork.ts` (1,165 lines)
-- [x] `packages/core/src/got-engine.ts` (872 lines) -- NEW
-- [x] `packages/core/src/prm-verifier.ts` (479 lines) -- NEW
-- [x] `packages/core/src/memory-hierarchy.ts` (634 lines) -- NEW
+- [x] `packages/core/src/thinkfork.ts` (1,164 lines)
+- [x] `packages/core/src/got-engine.ts` (871 lines) -- NEW
+- [x] `packages/core/src/prm-verifier.ts` (478 lines) -- NEW
+- [x] `packages/core/src/memory-hierarchy.ts` (633 lines) -- NEW
 - [x] Tests for ThinkFork, GoT, PRM, and Memory features
 - ~~`packages/core/src/contradiction-resolver.ts`~~ -- DESCOPED
 
@@ -601,18 +601,29 @@ Beyond the original plan, these panels were added:
 
 **Routes implemented**:
 
-| Route | Method | Purpose | Status |
-|-------|--------|---------|--------|
-| `/api/think` | POST | Extended thinking request | Complete |
-| `/api/fork` | POST | ThinkFork parallel reasoning | Complete |
-| `/api/stream` | GET | SSE streaming for thinking deltas | Complete |
-| `/api/insights` | GET/POST | Metacognitive insights | Complete |
-| `/api/reasoning` | GET | ThinkGraph queries | Complete |
-| `/api/reasoning/[id]/checkpoint` | POST | Checkpoint system | Complete |
-| `/api/sessions` | GET/POST | Session management | Complete |
-| `/api/got` | POST | Graph of Thoughts reasoning | Complete |
-| `/api/verify` | POST | PRM step-by-step verification | Complete |
-| `/api/memory` | GET/POST | Hierarchical memory operations | Complete |
+| Route                             | Method           | Purpose                               | Status   |
+| --------------------------------- | ---------------- | ------------------------------------- | -------- |
+| `/api/auth`                       | POST             | Authenticate with AUTH_SECRET         | Complete |
+| `/api/auth/logout`                | POST             | Clear auth cookie                     | Complete |
+| `/api/thinking`                   | POST             | Extended thinking request (canonical) | Complete |
+| `/api/thinking/stream`            | POST             | SSE streaming for thinking deltas     | Complete |
+| `/api/think`                      | POST             | Extended thinking (alias)             | Complete |
+| `/api/stream/[sessionId]`        | GET              | SSE stream (compatibility)            | Complete |
+| `/api/fork`                       | POST             | ThinkFork parallel reasoning          | Complete |
+| `/api/fork/steer`                 | POST             | Branch steering mid-reasoning         | Complete |
+| `/api/got`                        | POST             | Graph of Thoughts reasoning           | Complete |
+| `/api/verify`                     | POST             | PRM step-by-step verification         | Complete |
+| `/api/sessions`                   | GET/POST         | List or create sessions               | Complete |
+| `/api/sessions/[sessionId]`      | GET/PATCH/DELETE | Session CRUD                          | Complete |
+| `/api/sessions/[sessionId]/nodes`| GET              | List thinking nodes for session       | Complete |
+| `/api/reasoning/[id]`            | GET              | Query ThinkGraph by ID                | Complete |
+| `/api/reasoning/[id]/checkpoint` | POST             | Human-in-the-loop checkpoint          | Complete |
+| `/api/insights`                   | GET/POST         | Metacognitive insights                | Complete |
+| `/api/memory`                     | GET/POST         | Hierarchical memory operations        | Complete |
+| `/api/health`                     | GET              | Health check                          | Complete |
+| `/api/demo`                       | POST             | Generate demo data                    | Complete |
+| `/api/seed`                       | POST             | Seed knowledge base                   | Complete |
+| `/api/seed/business-strategy`    | POST             | Seed business strategy scenario       | Complete |
 
 ---
 
@@ -626,7 +637,7 @@ Beyond the original plan, these panels were added:
 - [x] `thinking-stream.tsx` with SSE
 - [x] GoT panel, verification panel, memory panel -- NEW
 - [x] Demo tour component -- NEW
-- [x] All API routes (10 routes)
+- [x] All API routes (21 routes)
 - [x] Input validation on forms
 - [x] 37 total components
 
@@ -753,57 +764,57 @@ The following features were implemented beyond the original Day 5 plan:
 
 ---
 
-## Post-Hackathon Features Added
+## Additional Features Beyond Original Plan
 
 The following features were built during the hackathon but were not part of the original 5-day plan. They represent scope expansion driven by research paper implementations and user experience improvements.
 
 ### Research-Paper-Backed Features
 
-| Feature | Module | Paper | Description |
-|---------|--------|-------|-------------|
-| Graph of Thoughts | `got-engine.ts` (872 lines) | [Besta et al., 2023](https://arxiv.org/abs/2308.09687) | Arbitrary thought graph topology with BFS/DFS/best-first search, aggregation, and refinement |
-| PRM Verifier | `prm-verifier.ts` (479 lines) | [Lightman et al., 2023](https://arxiv.org/abs/2305.20050) | Step-by-step reasoning verification with per-step correctness scoring |
-| Hierarchical Memory | `memory-hierarchy.ts` (634 lines) | [Packer et al., 2023](https://arxiv.org/abs/2310.08560) | Three-tier memory (context/recall/archival) with automatic promotion/demotion |
+| Feature             | Module                            | Paper                                                     | Description                                                                                  |
+| ------------------- | --------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Graph of Thoughts   | `got-engine.ts` (871 lines)       | [Besta et al., 2023](https://arxiv.org/abs/2308.09687)    | Arbitrary thought graph topology with BFS/DFS/best-first search, aggregation, and refinement |
+| PRM Verifier        | `prm-verifier.ts` (478 lines)     | [Lightman et al., 2023](https://arxiv.org/abs/2305.20050) | Step-by-step reasoning verification with per-step correctness scoring                        |
+| Hierarchical Memory | `memory-hierarchy.ts` (633 lines) | [Packer et al., 2023](https://arxiv.org/abs/2310.08560)   | Three-tier memory (context/recall/archival) with automatic promotion/demotion                |
 
 ### ThinkFork Expansions
 
-| Feature | Description |
-|---------|-------------|
-| Contrarian branch style | Fourth branch type that challenges conventional wisdom |
-| Debate mode | Branches argue against each other for adversarial evaluation |
-| Branch steering | Users can redirect a branch mid-reasoning with additional constraints |
+| Feature                 | Description                                                           |
+| ----------------------- | --------------------------------------------------------------------- |
+| Contrarian branch style | Fourth branch type that challenges conventional wisdom                |
+| Debate mode             | Branches argue against each other for adversarial evaluation          |
+| Branch steering         | Users can redirect a branch mid-reasoning with additional constraints |
 
 ### Infrastructure Features
 
-| Feature | Module | Description |
-|---------|--------|-------------|
-| Dynamic Effort Routing | `orchestrator.ts` | Auto-classifies task complexity to set thinking budget (low/medium/high/max) |
-| Context Compaction | `thinking-engine.ts` | Infinite sessions via auto-summarization when approaching context limits |
-| Checkpoint System | `/api/reasoning/[id]/checkpoint` | Human-in-the-loop reasoning verification and redirection |
+| Feature                | Module                           | Description                                                                  |
+| ---------------------- | -------------------------------- | ---------------------------------------------------------------------------- |
+| Dynamic Effort Routing | `orchestrator.ts`                | Auto-classifies task complexity to set thinking budget (low/medium/high/max) |
+| Context Compaction     | `thinking-engine.ts`             | Infinite sessions via auto-summarization when approaching context limits     |
+| Checkpoint System      | `/api/reasoning/[id]/checkpoint` | Human-in-the-loop reasoning verification and redirection                     |
 
 ### Dashboard UI Additions
 
-| Component | Description |
-|-----------|-------------|
-| GoT Panel | Graph of Thoughts visualization with aggregation/refinement edges |
-| Verification Panel | PRM step-by-step verification display with per-step scores |
-| Memory Panel | Hierarchical memory tier browser with promotion/demotion |
-| Demo Tour | Guided walkthrough for first-time users |
-| Collapsible Sidebars | Improved layout flexibility |
-| Input Validation | Form validation across all input components |
+| Component            | Description                                                       |
+| -------------------- | ----------------------------------------------------------------- |
+| GoT Panel            | Graph of Thoughts visualization with aggregation/refinement edges |
+| Verification Panel   | PRM step-by-step verification display with per-step scores        |
+| Memory Panel         | Hierarchical memory tier browser with promotion/demotion          |
+| Demo Tour            | Guided walkthrough for first-time users                           |
+| Collapsible Sidebars | Improved layout flexibility                                       |
+| Input Validation     | Form validation across all input components                       |
 
 ---
 
 ## Risk Mitigation
 
-| Risk | Probability | Impact | Mitigation | Outcome |
-|------|-------------|--------|------------|---------|
-| API rate limiting | Medium | High | Pre-test with small budgets, implement exponential backoff | Managed via dynamic effort routing |
-| 50k thinking timeout | Low | Medium | Set 120s timeout, checkpoint streaming progress | Handled |
-| Graph visualization slow | Medium | Medium | Limit to 50 visible nodes, lazy load details | Handled |
-| Streaming drops | Medium | Medium | Implement reconnection logic, show connection status | Handled |
-| Demo data insufficient | Low | High | Seed data day before, have backup queries ready | Seeded |
-| Vercel deployment fails | Low | Medium | Test deployment daily, have Railway as backup | Pending verification |
+| Risk                     | Probability | Impact | Mitigation                                                 | Outcome                            |
+| ------------------------ | ----------- | ------ | ---------------------------------------------------------- | ---------------------------------- |
+| API rate limiting        | Medium      | High   | Pre-test with small budgets, implement exponential backoff | Managed via dynamic effort routing |
+| 50k thinking timeout     | Low         | Medium | Set 120s timeout, checkpoint streaming progress            | Handled                            |
+| Graph visualization slow | Medium      | Medium | Limit to 50 visible nodes, lazy load details               | Handled                            |
+| Streaming drops          | Medium      | Medium | Implement reconnection logic, show connection status       | Handled                            |
+| Demo data insufficient   | Low         | High   | Seed data day before, have backup queries ready            | Seeded                             |
+| Vercel deployment fails  | Low         | Medium | Test deployment daily, have Railway as backup              | Pending verification               |
 
 ---
 
@@ -843,15 +854,15 @@ The following features were built during the hackathon but were not part of the 
 
 ## Token Budget Estimation
 
-| Feature | Tokens/Call | Calls/Day | Daily Total |
-|---------|-------------|-----------|-------------|
-| Standard thinking | ~3k | 20 | 60k |
-| Metacognition | ~100k | 2 | 200k |
-| ThinkFork (4 branches) | ~12k | 5 | 60k |
-| Graph of Thoughts | ~15k | 3 | 45k |
-| PRM Verification | ~8k | 5 | 40k |
-| Memory Operations | ~2k | 10 | 20k |
-| **Daily Total** | | | **~425k** |
+| Feature                | Tokens/Call | Calls/Day | Daily Total |
+| ---------------------- | ----------- | --------- | ----------- |
+| Standard thinking      | ~3k         | 20        | 60k         |
+| Metacognition          | ~100k       | 2         | 200k        |
+| ThinkFork (4 branches) | ~12k        | 5         | 60k         |
+| Graph of Thoughts      | ~15k        | 3         | 45k         |
+| PRM Verification       | ~8k         | 5         | 40k         |
+| Memory Operations      | ~2k         | 10        | 20k         |
+| **Daily Total**        |             |           | **~425k**   |
 
 **7-Day Estimate**: ~3M tokens (within $500 budget with dynamic effort routing)
 
@@ -861,18 +872,18 @@ The following features were built during the hackathon but were not part of the 
 
 Correct filenames for all core modules (some differ from original plan):
 
-| Original Plan | Actual Filename | Notes |
-|---------------|-----------------|-------|
-| `think-fork.ts` | `thinkfork.ts` | No hyphen |
-| `think-graph.ts` | `think-graph.ts` | As planned |
-| `metacognition.ts` | `metacognition.ts` | As planned |
-| `thinking-engine.ts` | `thinking-engine.ts` | As planned |
-| `orchestrator.ts` | `orchestrator.ts` | As planned |
-| `memory-manager.ts` | `memory-manager.ts` | As planned |
-| `contradiction-resolver.ts` | -- | Never created (descoped) |
-| `got-engine.ts` | `got-engine.ts` | New (not in original plan) |
-| `prm-verifier.ts` | `prm-verifier.ts` | New (not in original plan) |
-| `memory-hierarchy.ts` | `memory-hierarchy.ts` | New (not in original plan) |
+| Original Plan               | Actual Filename       | Notes                      |
+| --------------------------- | --------------------- | -------------------------- |
+| `think-fork.ts`             | `thinkfork.ts`        | No hyphen                  |
+| `think-graph.ts`            | `think-graph.ts`      | As planned                 |
+| `metacognition.ts`          | `metacognition.ts`    | As planned                 |
+| `thinking-engine.ts`        | `thinking-engine.ts`  | As planned                 |
+| `orchestrator.ts`           | `orchestrator.ts`     | As planned                 |
+| `memory-manager.ts`         | `memory-manager.ts`   | As planned                 |
+| `contradiction-resolver.ts` | --                    | Never created (descoped)   |
+| `got-engine.ts`             | `got-engine.ts`       | New (not in original plan) |
+| `prm-verifier.ts`           | `prm-verifier.ts`     | New (not in original plan) |
+| `memory-hierarchy.ts`       | `memory-hierarchy.ts` | New (not in original plan) |
 
 ---
 

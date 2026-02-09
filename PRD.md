@@ -20,19 +20,19 @@ Opus Nx is a **Thinking Archaeology Platform** - the first AI system where reaso
 
 ## Implementation Status
 
-| Feature | Status | Module | Lines |
-|---------|--------|--------|-------|
-| ThinkGraph | Implemented | `think-graph.ts` | 936 |
-| Metacognitive Self-Audit | Implemented | `metacognition.ts` | 620 |
-| ThinkFork (4 styles + debate) | Implemented (expanded) | `thinkfork.ts` | 1,165 |
-| Contradiction Resolution | **Descoped** | -- | -- |
-| Graph of Thoughts | Implemented (new) | `got-engine.ts` | 872 |
-| PRM Verifier | Implemented (new) | `prm-verifier.ts` | 479 |
-| Hierarchical Memory | Implemented (new) | `memory-hierarchy.ts` | 634 |
-| Dynamic Effort Routing | Implemented (new) | `orchestrator.ts` | -- |
-| Context Compaction | Implemented (new) | `thinking-engine.ts` | -- |
-| Checkpoint System | Implemented (new) | `/api/reasoning/[id]/checkpoint` | -- |
-| Dashboard UI (37 components) | Implemented | `apps/web/` | -- |
+| Feature                       | Status                 | Module                           | Lines |
+| ----------------------------- | ---------------------- | -------------------------------- | ----- |
+| ThinkGraph                    | Implemented            | `think-graph.ts`                 | 935   |
+| Metacognitive Self-Audit      | Implemented            | `metacognition.ts`               | 619   |
+| ThinkFork (4 styles + debate) | Implemented (expanded) | `thinkfork.ts`                   | 1,164 |
+| Contradiction Resolution      | **Descoped**           | --                               | --    |
+| Graph of Thoughts             | Implemented (new)      | `got-engine.ts`                  | 871   |
+| PRM Verifier                  | Implemented (new)      | `prm-verifier.ts`                | 478   |
+| Hierarchical Memory           | Implemented (new)      | `memory-hierarchy.ts`            | 633   |
+| Dynamic Effort Routing        | Implemented (new)      | `orchestrator.ts`                | --    |
+| Context Compaction            | Implemented (new)      | `thinking-engine.ts`             | --    |
+| Checkpoint System             | Implemented (new)      | `/api/reasoning/[id]/checkpoint` | --    |
+| Dashboard UI (37 components)  | Implemented            | `apps/web/`                      | --    |
 
 ---
 
@@ -42,13 +42,13 @@ Opus Nx is a **Thinking Archaeology Platform** - the first AI system where reaso
 
 Current AI systems treat reasoning as a hidden, ephemeral process:
 
-| Current State | Impact |
-|---------------|--------|
+| Current State                            | Impact                                  |
+| ---------------------------------------- | --------------------------------------- |
 | Reasoning disappears after each response | No ability to learn from past decisions |
-| Users receive answers without context | "Black box" AI creates trust issues |
-| No query capability over past reasoning | Missed insights from reasoning patterns |
-| Contradictions silently overwritten | No audit trail for knowledge changes |
-| Each session starts fresh | AI can't improve its own thinking |
+| Users receive answers without context    | "Black box" AI creates trust issues     |
+| No query capability over past reasoning  | Missed insights from reasoning patterns |
+| Contradictions silently overwritten      | No audit trail for knowledge changes    |
+| Each session starts fresh                | AI can't improve its own thinking       |
 
 ### 1.2 The Vision
 
@@ -65,25 +65,25 @@ Opus Nx transforms AI reasoning from a black box into a transparent, persistent,
 
 Claude Opus 4.6 introduces capabilities that make this possible for the first time:
 
-| Capability | Opus 4.6 Spec | Enables |
-|------------|---------------|---------|
-| Extended Thinking | Up to 50k tokens | Deep metacognitive analysis |
-| Context Window | 200k tokens | Multi-session reasoning review |
-| Thinking Signatures | Cryptographic | Verification of reasoning authenticity |
-| Superior Instruction Following | Best in class | Complex meta-cognitive prompts |
+| Capability                     | Opus 4.6 Spec    | Enables                                |
+| ------------------------------ | ---------------- | -------------------------------------- |
+| Extended Thinking              | Up to 50k tokens | Deep metacognitive analysis            |
+| Context Window                 | 1M tokens        | Multi-session reasoning review         |
+| Thinking Signatures            | Cryptographic    | Verification of reasoning authenticity |
+| Superior Instruction Following | Best in class    | Complex meta-cognitive prompts         |
 
 ### 1.4 Differentiation
 
-| Other AI Systems | Opus Nx: Cognitive Architect |
-|------------------|------------------------------|
-| Stateless conversations | Persistent reasoning graph |
-| Extended thinking as quality boost | Extended thinking as product |
-| "AI said X" | "AI reasoned A->B->C to conclude X" |
-| Response quality focus | Cognitive visibility focus |
-| Assistant paradigm | Peer-level metacognition |
-| Linear chain-of-thought | Graph of Thoughts with aggregation |
-| No verification | Step-by-step process verification |
-| Single-session memory | Three-tier hierarchical memory |
+| Other AI Systems                   | Opus Nx: Cognitive Architect        |
+| ---------------------------------- | ----------------------------------- |
+| Stateless conversations            | Persistent reasoning graph          |
+| Extended thinking as quality boost | Extended thinking as product        |
+| "AI said X"                        | "AI reasoned A->B->C to conclude X" |
+| Response quality focus             | Cognitive visibility focus          |
+| Assistant paradigm                 | Peer-level metacognition            |
+| Linear chain-of-thought            | Graph of Thoughts with aggregation  |
+| No verification                    | Step-by-step process verification   |
+| Single-session memory              | Three-tier hierarchical memory      |
 
 ---
 
@@ -94,6 +94,7 @@ Claude Opus 4.6 introduces capabilities that make this possible for the first ti
 **Profile**: Building explainable AI systems, researching reasoning patterns
 
 **Needs**:
+
 - Audit trails for AI decisions
 - Understanding of model reasoning patterns
 - Reproducible reasoning chains
@@ -106,6 +107,7 @@ Claude Opus 4.6 introduces capabilities that make this possible for the first ti
 **Profile**: Analysts, researchers, strategists making complex decisions
 
 **Needs**:
+
 - Transparent AI assistance for high-stakes decisions
 - Ability to explore "what if" scenarios
 - Understanding of why AI recommended specific actions
@@ -118,6 +120,7 @@ Claude Opus 4.6 introduces capabilities that make this possible for the first ti
 **Profile**: Regulated industries requiring AI explainability
 
 **Needs**:
+
 - Decision provenance for auditors
 - Reasoning trails for compliance
 - Contradiction resolution records
@@ -131,21 +134,21 @@ Claude Opus 4.6 introduces capabilities that make this possible for the first ti
 
 ### 3.1 ThinkGraph - Reasoning as Data Structure -- IMPLEMENTED
 
-**Status**: Fully implemented in `packages/core/src/think-graph.ts` (936 lines)
+**Status**: Fully implemented in `packages/core/src/think-graph.ts` (935 lines)
 
 **Description**
 Every extended thinking session creates a persistent, navigable graph node with structured reasoning chains, confidence scores, decision points, and alternative paths considered.
 
 **User Stories**
 
-| ID | Story | Priority | Status |
-|----|-------|----------|--------|
-| US-1.1 | As a user, I can see a visual graph of all reasoning nodes from my sessions | P0 | Done |
-| US-1.2 | As a user, I can click on any node to see the full reasoning chain | P0 | Done |
-| US-1.3 | As a user, I can search past reasoning with natural language queries | P1 | Done |
-| US-1.4 | As a user, I can see what alternatives were considered and rejected | P0 | Done |
-| US-1.5 | As a user, I can trace how one reasoning session influenced another | P1 | Done |
-| US-1.6 | As a user, I can export reasoning graphs for external analysis | P2 | Not started |
+| ID     | Story                                                                       | Priority | Status      |
+| ------ | --------------------------------------------------------------------------- | -------- | ----------- |
+| US-1.1 | As a user, I can see a visual graph of all reasoning nodes from my sessions | P0       | Done        |
+| US-1.2 | As a user, I can click on any node to see the full reasoning chain          | P0       | Done        |
+| US-1.3 | As a user, I can search past reasoning with natural language queries        | P1       | Done        |
+| US-1.4 | As a user, I can see what alternatives were considered and rejected         | P0       | Done        |
+| US-1.5 | As a user, I can trace how one reasoning session influenced another         | P1       | Done        |
+| US-1.6 | As a user, I can export reasoning graphs for external analysis              | P2       | Not started |
 
 **Acceptance Criteria**
 
@@ -186,21 +189,21 @@ interface DecisionPoint {
 
 ### 3.2 Metacognitive Self-Audit -- IMPLEMENTED
 
-**Status**: Fully implemented in `packages/core/src/metacognition.ts` (620 lines)
+**Status**: Fully implemented in `packages/core/src/metacognition.ts` (619 lines)
 
 **Description**
 Using the maximum 50k thinking token budget, the system analyzes its own reasoning patterns across multiple sessions to identify biases, recurring strategies, and improvement opportunities.
 
 **User Stories**
 
-| ID | Story | Priority | Status |
-|----|-------|----------|--------|
-| US-2.1 | As a user, I can trigger a "self-reflection" that analyzes recent reasoning | P0 | Done |
-| US-2.2 | As a user, I can see identified patterns in the AI's thinking | P0 | Done |
-| US-2.3 | As a user, I can see identified biases with supporting evidence | P0 | Done |
-| US-2.4 | As a user, I can view improvement hypotheses generated by the AI | P1 | Done |
-| US-2.5 | As a user, I can see reasoning templates the AI has learned | P2 | Not started |
-| US-2.6 | As a user, I can configure how often self-reflection runs | P2 | Not started |
+| ID     | Story                                                                       | Priority | Status      |
+| ------ | --------------------------------------------------------------------------- | -------- | ----------- |
+| US-2.1 | As a user, I can trigger a "self-reflection" that analyzes recent reasoning | P0       | Done        |
+| US-2.2 | As a user, I can see identified patterns in the AI's thinking               | P0       | Done        |
+| US-2.3 | As a user, I can see identified biases with supporting evidence             | P0       | Done        |
+| US-2.4 | As a user, I can view improvement hypotheses generated by the AI            | P1       | Done        |
+| US-2.5 | As a user, I can see reasoning templates the AI has learned                 | P2       | Not started |
+| US-2.6 | As a user, I can configure how often self-reflection runs                   | P2       | Not started |
 
 **Acceptance Criteria**
 
@@ -214,17 +217,17 @@ Using the maximum 50k thinking token budget, the system analyzes its own reasoni
 
 **Insight Types**
 
-| Type | Description | Example |
-|------|-------------|---------|
-| `bias_detection` | Systematic reasoning bias | "Tendency to favor conservative estimates when facing uncertainty" |
-| `pattern` | Recurring reasoning strategy | "Often breaks complex problems into 3-5 sub-problems" |
-| `improvement_hypothesis` | Self-improvement suggestion | "Could improve by considering more contrarian viewpoints" |
+| Type                     | Description                  | Example                                                            |
+| ------------------------ | ---------------------------- | ------------------------------------------------------------------ |
+| `bias_detection`         | Systematic reasoning bias    | "Tendency to favor conservative estimates when facing uncertainty" |
+| `pattern`                | Recurring reasoning strategy | "Often breaks complex problems into 3-5 sub-problems"              |
+| `improvement_hypothesis` | Self-improvement suggestion  | "Could improve by considering more contrarian viewpoints"          |
 
 ---
 
 ### 3.3 ThinkFork - Parallel Reasoning Branches -- IMPLEMENTED (EXPANDED)
 
-**Status**: Fully implemented and expanded in `packages/core/src/thinkfork.ts` (1,165 lines)
+**Status**: Fully implemented and expanded in `packages/core/src/thinkfork.ts` (1,164 lines)
 
 **Note**: The original spec called for 2-3 branches with 3 styles (conservative/aggressive/balanced). The implementation expanded to 4 styles by adding **contrarian**, and introduced **debate mode** (branches argue against each other) and **branch steering** (users can redirect a branch mid-reasoning). The actual filename is `thinkfork.ts` (no hyphen), not `think-fork.ts` as originally planned.
 
@@ -233,16 +236,16 @@ Complex decisions spawn parallel reasoning branches with different assumptions, 
 
 **User Stories**
 
-| ID | Story | Priority | Status |
-|----|-------|----------|--------|
-| US-3.1 | As a user, I can request "explore multiple approaches" for a question | P0 | Done |
-| US-3.2 | As a user, I can see 2-4 parallel branches with different conclusions | P0 | Done |
-| US-3.3 | As a user, I can compare assumptions between branches side-by-side | P0 | Done |
-| US-3.4 | As a user, I can select a branch to continue with and record my rationale | P1 | Done |
-| US-3.5 | As a user, I can see confidence scores for each branch | P0 | Done |
-| US-3.6 | As a user, I can ask for a synthesis of best elements from all branches | P2 | Done |
-| US-3.7 | As a user, I can trigger debate mode where branches argue against each other | P1 | Done (new) |
-| US-3.8 | As a user, I can steer a branch mid-reasoning with additional constraints | P1 | Done (new) |
+| ID     | Story                                                                        | Priority | Status     |
+| ------ | ---------------------------------------------------------------------------- | -------- | ---------- |
+| US-3.1 | As a user, I can request "explore multiple approaches" for a question        | P0       | Done       |
+| US-3.2 | As a user, I can see 2-4 parallel branches with different conclusions        | P0       | Done       |
+| US-3.3 | As a user, I can compare assumptions between branches side-by-side           | P0       | Done       |
+| US-3.4 | As a user, I can select a branch to continue with and record my rationale    | P1       | Done       |
+| US-3.5 | As a user, I can see confidence scores for each branch                       | P0       | Done       |
+| US-3.6 | As a user, I can ask for a synthesis of best elements from all branches      | P2       | Done       |
+| US-3.7 | As a user, I can trigger debate mode where branches argue against each other | P1       | Done (new) |
+| US-3.8 | As a user, I can steer a branch mid-reasoning with additional constraints    | P1       | Done (new) |
 
 **Acceptance Criteria**
 
@@ -255,12 +258,12 @@ Complex decisions spawn parallel reasoning branches with different assumptions, 
 
 **Branch Types**
 
-| Branch | Assumption Frame | Use Case |
-|--------|------------------|----------|
-| Conservative | Risk-averse, proven approaches | High-stakes decisions |
-| Aggressive | Optimistic, innovative approaches | Growth opportunities |
-| Balanced | Synthesis of trade-offs | Default recommendation |
-| Contrarian | Challenge conventional wisdom | Avoiding groupthink |
+| Branch       | Assumption Frame                  | Use Case               |
+| ------------ | --------------------------------- | ---------------------- |
+| Conservative | Risk-averse, proven approaches    | High-stakes decisions  |
+| Aggressive   | Optimistic, innovative approaches | Growth opportunities   |
+| Balanced     | Synthesis of trade-offs           | Default recommendation |
+| Contrarian   | Challenge conventional wisdom     | Avoiding groupthink    |
 
 ---
 
@@ -279,13 +282,13 @@ When new information conflicts with existing knowledge, the system uses extended
 
 **Original User Stories** (not implemented)
 
-| ID | Story | Priority | Status |
-|----|-------|----------|--------|
-| US-4.1 | As a user, I'm notified when new info contradicts existing knowledge | P0 | Not built |
-| US-4.2 | As a user, I can see the reasoning behind resolution decisions | P0 | Not built |
-| US-4.3 | As a user, I can override automatic resolutions | P1 | Not built |
-| US-4.4 | As a user, I can query history of all contradictions and resolutions | P1 | Not built |
-| US-4.5 | As a user, I can see how resolutions affected dependent knowledge | P2 | Not built |
+| ID     | Story                                                                | Priority | Status    |
+| ------ | -------------------------------------------------------------------- | -------- | --------- |
+| US-4.1 | As a user, I'm notified when new info contradicts existing knowledge | P0       | Not built |
+| US-4.2 | As a user, I can see the reasoning behind resolution decisions       | P0       | Not built |
+| US-4.3 | As a user, I can override automatic resolutions                      | P1       | Not built |
+| US-4.4 | As a user, I can query history of all contradictions and resolutions | P1       | Not built |
+| US-4.5 | As a user, I can see how resolutions affected dependent knowledge    | P2       | Not built |
 
 **Original Acceptance Criteria** (not implemented)
 
@@ -298,18 +301,18 @@ When new information conflicts with existing knowledge, the system uses extended
 
 **Resolution Types** (defined in schema only)
 
-| Resolution | Description | When Used |
-|------------|-------------|-----------|
-| `favor_a` | Original knowledge correct | New info unreliable source |
-| `favor_b` | New knowledge correct | More recent, better sourced |
-| `synthesized` | Both partially correct | Nuance reconciles conflict |
-| `unresolved` | Cannot determine | Flagged for human review |
+| Resolution    | Description                | When Used                   |
+| ------------- | -------------------------- | --------------------------- |
+| `favor_a`     | Original knowledge correct | New info unreliable source  |
+| `favor_b`     | New knowledge correct      | More recent, better sourced |
+| `synthesized` | Both partially correct     | Nuance reconciles conflict  |
+| `unresolved`  | Cannot determine           | Flagged for human review    |
 
 ---
 
 ### 3.5 Graph of Thoughts (GoT) -- IMPLEMENTED (NEW)
 
-**Status**: Fully implemented in `packages/core/src/got-engine.ts` (872 lines). Not in original PRD.
+**Status**: Fully implemented in `packages/core/src/got-engine.ts` (871 lines). Not in original PRD.
 
 **Research basis**: [Graph of Thoughts: Solving Elaborate Problems with Large Language Models](https://arxiv.org/abs/2308.09687) (Besta et al., 2023)
 
@@ -318,12 +321,12 @@ Extends reasoning beyond linear chains and simple trees into arbitrary graph top
 
 **User Stories**
 
-| ID | Story | Priority | Status |
-|----|-------|----------|--------|
-| US-5.1 | As a user, I can initiate a GoT reasoning session for complex problems | P0 | Done |
-| US-5.2 | As a user, I can see the thought graph with aggregation and refinement edges | P0 | Done |
-| US-5.3 | As a user, I can select a search strategy (BFS, DFS, best-first) | P1 | Done |
-| US-5.4 | As a user, I can view the final aggregated conclusion from multiple thought paths | P0 | Done |
+| ID     | Story                                                                             | Priority | Status |
+| ------ | --------------------------------------------------------------------------------- | -------- | ------ |
+| US-5.1 | As a user, I can initiate a GoT reasoning session for complex problems            | P0       | Done   |
+| US-5.2 | As a user, I can see the thought graph with aggregation and refinement edges      | P0       | Done   |
+| US-5.3 | As a user, I can select a search strategy (BFS, DFS, best-first)                  | P1       | Done   |
+| US-5.4 | As a user, I can view the final aggregated conclusion from multiple thought paths | P0       | Done   |
 
 **Acceptance Criteria**
 
@@ -337,6 +340,7 @@ Extends reasoning beyond linear chains and simple trees into arbitrary graph top
 **Technical Notes**
 
 The GoT engine implements three core operations from the paper:
+
 1. **Generate**: Create new thoughts from existing ones
 2. **Aggregate**: Merge multiple thoughts into a unified insight
 3. **Refine**: Iteratively improve a thought based on evaluation feedback
@@ -347,7 +351,7 @@ Search strategies control exploration order. Best-first search uses a scored pri
 
 ### 3.6 Process Reward Model (PRM) Verification -- IMPLEMENTED (NEW)
 
-**Status**: Fully implemented in `packages/core/src/prm-verifier.ts` (479 lines). Not in original PRD.
+**Status**: Fully implemented in `packages/core/src/prm-verifier.ts` (478 lines). Not in original PRD.
 
 **Research basis**: [Let's Verify Step by Step](https://arxiv.org/abs/2305.20050) (Lightman et al., 2023)
 
@@ -356,12 +360,12 @@ Implements process supervision by verifying each individual step in a reasoning 
 
 **User Stories**
 
-| ID | Story | Priority | Status |
-|----|-------|----------|--------|
-| US-6.1 | As a user, I can submit a reasoning chain for step-by-step verification | P0 | Done |
-| US-6.2 | As a user, I can see per-step correctness scores with explanations | P0 | Done |
-| US-6.3 | As a user, I can identify the exact step where reasoning diverged | P0 | Done |
-| US-6.4 | As a user, I can view an overall chain validity score | P1 | Done |
+| ID     | Story                                                                   | Priority | Status |
+| ------ | ----------------------------------------------------------------------- | -------- | ------ |
+| US-6.1 | As a user, I can submit a reasoning chain for step-by-step verification | P0       | Done   |
+| US-6.2 | As a user, I can see per-step correctness scores with explanations      | P0       | Done   |
+| US-6.3 | As a user, I can identify the exact step where reasoning diverged       | P0       | Done   |
+| US-6.4 | As a user, I can view an overall chain validity score                   | P1       | Done   |
 
 **Acceptance Criteria**
 
@@ -374,6 +378,7 @@ Implements process supervision by verifying each individual step in a reasoning 
 **Technical Notes**
 
 The PRM verifier operates as a "judge" model call. For each step in a reasoning chain, it evaluates:
+
 - **Logical validity**: Does this step follow from the previous one?
 - **Factual accuracy**: Are the claims in this step correct?
 - **Relevance**: Does this step contribute to answering the original question?
@@ -384,7 +389,7 @@ Each step receives a score and a natural-language explanation. Steps scoring bel
 
 ### 3.7 Hierarchical Memory (MemGPT-inspired) -- IMPLEMENTED (NEW)
 
-**Status**: Fully implemented in `packages/core/src/memory-hierarchy.ts` (634 lines). Not in original PRD.
+**Status**: Fully implemented in `packages/core/src/memory-hierarchy.ts` (633 lines). Not in original PRD.
 
 **Research basis**: [MemGPT: Towards LLMs as Operating Systems](https://arxiv.org/abs/2310.08560) (Packer et al., 2023)
 
@@ -393,20 +398,20 @@ Implements a three-tier memory hierarchy inspired by operating system virtual me
 
 **Memory Tiers**
 
-| Tier | Name | Capacity | Latency | Purpose |
-|------|------|----------|---------|---------|
-| L1 | Main Context | Model context window | Instant | Currently active reasoning context |
-| L2 | Recall Memory | Bounded buffer | Low | Recently used facts and reasoning summaries |
-| L3 | Archival Memory | Unbounded (Supabase + pgvector) | Medium | Full history, semantic search retrieval |
+| Tier | Name            | Capacity                        | Latency | Purpose                                     |
+| ---- | --------------- | ------------------------------- | ------- | ------------------------------------------- |
+| L1   | Main Context    | Model context window            | Instant | Currently active reasoning context          |
+| L2   | Recall Memory   | Bounded buffer                  | Low     | Recently used facts and reasoning summaries |
+| L3   | Archival Memory | Unbounded (Supabase + pgvector) | Medium  | Full history, semantic search retrieval     |
 
 **User Stories**
 
-| ID | Story | Priority | Status |
-|----|-------|----------|--------|
-| US-7.1 | As a user, I can have sessions that exceed the context window without losing information | P0 | Done |
-| US-7.2 | As a user, I can see what information is in each memory tier | P1 | Done |
-| US-7.3 | As a user, I can manually promote or pin information to active context | P1 | Done |
-| US-7.4 | As a user, I can search archival memory with natural language | P0 | Done |
+| ID     | Story                                                                                    | Priority | Status |
+| ------ | ---------------------------------------------------------------------------------------- | -------- | ------ |
+| US-7.1 | As a user, I can have sessions that exceed the context window without losing information | P0       | Done   |
+| US-7.2 | As a user, I can see what information is in each memory tier                             | P1       | Done   |
+| US-7.3 | As a user, I can manually promote or pin information to active context                   | P1       | Done   |
+| US-7.4 | As a user, I can search archival memory with natural language                            | P0       | Done   |
 
 **Acceptance Criteria**
 
@@ -461,38 +466,38 @@ Human-in-the-loop verification system that allows users to pause reasoning at sp
 
 ### 4.1 Performance
 
-| ID | Requirement | Target |
-|----|-------------|--------|
-| NFR-1 | Thinking streaming latency | < 100ms from API to UI |
-| NFR-2 | Graph traversal queries | < 200ms for depth 3 |
+| ID    | Requirement                  | Target                     |
+| ----- | ---------------------------- | -------------------------- |
+| NFR-1 | Thinking streaming latency   | < 100ms from API to UI     |
+| NFR-2 | Graph traversal queries      | < 200ms for depth 3        |
 | NFR-3 | ThinkFork parallel execution | Concurrent, not sequential |
-| NFR-4 | Dashboard initial load | < 2 seconds |
-| NFR-5 | Reasoning node search | < 500ms for 10k nodes |
+| NFR-4 | Dashboard initial load       | < 2 seconds                |
+| NFR-5 | Reasoning node search        | < 500ms for 10k nodes      |
 
 ### 4.2 Scalability
 
-| ID | Requirement | Target |
-|----|-------------|--------|
-| NFR-6 | Thinking nodes per user | Support 10k+ |
-| NFR-7 | Graph query complexity | O(log n) with HNSW index |
-| NFR-8 | Concurrent API calls | 10+ for ThinkFork |
+| ID    | Requirement             | Target                   |
+| ----- | ----------------------- | ------------------------ |
+| NFR-6 | Thinking nodes per user | Support 10k+             |
+| NFR-7 | Graph query complexity  | O(log n) with HNSW index |
+| NFR-8 | Concurrent API calls    | 10+ for ThinkFork        |
 
 ### 4.3 Security
 
-| ID | Requirement | Implementation |
-|----|-------------|----------------|
-| NFR-9 | API key storage | Environment variables only |
-| NFR-10 | Data isolation | Row-level security on Supabase |
+| ID     | Requirement           | Implementation                 |
+| ------ | --------------------- | ------------------------------ |
+| NFR-9  | API key storage       | Environment variables only     |
+| NFR-10 | Data isolation        | Row-level security on Supabase |
 | NFR-11 | Thinking verification | Anthropic signatures validated |
-| NFR-12 | No secrets in code | .env excluded from git |
+| NFR-12 | No secrets in code    | .env excluded from git         |
 
 ### 4.4 Reliability
 
-| ID | Requirement | Target |
-|----|-------------|--------|
-| NFR-13 | API error handling | Graceful degradation |
+| ID     | Requirement               | Target                  |
+| ------ | ------------------------- | ----------------------- |
+| NFR-13 | API error handling        | Graceful degradation    |
 | NFR-14 | Partial ThinkFork failure | Show completed branches |
-| NFR-15 | Stream interruption | Resume capability |
+| NFR-15 | Stream interruption       | Resume capability       |
 
 ---
 
@@ -500,21 +505,21 @@ Human-in-the-loop verification system that allows users to pause reasoning at sp
 
 ### 5.1 Hackathon Success (Primary)
 
-| Metric | Target | Status |
-|--------|--------|--------|
-| Core feature completion | 3/4 original + 4 new features | 7 features shipped |
-| Demo quality | Compelling 5-min video | In progress |
-| Technical depth | Novel Opus 4.6 usage | 4 research papers implemented |
-| Prize positioning | "Most Creative Opus 4.6 Exploration" | Submitted |
+| Metric                  | Target                               | Status                        |
+| ----------------------- | ------------------------------------ | ----------------------------- |
+| Core feature completion | 3/4 original + 4 new features        | 7 features shipped            |
+| Demo quality            | Compelling 5-min video               | In progress                   |
+| Technical depth         | Novel Opus 4.6 usage                 | 4 research papers implemented |
+| Prize positioning       | "Most Creative Opus 4.6 Exploration" | Submitted                     |
 
 ### 5.2 Product Metrics (Post-Hackathon)
 
-| Metric | Target | Measurement |
-|--------|--------|-------------|
-| Time to first insight | < 5 reasoning sessions | User testing |
-| Graph engagement | 3+ nodes explored per session | Analytics |
-| Metacognition value | Insights rated useful 4+/5 | User survey |
-| PRM verification accuracy | Correct step flagging 80%+ | Human review |
+| Metric                    | Target                        | Measurement  |
+| ------------------------- | ----------------------------- | ------------ |
+| Time to first insight     | < 5 reasoning sessions        | User testing |
+| Graph engagement          | 3+ nodes explored per session | Analytics    |
+| Metacognition value       | Insights rated useful 4+/5    | User survey  |
+| PRM verification accuracy | Correct step flagging 80%+    | Human review |
 
 ---
 
@@ -522,25 +527,25 @@ Human-in-the-loop verification system that allows users to pause reasoning at sp
 
 ### 6.1 API Limitations
 
-| Constraint | Impact | Mitigation |
-|------------|--------|------------|
-| $500 API credits | ~1M tokens budget | Efficient prompting, caching, dynamic effort routing |
-| Rate limits | Concurrent call limits | Queue management |
-| 50k thinking max | Metacognition depth | Prioritize node selection |
-| Response timeouts | Long thinking times | Extended timeouts, streaming |
+| Constraint        | Impact                 | Mitigation                                           |
+| ----------------- | ---------------------- | ---------------------------------------------------- |
+| $500 API credits  | ~1M tokens budget      | Efficient prompting, caching, dynamic effort routing |
+| Rate limits       | Concurrent call limits | Queue management                                     |
+| 50k thinking max  | Metacognition depth    | Prioritize node selection                            |
+| Response timeouts | Long thinking times    | Extended timeouts, streaming                         |
 
 ### 6.2 Technology Choices (Locked)
 
-| Component | Choice | Rationale |
-|-----------|--------|-----------|
-| Model | Claude Opus 4.6 | Extended thinking, hackathon requirement |
-| Database | Supabase (PostgreSQL + pgvector) | Already configured, HNSW indexes |
-| Embeddings | Voyage AI (voyage-3, 1024-dim) | Already configured |
-| Frontend | Next.js 16, React 19 | Modern React, streaming support |
-| Styling | Tailwind CSS 4 + shadcn/ui | Rapid development |
-| Visualization | @xyflow/react (react-flow) | Graph rendering |
-| Monorepo | Turborepo + pnpm | Already configured |
-| Agents | LangChain + LangGraph | Agent orchestration |
+| Component     | Choice                           | Rationale                                |
+| ------------- | -------------------------------- | ---------------------------------------- |
+| Model         | Claude Opus 4.6                  | Extended thinking, hackathon requirement |
+| Database      | Supabase (PostgreSQL + pgvector) | Already configured, HNSW indexes         |
+| Embeddings    | Voyage AI (voyage-3, 1024-dim)   | Already configured                       |
+| Frontend      | Next.js 16, React 19             | Modern React, streaming support          |
+| Styling       | Tailwind CSS 4 + shadcn/ui       | Rapid development                        |
+| Visualization | @xyflow/react (react-flow)       | Graph rendering                          |
+| Monorepo      | Turborepo + pnpm                 | Already configured                       |
+| Agents        | LangChain + LangGraph            | Agent orchestration                      |
 
 ---
 
@@ -564,13 +569,13 @@ The following features are explicitly NOT included in the hackathon version:
 
 ## 8. Risks & Mitigations
 
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| API rate limiting | Medium | High | Pre-test with small budgets, implement backoff |
-| 50k thinking timeout | Low | Medium | Extended timeouts, checkpoint streaming |
-| Graph visualization performance | Medium | Medium | Limit visible nodes, lazy loading |
-| Supabase cold starts | Low | Low | Connection pooling, keep-alive |
-| Complex parsing failures | Medium | Medium | Fallback to raw text, graceful degradation |
+| Risk                            | Probability | Impact | Mitigation                                     |
+| ------------------------------- | ----------- | ------ | ---------------------------------------------- |
+| API rate limiting               | Medium      | High   | Pre-test with small budgets, implement backoff |
+| 50k thinking timeout            | Low         | Medium | Extended timeouts, checkpoint streaming        |
+| Graph visualization performance | Medium      | Medium | Limit visible nodes, lazy loading              |
+| Supabase cold starts            | Low         | Low    | Connection pooling, keep-alive                 |
+| Complex parsing failures        | Medium      | Medium | Fallback to raw text, graceful degradation     |
 
 ---
 
@@ -578,43 +583,43 @@ The following features are explicitly NOT included in the hackathon version:
 
 Opus Nx implements algorithms from four foundational papers:
 
-| Paper | Module | Key Contribution |
-|-------|--------|-----------------|
-| [Tree of Thoughts](https://arxiv.org/abs/2305.10601) (Yao et al., 2023) | `thinkfork.ts`, `got-engine.ts` | BFS/DFS search over reasoning trees with state evaluation |
-| [Graph of Thoughts](https://arxiv.org/abs/2308.09687) (Besta et al., 2023) | `got-engine.ts` | Arbitrary thought graph topology with aggregation and refinement |
-| [Let's Verify Step by Step](https://arxiv.org/abs/2305.20050) (Lightman et al., 2023) | `prm-verifier.ts` | Process supervision -- verify each reasoning step independently |
-| [MemGPT](https://arxiv.org/abs/2310.08560) (Packer et al., 2023) | `memory-hierarchy.ts` | 3-tier memory hierarchy (main context / recall / archival) |
+| Paper                                                                                 | Module                          | Key Contribution                                                 |
+| ------------------------------------------------------------------------------------- | ------------------------------- | ---------------------------------------------------------------- |
+| [Tree of Thoughts](https://arxiv.org/abs/2305.10601) (Yao et al., 2023)               | `thinkfork.ts`, `got-engine.ts` | BFS/DFS search over reasoning trees with state evaluation        |
+| [Graph of Thoughts](https://arxiv.org/abs/2308.09687) (Besta et al., 2023)            | `got-engine.ts`                 | Arbitrary thought graph topology with aggregation and refinement |
+| [Let's Verify Step by Step](https://arxiv.org/abs/2305.20050) (Lightman et al., 2023) | `prm-verifier.ts`               | Process supervision -- verify each reasoning step independently  |
+| [MemGPT](https://arxiv.org/abs/2310.08560) (Packer et al., 2023)                      | `memory-hierarchy.ts`           | 3-tier memory hierarchy (main context / recall / archival)       |
 
 ---
 
 ## 10. Glossary
 
-| Term | Definition |
-|------|------------|
-| **ThinkGraph** | Persistent graph structure storing reasoning nodes and their relationships |
-| **Metacognition** | AI analyzing its own reasoning patterns across sessions |
-| **ThinkFork** | Parallel execution of reasoning branches with different assumptions |
-| **Thinking Node** | Single reasoning session stored as a graph node |
-| **Decision Point** | Specific point in reasoning where alternatives were considered |
-| **Reasoning Edge** | Relationship between thinking nodes (influences, contradicts, supports) |
-| **Graph of Thoughts (GoT)** | Reasoning over arbitrary graph topologies with aggregation and refinement |
-| **PRM Verifier** | Process Reward Model that scores each reasoning step independently |
-| **Hierarchical Memory** | Three-tier memory system (context/recall/archival) for unbounded sessions |
-| **Dynamic Effort Routing** | Automatic classification of task complexity to set thinking budget |
-| **Context Compaction** | Auto-summarization of older context to enable infinite sessions |
-| **Checkpoint** | Human-in-the-loop pause point for reviewing and redirecting reasoning |
-| **Contradiction Resolution** | Process of reconciling conflicting knowledge with audit trail (descoped) |
-| **Extended Thinking** | Claude Opus 4.6's ability to "think" with configurable token budgets |
-| **Thinking Archaeology** | The practice of exploring and querying past reasoning chains |
+| Term                         | Definition                                                                 |
+| ---------------------------- | -------------------------------------------------------------------------- |
+| **ThinkGraph**               | Persistent graph structure storing reasoning nodes and their relationships |
+| **Metacognition**            | AI analyzing its own reasoning patterns across sessions                    |
+| **ThinkFork**                | Parallel execution of reasoning branches with different assumptions        |
+| **Thinking Node**            | Single reasoning session stored as a graph node                            |
+| **Decision Point**           | Specific point in reasoning where alternatives were considered             |
+| **Reasoning Edge**           | Relationship between thinking nodes (influences, contradicts, supports)    |
+| **Graph of Thoughts (GoT)**  | Reasoning over arbitrary graph topologies with aggregation and refinement  |
+| **PRM Verifier**             | Process Reward Model that scores each reasoning step independently         |
+| **Hierarchical Memory**      | Three-tier memory system (context/recall/archival) for unbounded sessions  |
+| **Dynamic Effort Routing**   | Automatic classification of task complexity to set thinking budget         |
+| **Context Compaction**       | Auto-summarization of older context to enable infinite sessions            |
+| **Checkpoint**               | Human-in-the-loop pause point for reviewing and redirecting reasoning      |
+| **Contradiction Resolution** | Process of reconciling conflicting knowledge with audit trail (descoped)   |
+| **Extended Thinking**        | Claude Opus 4.6's ability to "think" with configurable token budgets       |
+| **Thinking Archaeology**     | The practice of exploring and querying past reasoning chains               |
 
 ---
 
 ## 11. Revision History
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | Feb 6, 2026 | Ozzy | Initial PRD for hackathon |
-| 2.0 | Feb 8, 2026 | Ozzy | Updated to reflect actual build: marked feature statuses, descoped Contradiction Resolution (Section 3.4), added Graph of Thoughts (3.5), PRM Verification (3.6), Hierarchical Memory (3.7), Dynamic Effort Routing & Context Compaction (3.8), Checkpoint System (3.9), Research Foundation (Section 9), updated acceptance criteria checkboxes, corrected filenames and tech stack |
+| Version | Date        | Author | Changes                                                                                                                                                                                                                                                                                                                                                                              |
+| ------- | ----------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1.0     | Feb 6, 2026 | Ozzy   | Initial PRD for hackathon                                                                                                                                                                                                                                                                                                                                                            |
+| 2.0     | Feb 8, 2026 | Ozzy   | Updated to reflect actual build: marked feature statuses, descoped Contradiction Resolution (Section 3.4), added Graph of Thoughts (3.5), PRM Verification (3.6), Hierarchical Memory (3.7), Dynamic Effort Routing & Context Compaction (3.8), Checkpoint System (3.9), Research Foundation (Section 9), updated acceptance criteria checkboxes, corrected filenames and tech stack |
 
 ---
 

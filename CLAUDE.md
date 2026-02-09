@@ -49,7 +49,7 @@ pnpm --filter @opus-nx/web typecheck    # Type-check web only
 ```
 apps/web/           -> Next.js 16 dashboard (App Router, Turbopack)
 packages/
-  core/             -> ThinkingEngine, ThinkGraph, Metacognition, ThinkFork, GoT, PRM, MemoryHierarchy, Orchestrator
+  core/             -> ThinkingEngine, ThinkGraph, Metacognition, ThinkFork, GoT, PRM, MemoryHierarchy, MemoryManager, Orchestrator
   db/               -> Supabase client, query functions, types
   agents/           -> LangChain/LangGraph agent implementations
   shared/           -> Shared types, utilities, config loaders
@@ -125,15 +125,17 @@ Query modules: `sessions.ts`, `knowledge.ts`, `thinking-nodes.ts`, `decisions.ts
 // ThinkingEngine supports effort levels: 'low' | 'medium' | 'high' | 'max'
 // 'max' = 50k thinking tokens (required for metacognition)
 // Dynamic effort routing: orchestrator classifies tasks via regex patterns
-await thinkingEngine.think(prompt, { effort: 'max' });
+// Effort is set via updateConfig(), not as a think() parameter:
+thinkingEngine.updateConfig({ effort: 'max' });
+await thinkingEngine.think(systemPrompt, messages, tools);
 ```
 
 ### Auth System
 
 - HMAC-signed cookies via Web Crypto API (Edge-compatible)
 - `AUTH_SECRET` used as both password AND HMAC signing key
-- Middleware protects all `/api/*` routes except `/api/auth` and `/api/health`
-- Set `DEMO_MODE=true` to bypass auth for development
+- Middleware protects all `/api/*` routes except `/api/auth`, `/api/health`, and `/api/demo`
+- `DEMO_MODE=true` enables the `/api/demo` data seeder (does NOT bypass auth)
 
 ### Migration Workflow
 
@@ -159,7 +161,7 @@ export * from "./thinking-engine.js";  // Note the .js even for .ts files
 - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` -- Database
 - `VOYAGE_API_KEY` -- Embeddings (voyage-3, 1024-dim)
 - `TAVILY_API_KEY` -- Web search for Research Agent
-- `DEMO_MODE` -- Optional; set to `"true"` to bypass auth (not in .env.example)
+- `DEMO_MODE` -- Optional; set to `"true"` to enable demo data seeder (not in .env.example)
 
 ## Research Foundation
 

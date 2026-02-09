@@ -146,21 +146,21 @@ Opus Nx is a Thinking Archaeology Platform. It transforms Claude Opus 4.6's exte
 
 ### Core Layer -- All 9 Modules
 
-#### 1. ThinkingEngine (`packages/core/src/thinking-engine.ts` -- 353 lines)
+#### 1. ThinkingEngine (`packages/core/src/thinking-engine.ts` -- 352 lines)
 
 The wrapper around the Claude Opus 4.6 API. This is the "brain" that all other modules delegate to when they need LLM reasoning.
 
 **Capabilities:**
 
-| Feature | Details |
-|---------|---------|
-| Adaptive thinking | Claude decides when and how much to think (`type: "adaptive"`) |
-| Effort levels | `low` (5k tokens), `medium` (10k), `high` (20k), `max` (50k) |
-| Context compaction | Infinite sessions via automatic summarization (`compact_20260112`) |
-| Streaming | Three callbacks: `onThinkingStream`, `onTextStream`, `onCompactionStream` |
-| Data residency | US-only inference via `inference_geo` parameter |
-| Token limits | 128K output tokens, 1M context window |
-| Interleaved thinking | Thinking between tool calls (automatic with adaptive mode) |
+| Feature              | Details                                                                   |
+| -------------------- | ------------------------------------------------------------------------- |
+| Adaptive thinking    | Claude decides when and how much to think (`type: "adaptive"`)            |
+| Effort levels        | `low` (5k tokens), `medium` (10k), `high` (20k), `max` (50k)              |
+| Context compaction   | Infinite sessions via automatic summarization (`compact_20260112`)        |
+| Streaming            | Three callbacks: `onThinkingStream`, `onTextStream`, `onCompactionStream` |
+| Data residency       | US-only inference via `inference_geo` parameter                           |
+| Token limits         | 128K output tokens, 1M context window                                     |
+| Interleaved thinking | Thinking between tool calls (automatic with adaptive mode)                |
 
 **API shape:**
 
@@ -176,7 +176,7 @@ class ThinkingEngine {
 
 ---
 
-#### 2. ThinkGraph (`packages/core/src/think-graph.ts` -- 936 lines)
+#### 2. ThinkGraph (`packages/core/src/think-graph.ts` -- 935 lines)
 
 The core innovation of Opus Nx. Transforms raw extended thinking text into a persistent, queryable graph. Every thinking session becomes a node with structured metadata.
 
@@ -205,20 +205,20 @@ The core innovation of Opus Nx. Transforms raw extended thinking text into a per
 
 ---
 
-#### 3. Orchestrator (`packages/core/src/orchestrator.ts` -- 774 lines)
+#### 3. Orchestrator (`packages/core/src/orchestrator.ts` -- 773 lines)
 
 The central brain that coordinates all other modules. Handles the complete lifecycle from user message to persisted reasoning graph.
 
 **Key mechanisms:**
 
-| Mechanism | How It Works |
-|-----------|-------------|
-| Dynamic effort routing | Classifies messages as `simple`/`standard`/`complex` via regex patterns and message length heuristics. Maps to effort levels: simple=low, standard=medium, complex=high/max. Configurable via `effortRouting` config. |
-| Token budget enforcement | Tracks cumulative output tokens per session. Fires `onBudgetWarning` at configurable threshold (%). Returns budget-exhausted response when limit reached. Also enforces a max compaction count. |
-| Compaction boundary nodes | When context compaction occurs, creates a special `compaction` type node in the ThinkGraph with a `supersedes` edge from the previous node. Preserves reasoning chain continuity across compaction events. |
-| Knowledge context injection | Uses MemoryManager to embed the user query, retrieve top-5 similar knowledge entries with related entries, and prepend context to the routing prompt. |
-| Task plan extraction | Parses `create_task_plan` and `route_to_agent` tool calls from the LLM response to decompose complex requests into agent-assignable tasks. |
-| Thinking history cap | Keeps last 50 thinking blocks in session memory to prevent unbounded growth. |
+| Mechanism                   | How It Works                                                                                                                                                                                                          |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dynamic effort routing      | Classifies messages as `simple`/`standard`/`complex` via regex patterns and message length heuristics. Maps to effort levels: simple=low, standard=medium, complex=high/max. Configurable via `effortRouting` config. |
+| Token budget enforcement    | Tracks cumulative output tokens per session. Fires `onBudgetWarning` at configurable threshold (%). Returns budget-exhausted response when limit reached. Also enforces a max compaction count.                       |
+| Compaction boundary nodes   | When context compaction occurs, creates a special `compaction` type node in the ThinkGraph with a `supersedes` edge from the previous node. Preserves reasoning chain continuity across compaction events.            |
+| Knowledge context injection | Uses MemoryManager to embed the user query, retrieve top-5 similar knowledge entries with related entries, and prepend context to the routing prompt.                                                                 |
+| Task plan extraction        | Parses `create_task_plan` and `route_to_agent` tool calls from the LLM response to decompose complex requests into agent-assignable tasks.                                                                            |
+| Thinking history cap        | Keeps last 50 thinking blocks in session memory to prevent unbounded growth.                                                                                                                                          |
 
 **Complexity Classification Patterns:**
 
@@ -231,7 +231,7 @@ standard: everything else (default), plus messages 50-500 chars
 
 ---
 
-#### 4. MetacognitionEngine (`packages/core/src/metacognition.ts` -- 620 lines)
+#### 4. MetacognitionEngine (`packages/core/src/metacognition.ts` -- 619 lines)
 
 Self-reflection engine. Uses the full 50k thinking budget to analyze the AI's own reasoning patterns across a session.
 
@@ -263,18 +263,18 @@ Self-reflection engine. Uses the full 50k thinking budget to analyze the AI's ow
 
 ---
 
-#### 5. ThinkForkEngine (`packages/core/src/thinkfork.ts` -- 1165 lines)
+#### 5. ThinkForkEngine (`packages/core/src/thinkfork.ts` -- 1164 lines)
 
 Concurrent multi-perspective reasoning with 4 cognitive styles. The largest module, implementing fork, debate, steering, and convergence analysis.
 
 **4 Reasoning Styles:**
 
-| Style | Mindset | Prompt Source |
-|-------|---------|---------------|
-| Conservative | Risk-averse, proven approaches | `configs/prompts/thinkfork/conservative.md` |
-| Aggressive | Optimistic, innovative approaches | `configs/prompts/thinkfork/aggressive.md` |
-| Balanced | Weighted trade-offs | `configs/prompts/thinkfork/balanced.md` |
-| Contrarian | Challenge conventional wisdom | `configs/prompts/thinkfork/contrarian.md` |
+| Style        | Mindset                           | Prompt Source                               |
+| ------------ | --------------------------------- | ------------------------------------------- |
+| Conservative | Risk-averse, proven approaches    | `configs/prompts/thinkfork/conservative.md` |
+| Aggressive   | Optimistic, innovative approaches | `configs/prompts/thinkfork/aggressive.md`   |
+| Balanced     | Weighted trade-offs               | `configs/prompts/thinkfork/balanced.md`     |
+| Contrarian   | Challenge conventional wisdom     | `configs/prompts/thinkfork/contrarian.md`   |
 
 **Three operating modes:**
 
@@ -294,7 +294,7 @@ Concurrent multi-perspective reasoning with 4 cognitive styles. The largest modu
 
 ---
 
-#### 6. GoTEngine (`packages/core/src/got-engine.ts` -- 872 lines)
+#### 6. GoTEngine (`packages/core/src/got-engine.ts` -- 871 lines)
 
 Graph of Thoughts reasoning framework. Goes beyond Tree of Thoughts by supporting arbitrary graph topologies with thought aggregation.
 
@@ -323,12 +323,12 @@ Best-First (Priority Queue)
 
 **Core operations:**
 
-| Operation | Description |
-|-----------|-------------|
-| Generation | Create k diverse thoughts from a parent using `record_thoughts` tool |
-| Evaluation | Score each thought (0-1) using `evaluate_thought` tool. Failed evals get 0.0. |
-| Aggregation | Merge 2+ thoughts into a stronger synthesis using `aggregate_thoughts` tool |
-| Pruning | Thoughts below `pruneThreshold` (default 0.3) are rejected |
+| Operation   | Description                                                                   |
+| ----------- | ----------------------------------------------------------------------------- |
+| Generation  | Create k diverse thoughts from a parent using `record_thoughts` tool          |
+| Evaluation  | Score each thought (0-1) using `evaluate_thought` tool. Failed evals get 0.0. |
+| Aggregation | Merge 2+ thoughts into a stronger synthesis using `aggregate_thoughts` tool   |
+| Pruning     | Thoughts below `pruneThreshold` (default 0.3) are rejected                    |
 
 **Key GoT innovation:** Thought recycling -- partial solutions from different branches can be combined via aggregation, which is impossible in a tree structure.
 
@@ -336,7 +336,7 @@ Best-First (Priority Queue)
 
 ---
 
-#### 7. PRMVerifier (`packages/core/src/prm-verifier.ts` -- 479 lines)
+#### 7. PRMVerifier (`packages/core/src/prm-verifier.ts` -- 478 lines)
 
 Process Reward Model for step-by-step reasoning verification. Based on "Let's Verify Step by Step" (Lightman et al., 2023).
 
@@ -370,15 +370,15 @@ isValid = overallScore >= correctnessThreshold (default 0.7)
 
 **Pattern detection across steps:**
 
-| Pattern | Trigger |
-|---------|---------|
-| `declining_confidence` | Confidence monotonically decreases with spread > 0.2 |
-| `recurring_{issue_type}` | Same issue type appears in 2+ steps |
+| Pattern                       | Trigger                                                        |
+| ----------------------------- | -------------------------------------------------------------- |
+| `declining_confidence`        | Confidence monotonically decreases with spread > 0.2           |
+| `recurring_{issue_type}`      | Same issue type appears in 2+ steps                            |
 | `overconfidence_before_error` | High-confidence correct step immediately followed by incorrect |
 
 ---
 
-#### 8. MemoryHierarchy (`packages/core/src/memory-hierarchy.ts` -- 634 lines)
+#### 8. MemoryHierarchy (`packages/core/src/memory-hierarchy.ts` -- 633 lines)
 
 MemGPT-inspired 3-tier memory system with explicit memory management operations.
 
@@ -416,34 +416,34 @@ MemGPT-inspired 3-tier memory system with explicit memory management operations.
 
 **Memory operations (LLM function call handlers):**
 
-| Operation | Description |
-|-----------|-------------|
-| `archival_insert` | Store content with tags and importance |
-| `archival_search` | Keyword search over long-term storage |
-| `recall_search` | Keyword search over recent history |
-| `core_memory_append` | Add fact to human or agent section |
-| `core_memory_replace` | Update existing fact in core memory |
-| `evict_to_archival` | Page out entries from working memory |
-| `promote_to_working` | Page in entries from archival storage |
+| Operation             | Description                            |
+| --------------------- | -------------------------------------- |
+| `archival_insert`     | Store content with tags and importance |
+| `archival_search`     | Keyword search over long-term storage  |
+| `recall_search`       | Keyword search over recent history     |
+| `core_memory_append`  | Add fact to human or agent section     |
+| `core_memory_replace` | Update existing fact in core memory    |
+| `evict_to_archival`   | Page out entries from working memory   |
+| `promote_to_working`  | Page in entries from archival storage  |
 
 **Auto-eviction:** When main context token count exceeds capacity, sorts working memory by importance (ascending) and evicts least-important entries until at 80% capacity.
 
 ---
 
-#### 9. MemoryManager (`packages/core/src/memory-manager.ts` -- 254 lines)
+#### 9. MemoryManager (`packages/core/src/memory-manager.ts` -- 253 lines)
 
 Handles knowledge storage and semantic search using Voyage AI embeddings. The persistence layer for the knowledge base.
 
 **Capabilities:**
 
-| Method | Description |
-|--------|-------------|
-| `generateEmbedding(text)` | Call Voyage AI API (voyage-3, 1024-dim) |
-| `store(input, options)` | Create knowledge entry with auto-embedding |
-| `search(query, options)` | Embed query, search via `match_knowledge` RPC |
-| `getContext(query, options)` | Search + fetch related entries in parallel |
-| `buildContextString(query)` | Format context for prompt injection |
-| `categorize(content, categories)` | Auto-categorize via Claude Haiku 4.5 |
+| Method                            | Description                                   |
+| --------------------------------- | --------------------------------------------- |
+| `generateEmbedding(text)`         | Call Voyage AI API (voyage-3, 1024-dim)       |
+| `store(input, options)`           | Create knowledge entry with auto-embedding    |
+| `search(query, options)`          | Embed query, search via `match_knowledge` RPC |
+| `getContext(query, options)`      | Search + fetch related entries in parallel    |
+| `buildContextString(query)`       | Format context for prompt injection           |
+| `categorize(content, categories)` | Auto-categorize via Claude Haiku 4.5          |
 
 **Context building:** Retrieves top-N similar entries, fetches related knowledge for each via `get_related_knowledge` RPC (parallel), formats as markdown with similarity scores and category labels.
 
@@ -453,19 +453,19 @@ Handles knowledge storage and semantic search using Voyage AI embeddings. The pe
 
 #### UI Components (37 components in `apps/web/src/components/`)
 
-| Directory | Components | Purpose |
-|-----------|-----------|---------|
-| `graph/` | ThinkingGraph, ThinkingNode, StreamingNode, EdgeTypes, GraphControls, GraphLegend | Interactive reasoning graph visualization via @xyflow/react |
-| `fork/` | ForkPanel, BranchCard, Convergence | Side-by-side branch comparison with convergence/divergence display |
-| `got/` | GoTPanel | Graph of Thoughts reasoning interface |
-| `verify/` | VerificationPanel | Step-by-step verification display with verdicts and patterns |
-| `insights/` | InsightsPanel, InsightCard | Metacognitive insights with evidence links |
-| `memory/` | MemoryPanel | Hierarchical memory browser (3 tiers) |
-| `thinking/` | ThinkingInput, ThinkingStream, TokenCounter | Real-time SSE stream display with token usage |
-| `sessions/` | SessionList, SessionCard, SessionStats | Session management and statistics |
-| `layout/` | Dashboard, Header, LeftPanel, RightPanel, BottomPanel, MobileNav | Application layout with collapsible sidebars |
-| `tour/` | DemoTour | Guided tour for new users |
-| `ui/` | badge, button, card, dropdown-menu, input, neural-submit-button, skeleton, sonner, tabs, tooltip | shadcn/ui primitives |
+| Directory   | Components                                                                                       | Purpose                                                            |
+| ----------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| `graph/`    | ThinkingGraph, ThinkingNode, StreamingNode, EdgeTypes, GraphControls, GraphLegend                | Interactive reasoning graph visualization via @xyflow/react        |
+| `fork/`     | ForkPanel, BranchCard, Convergence                                                               | Side-by-side branch comparison with convergence/divergence display |
+| `got/`      | GoTPanel                                                                                         | Graph of Thoughts reasoning interface                              |
+| `verify/`   | VerificationPanel                                                                                | Step-by-step verification display with verdicts and patterns       |
+| `insights/` | InsightsPanel, InsightCard                                                                       | Metacognitive insights with evidence links                         |
+| `memory/`   | MemoryPanel                                                                                      | Hierarchical memory browser (3 tiers)                              |
+| `thinking/` | ThinkingInput, ThinkingStream, TokenCounter                                                      | Real-time SSE stream display with token usage                      |
+| `sessions/` | SessionList, SessionCard, SessionStats                                                           | Session management and statistics                                  |
+| `layout/`   | Dashboard, Header, LeftPanel, RightPanel, BottomPanel, MobileNav                                 | Application layout with collapsible sidebars                       |
+| `tour/`     | DemoTour                                                                                         | Guided tour for new users                                          |
+| `ui/`       | badge, button, card, dropdown-menu, input, neural-submit-button, skeleton, sonner, tabs, tooltip | shadcn/ui primitives                                               |
 
 ---
 
@@ -473,15 +473,15 @@ Handles knowledge storage and semantic search using Voyage AI embeddings. The pe
 
 #### Query Functions (`packages/db/src/`)
 
-| Module | Key Functions |
-|--------|--------------|
-| `client.ts` | Supabase client initialization |
-| `sessions.ts` | `createSession`, `getSession`, `updateSessionPlan`, `listSessions`, `deleteSession` |
-| `knowledge.ts` | `createKnowledgeEntry`, `searchKnowledge`, `getRelatedKnowledge` |
+| Module              | Key Functions                                                                                                                                                                                                                                                          |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `client.ts`         | Supabase client initialization                                                                                                                                                                                                                                         |
+| `sessions.ts`       | `createSession`, `getSession`, `updateSessionPlan`, `listSessions`, `deleteSession`                                                                                                                                                                                    |
+| `knowledge.ts`      | `createKnowledgeEntry`, `searchKnowledge`, `getRelatedKnowledge`                                                                                                                                                                                                       |
 | `thinking-nodes.ts` | `createThinkingNode`, `getThinkingNode`, `getSessionThinkingNodes`, `getLatestThinkingNode`, `traverseReasoningGraph`, `getReasoningChain`, `searchReasoningNodes`, `getSessionReasoningContext`, `createReasoningEdge`, `createDecisionPoint`, `createDecisionPoints` |
-| `decisions.ts` | `logDecision` |
-| `agent-runs.ts` | `createAgentRun`, `updateAgentRun` |
-| `metacognition.ts` | `createMetacognitiveInsight`, `getSessionInsights` |
+| `decisions.ts`      | `logDecision`                                                                                                                                                                                                                                                          |
+| `agent-runs.ts`     | `createAgentRun`, `updateAgentRun`                                                                                                                                                                                                                                     |
+| `metacognition.ts`  | `createMetacognitiveInsight`, `getSessionInsights`                                                                                                                                                                                                                     |
 
 ---
 
@@ -491,11 +491,11 @@ Handles knowledge storage and semantic search using Voyage AI embeddings. The pe
 
 Three migrations define the complete schema:
 
-| Migration | Tables Created | Key Additions |
-|-----------|---------------|---------------|
-| `001_initial_schema.sql` | `knowledge_entries`, `knowledge_relations`, `sessions`, `decision_log`, `agent_runs` | pgvector HNSW index, `match_knowledge` RPC, `get_related_knowledge` RPC |
+| Migration                | Tables Created                                                                                     | Key Additions                                                                                                                |
+| ------------------------ | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `001_initial_schema.sql` | `knowledge_entries`, `knowledge_relations`, `sessions`, `decision_log`, `agent_runs`               | pgvector HNSW index, `match_knowledge` RPC, `get_related_knowledge` RPC                                                      |
 | `002_thinking_graph.sql` | `thinking_nodes`, `reasoning_edges`, `decision_points`, `contradictions`, `metacognitive_insights` | `traverse_reasoning_graph` RPC, `get_session_reasoning_context` RPC, `search_reasoning_nodes` RPC, `get_reasoning_chain` RPC |
-| `003_node_type.sql` | -- | Adds `node_type` column to `thinking_nodes`: `thinking`, `compaction`, `fork_branch`, `human_annotation` |
+| `003_node_type.sql`      | --                                                                                                 | Adds `node_type` column to `thinking_nodes`: `thinking`, `compaction`, `fork_branch`, `human_annotation`                     |
 
 ### Entity Relationship Diagram
 
@@ -531,7 +531,8 @@ Three migrations define the complete schema:
          |              | alternatives |  |  'contradicts'        |
          |              |       (JSONB)|  |  'supports'           |
          |              | confidence   |  |  'supersedes'         |
-         |              | created_at   |  | weight (0.0-1.0)      |
+         |              | created_at   |  |  'refines'            |
+         |              |              |  | weight (0.0-1.0)      |
          |              +--------------+  | metadata (JSONB)      |
          |                                | UNIQUE(src,tgt,type)  |
          |                                +-----------------------+
@@ -602,14 +603,14 @@ Three migrations define the complete schema:
 
 ### RPC Functions
 
-| Function | Parameters | Returns | Purpose |
-|----------|-----------|---------|---------|
-| `match_knowledge` | `query_embedding vector(1024)`, `match_threshold float`, `match_count int`, `filter_category text` | `{id, title, content, category, similarity}` | Cosine similarity search over knowledge entries |
-| `get_related_knowledge` | `entry_id uuid`, `depth int` | `{id, title, relation_type, relation_weight, hop_distance}` | Recursive graph traversal of knowledge relations |
-| `traverse_reasoning_graph` | `start_node_id uuid`, `max_depth int` | `{node_id, reasoning, edge_type, hop_distance}` | Recursive traversal of reasoning edges |
-| `get_session_reasoning_context` | `p_session_id uuid`, `node_limit int` | `{node_id, reasoning, confidence_score, decision_count, created_at}` | Recent reasoning nodes with decision counts |
-| `search_reasoning_nodes` | `query text`, `session_id uuid`, `limit int` | `{node_id, reasoning, confidence_score, rank}` | Full-text search over thinking_nodes.reasoning |
-| `get_reasoning_chain` | `target_node_id uuid` | `{node_id, reasoning, confidence_score, chain_position}` | Full chain from root to target node |
+| Function                        | Parameters                                                                                         | Returns                                                              | Purpose                                          |
+| ------------------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------ |
+| `match_knowledge`               | `query_embedding vector(1024)`, `match_threshold float`, `match_count int`, `filter_category text` | `{id, title, content, category, similarity}`                         | Cosine similarity search over knowledge entries  |
+| `get_related_knowledge`         | `entry_id uuid`, `depth int`                                                                       | `{id, title, relation_type, relation_weight, hop_distance}`          | Recursive graph traversal of knowledge relations |
+| `traverse_reasoning_graph`      | `start_node_id uuid`, `max_depth int`                                                              | `{node_id, reasoning, edge_type, hop_distance}`                      | Recursive traversal of reasoning edges           |
+| `get_session_reasoning_context` | `p_session_id uuid`, `node_limit int`                                                              | `{node_id, reasoning, confidence_score, decision_count, created_at}` | Recent reasoning nodes with decision counts      |
+| `search_reasoning_nodes`        | `query text`, `session_id uuid`, `limit int`                                                       | `{node_id, reasoning, confidence_score, rank}`                       | Full-text search over thinking_nodes.reasoning   |
+| `get_reasoning_chain`           | `target_node_id uuid`                                                                              | `{node_id, reasoning, confidence_score, chain_position}`             | Full chain from root to target node              |
 
 ---
 
@@ -1012,55 +1013,55 @@ Return { annotation: { id, verdict, correction },
 
 ### Core Technologies
 
-| Layer | Technology | Version | Rationale |
-|-------|------------|---------|-----------|
-| Runtime | Node.js | 22+ | Native TypeScript, async/await, Web Crypto API |
-| Language | TypeScript | 5.7+ | Strict mode, ESM with `.js` extensions |
-| Monorepo | Turborepo | 2.3+ | Build caching, task pipelines |
-| Package Manager | pnpm | 9.15 | Fast, disk efficient, workspace support |
-| Testing | Vitest | 4.0+ | Fast, ESM-native, compatible with TypeScript |
+| Layer           | Technology | Version | Rationale                                      |
+| --------------- | ---------- | ------- | ---------------------------------------------- |
+| Runtime         | Node.js    | 22+     | Native TypeScript, async/await, Web Crypto API |
+| Language        | TypeScript | 5.7+    | Strict mode, ESM with `.js` extensions         |
+| Monorepo        | Turborepo  | 2.3+    | Build caching, task pipelines                  |
+| Package Manager | pnpm       | 9.15    | Fast, disk efficient, workspace support        |
+| Testing         | Vitest     | 4.0+    | Fast, ESM-native, compatible with TypeScript   |
 
 ### AI / ML
 
-| Component | Technology | Details |
-|-----------|------------|---------|
-| LLM | Claude Opus 4.6 | Extended thinking up to 50k tokens, 1M context, 128K output, adaptive thinking, context compaction |
-| Embeddings | Voyage AI | voyage-3 model, 1024 dimensions |
-| Agent Framework | LangChain | `@langchain/anthropic`, `@langchain/core` |
-| Agent Orchestration | LangGraph | `@langchain/langgraph` |
-| Categorization | Claude Haiku 4.5 | Fast, cheap auto-categorization of knowledge entries |
+| Component           | Technology       | Details                                                                                            |
+| ------------------- | ---------------- | -------------------------------------------------------------------------------------------------- |
+| LLM                 | Claude Opus 4.6  | Extended thinking up to 50k tokens, 1M context, 128K output, adaptive thinking, context compaction |
+| Embeddings          | Voyage AI        | voyage-3 model, 1024 dimensions                                                                    |
+| Agent Framework     | LangChain        | `@langchain/anthropic`, `@langchain/core`                                                          |
+| Agent Orchestration | LangGraph        | `@langchain/langgraph`                                                                             |
+| Categorization      | Claude Haiku 4.5 | Fast, cheap auto-categorization of knowledge entries                                               |
 
 ### Database
 
-| Component | Technology | Details |
-|-----------|------------|---------|
-| Primary DB | PostgreSQL | Via Supabase managed hosting |
-| Vector Search | pgvector | HNSW indexes with `vector_cosine_ops` (m=16, ef_construction=64) |
-| Client | @supabase/supabase-js | TypeScript client with RPC support |
-| Migrations | SQL files | Canonical in `supabase/migrations/`, mirrored to `packages/db/migrations/` |
+| Component     | Technology            | Details                                                                    |
+| ------------- | --------------------- | -------------------------------------------------------------------------- |
+| Primary DB    | PostgreSQL            | Via Supabase managed hosting                                               |
+| Vector Search | pgvector              | HNSW indexes with `vector_cosine_ops` (m=16, ef_construction=64)           |
+| Client        | @supabase/supabase-js | TypeScript client with RPC support                                         |
+| Migrations    | SQL files             | Canonical in `supabase/migrations/`, mirrored to `packages/db/migrations/` |
 
 ### Frontend
 
-| Component | Technology | Details |
-|-----------|------------|---------|
-| Framework | Next.js | 16+ with App Router, Turbopack |
-| React | React | 19+ (Server Components by default) |
-| Styling | Tailwind CSS | 4.0+ |
-| Components | shadcn/ui | Radix UI primitives |
-| Graph Visualization | @xyflow/react | Interactive node graph (react-flow) |
-| Validation | Zod | Used in all API routes for request validation |
+| Component           | Technology    | Details                                       |
+| ------------------- | ------------- | --------------------------------------------- |
+| Framework           | Next.js       | 16+ with App Router, Turbopack                |
+| React               | React         | 19+ (Server Components by default)            |
+| Styling             | Tailwind CSS  | 4.0+                                          |
+| Components          | shadcn/ui     | Radix UI primitives                           |
+| Graph Visualization | @xyflow/react | Interactive node graph (react-flow)           |
+| Validation          | Zod           | Used in all API routes for request validation |
 
 ### Agents Configuration
 
 5 agents defined in `configs/agents.yaml`, all using `claude-opus-4-6`:
 
-| Agent | Description | Prompt Source |
-|-------|-------------|---------------|
-| research | Web research and fact-finding | `configs/prompts/research.md` |
-| code | Code generation and analysis | `configs/prompts/code.md` |
-| knowledge | Knowledge management and categorization | `configs/prompts/knowledge.md` |
-| planning | Strategic planning and decomposition | `configs/prompts/planning.md` |
-| communication | Clear communication and synthesis | `configs/prompts/communication.md` |
+| Agent         | Description                             | Prompt Source                      |
+| ------------- | --------------------------------------- | ---------------------------------- |
+| research      | Web research and fact-finding           | `configs/prompts/research.md`      |
+| code          | Code generation and analysis            | `configs/prompts/code.md`          |
+| knowledge     | Knowledge management and categorization | `configs/prompts/knowledge.md`     |
+| planning      | Strategic planning and decomposition    | `configs/prompts/planning.md`      |
+| communication | Clear communication and synthesis       | `configs/prompts/communication.md` |
 
 ---
 
@@ -1071,6 +1072,7 @@ Return { annotation: { id, verdict, correction },
 Execute a non-streaming thinking request with graph persistence.
 
 **Request:**
+
 ```typescript
 {
   query: string;           // Required, non-empty
@@ -1080,6 +1082,7 @@ Execute a non-streaming thinking request with graph persistence.
 ```
 
 **Response (200):**
+
 ```typescript
 {
   success: true;
@@ -1109,6 +1112,7 @@ Execute a non-streaming thinking request with graph persistence.
 Stream extended thinking in real-time via Server-Sent Events.
 
 **Request:**
+
 ```typescript
 {
   query: string;
@@ -1119,6 +1123,7 @@ Stream extended thinking in real-time via Server-Sent Events.
 ```
 
 **SSE Events:**
+
 ```typescript
 // Thinking delta (real-time thinking chunks)
 { type: "thinking", chunk: string, tokenCount: number }
@@ -1144,6 +1149,7 @@ Stream extended thinking in real-time via Server-Sent Events.
 Run ThinkFork multi-perspective analysis.
 
 **Request:**
+
 ```typescript
 {
   query: string;
@@ -1158,6 +1164,7 @@ Run ThinkFork multi-perspective analysis.
 ```
 
 **Response (200):**
+
 ```typescript
 {
   success: true;
@@ -1198,6 +1205,7 @@ Run ThinkFork multi-perspective analysis.
 Steer a fork analysis with human feedback.
 
 **Request:**
+
 ```typescript
 // One of four action types:
 { action: "expand",    style: ForkStyle, direction?: string }
@@ -1211,6 +1219,7 @@ Steer a fork analysis with human feedback.
 Run Graph of Thoughts reasoning.
 
 **Request:**
+
 ```typescript
 {
   problem: string;
@@ -1224,6 +1233,7 @@ Run Graph of Thoughts reasoning.
 ```
 
 **Response (200):**
+
 ```typescript
 {
   success: true;
@@ -1254,6 +1264,7 @@ Run Graph of Thoughts reasoning.
 Verify a reasoning chain step by step using PRM.
 
 **Request:**
+
 ```typescript
 {
   steps: Array<{
@@ -1269,6 +1280,7 @@ Verify a reasoning chain step by step using PRM.
 ```
 
 **Response (200):**
+
 ```typescript
 {
   success: true;
@@ -1308,6 +1320,7 @@ Verify a reasoning chain step by step using PRM.
 Human-in-the-loop checkpoint for reasoning nodes.
 
 **Request:**
+
 ```typescript
 {
   verdict: "verified" | "questionable" | "disagree";
@@ -1316,6 +1329,7 @@ Human-in-the-loop checkpoint for reasoning nodes.
 ```
 
 **Response (200):**
+
 ```typescript
 {
   success: true;
@@ -1340,6 +1354,7 @@ Human-in-the-loop checkpoint for reasoning nodes.
 Execute memory operations against the hierarchical memory system.
 
 **Request (discriminated union on `operation`):**
+
 ```typescript
 { operation: "archival_insert", content: string, tags?: string[], importance?: number }
 { operation: "archival_search", query: string, limit?: number }
@@ -1349,6 +1364,7 @@ Execute memory operations against the hierarchical memory system.
 ```
 
 **Response (200):**
+
 ```typescript
 {
   success: true;
@@ -1378,6 +1394,7 @@ Execute memory operations against the hierarchical memory system.
 Retrieve metacognitive insights.
 
 **Response (200):**
+
 ```typescript
 {
   success: true;
@@ -1452,6 +1469,7 @@ Verification (middleware.ts):
 ```
 
 **Public routes (no auth required):**
+
 - `/login`
 - `/api/auth`, `/api/auth/logout`
 - `/api/demo`
@@ -1459,6 +1477,7 @@ Verification (middleware.ts):
 - `/_next/*`, static assets (`.svg`, `.png`, `.ico`, `.jpg`, `.jpeg`)
 
 **Security properties:**
+
 - Timing-safe comparison via `crypto.subtle.verify()` (no string equality)
 - `AUTH_SECRET` serves dual purpose: login password and HMAC signing key
 - Cookie hex-encoded, validated for even length and valid hex digits before parsing
@@ -1473,11 +1492,11 @@ Required:
   SUPABASE_URL             PostgreSQL connection
   SUPABASE_SERVICE_ROLE_KEY  Server-side DB access (bypasses RLS)
   SUPABASE_ANON_KEY        Client-side DB access (respects RLS)
+  VOYAGE_API_KEY           Voyage AI embeddings (voyage-3, 1024-dim)
 
 Optional:
-  VOYAGE_API_KEY           Voyage AI embeddings (required for semantic search)
   TAVILY_API_KEY           Web search for Research Agent
-  DEMO_MODE="true"         Bypass auth for development (not in .env.example)
+  DEMO_MODE="true"         Enables /api/demo data seeder (not in .env.example)
 ```
 
 All secrets are excluded from version control via `.gitignore` and `.env.example` documents the required variables without values.
@@ -1485,6 +1504,7 @@ All secrets are excluded from version control via `.gitignore` and `.env.example
 ### Input Validation
 
 Every API route uses Zod schemas for request validation:
+
 - UUID format validation (`z.string().uuid()`)
 - String length limits (e.g., guidance max 2000 chars, correction max 5000 chars)
 - Enum validation for effort levels, fork styles, verdict types
@@ -1501,23 +1521,23 @@ All regex patterns in ThinkGraph use length-limited capture groups (`{1,300}`, `
 
 ### Database Indexes
 
-| Table | Index | Type | Purpose |
-|-------|-------|------|---------|
-| `knowledge_entries` | `embedding` | HNSW (m=16, ef_construction=64) | Vector similarity search |
-| `knowledge_entries` | `category` | B-tree | Category filtering |
-| `knowledge_entries` | `title \|\| content` | GIN (tsvector) | Full-text search |
-| `knowledge_relations` | `source_id`, `target_id` | B-tree | Graph traversal |
-| `thinking_nodes` | `session_id` | B-tree | Session queries |
-| `thinking_nodes` | `parent_node_id` | B-tree | Parent lookups |
-| `thinking_nodes` | `reasoning` | GIN (tsvector) | Full-text search |
-| `thinking_nodes` | `node_type` | B-tree | Type filtering |
-| `reasoning_edges` | `source_id`, `target_id`, `edge_type` | B-tree | Graph traversal |
-| `metacognitive_insights` | `session_id`, `insight_type` | B-tree | Session and type queries |
-| `decision_points` | `thinking_node_id` | B-tree | Node lookups |
-| `contradictions` | `knowledge_a_id, knowledge_b_id` | B-tree (composite) | Conflict lookups |
-| `sessions` | `user_id`, `status` | B-tree | User and status queries |
-| `decision_log` | `session_id`, `decision_type` | B-tree | Audit trail queries |
-| `agent_runs` | `session_id`, `agent_name`, `status` | B-tree | Observability queries |
+| Table                    | Index                                 | Type                            | Purpose                  |
+| ------------------------ | ------------------------------------- | ------------------------------- | ------------------------ |
+| `knowledge_entries`      | `embedding`                           | HNSW (m=16, ef_construction=64) | Vector similarity search |
+| `knowledge_entries`      | `category`                            | B-tree                          | Category filtering       |
+| `knowledge_entries`      | `title \|\| content`                  | GIN (tsvector)                  | Full-text search         |
+| `knowledge_relations`    | `source_id`, `target_id`              | B-tree                          | Graph traversal          |
+| `thinking_nodes`         | `session_id`                          | B-tree                          | Session queries          |
+| `thinking_nodes`         | `parent_node_id`                      | B-tree                          | Parent lookups           |
+| `thinking_nodes`         | `reasoning`                           | GIN (tsvector)                  | Full-text search         |
+| `thinking_nodes`         | `node_type`                           | B-tree                          | Type filtering           |
+| `reasoning_edges`        | `source_id`, `target_id`, `edge_type` | B-tree                          | Graph traversal          |
+| `metacognitive_insights` | `session_id`, `insight_type`          | B-tree                          | Session and type queries |
+| `decision_points`        | `thinking_node_id`                    | B-tree                          | Node lookups             |
+| `contradictions`         | `knowledge_a_id, knowledge_b_id`      | B-tree (composite)              | Conflict lookups         |
+| `sessions`               | `user_id`, `status`                   | B-tree                          | User and status queries  |
+| `decision_log`           | `session_id`, `decision_type`         | B-tree                          | Audit trail queries      |
+| `agent_runs`             | `session_id`, `agent_name`, `status`  | B-tree                          | Observability queries    |
 
 ### Streaming Architecture
 
@@ -1549,12 +1569,12 @@ Client (Browser)                      Server (Next.js Edge)
 
 ### Concurrent Execution Patterns
 
-| Module | Pattern | Mechanism |
-|--------|---------|-----------|
-| ThinkFork | N branches execute concurrently | `Promise.allSettled()` with per-branch error isolation |
-| ThinkFork debate | N branches per round, rounds sequential | `Promise.allSettled()` within each round |
-| MemoryManager | Related knowledge fetched in parallel | `Promise.all()` for N `getRelatedKnowledge` calls |
-| GoTEngine | Thoughts generated sequentially per branch | Sequential within search strategy, engines reused across calls |
+| Module           | Pattern                                    | Mechanism                                                      |
+| ---------------- | ------------------------------------------ | -------------------------------------------------------------- |
+| ThinkFork        | N branches execute concurrently            | `Promise.allSettled()` with per-branch error isolation         |
+| ThinkFork debate | N branches per round, rounds sequential    | `Promise.allSettled()` within each round                       |
+| MemoryManager    | Related knowledge fetched in parallel      | `Promise.all()` for N `getRelatedKnowledge` calls              |
+| GoTEngine        | Thoughts generated sequentially per branch | Sequential within search strategy, engines reused across calls |
 
 ### Token Budget Management
 
@@ -1588,12 +1608,12 @@ Compaction limit: maxCompactions reached (returns compaction message)
 
 Opus Nx implements algorithms from four foundational papers:
 
-| Paper | Module(s) | Key Algorithm |
-|-------|-----------|---------------|
-| [Tree of Thoughts](https://arxiv.org/abs/2305.10601) (Yao et al., 2023) | `thinkfork.ts`, `got-engine.ts` | BFS/DFS search over reasoning trees with state evaluation |
-| [Graph of Thoughts](https://arxiv.org/abs/2308.09687) (Besta et al., 2023) | `got-engine.ts` | Arbitrary thought graph topology with aggregation and refinement |
-| [Let's Verify Step by Step](https://arxiv.org/abs/2305.20050) (Lightman et al., 2023) | `prm-verifier.ts` | Process supervision -- verify each reasoning step independently |
-| [MemGPT](https://arxiv.org/abs/2310.08560) (Packer et al., 2023) | `memory-hierarchy.ts` | 3-tier memory hierarchy with paging and auto-eviction |
+| Paper                                                                                 | Module(s)                       | Key Algorithm                                                    |
+| ------------------------------------------------------------------------------------- | ------------------------------- | ---------------------------------------------------------------- |
+| [Tree of Thoughts](https://arxiv.org/abs/2305.10601) (Yao et al., 2023)               | `thinkfork.ts`, `got-engine.ts` | BFS/DFS search over reasoning trees with state evaluation        |
+| [Graph of Thoughts](https://arxiv.org/abs/2308.09687) (Besta et al., 2023)            | `got-engine.ts`                 | Arbitrary thought graph topology with aggregation and refinement |
+| [Let's Verify Step by Step](https://arxiv.org/abs/2305.20050) (Lightman et al., 2023) | `prm-verifier.ts`               | Process supervision -- verify each reasoning step independently  |
+| [MemGPT](https://arxiv.org/abs/2310.08560) (Packer et al., 2023)                      | `memory-hierarchy.ts`           | 3-tier memory hierarchy with paging and auto-eviction            |
 
 ---
 
