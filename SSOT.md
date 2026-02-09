@@ -1,6 +1,6 @@
 # Opus Nx -- Single Source of Truth
 
-> **Thinking Archaeology Platform** | Built with Claude Opus 4.6
+> **Human + AI Co-Thinking Platform** | Built with Claude Opus 4.6
 >
 > **Author**: Ozzy -- AI Engineer & Full-Stack Developer (Raleigh, NC)
 > **GitHub**: [github.com/omerakben/opus-nx](https://github.com/omerakben/opus-nx)
@@ -43,7 +43,7 @@ This wasn't just a feature request. It was a paradigm shift.
 
 ### The Name
 
-**Opus Nx** -- "Opus" for Claude Opus 4.6, the only model powerful enough to make this work; "Nx" for "Opus Nexus|Opus Next|Opus N Times|Node Extend |Next-generation." The tagline: **"Thinking Archaeology Platform"** -- because we're excavating and preserving reasoning that would otherwise be lost to the ephemeral nature of AI conversations.
+**Opus Nx** -- "Opus" for Claude Opus 4.6, the only model powerful enough to make this work; "Nx" for "Opus Nexus|Opus Next|Opus N Times|Node Extend|Next-generation." The tagline: **"Human + AI co-thinking"** -- because humans and AI should reason together, with every step steerable, explorable, and persistent.
 
 ### Idea Validation
 
@@ -1038,7 +1038,7 @@ Opus Nx implements algorithms from four foundational papers, each advancing the 
 
 # Opus Nx
 
-**Thinking Archaeology Platform** -- The first AI system where reasoning is persistent, queryable, and self-improving.
+**Human + AI co-thinking** -- Steer, explore, and shape AI reasoning in real time.
 
 Built for the [Cerebral Valley "Built with Opus 4.6" Hackathon](https://cv.inc/e/claude-code-hackathon) (Feb 10-16, 2026)
 
@@ -1338,7 +1338,7 @@ A compliance officer documents AI-assisted decisions. Every reasoning step is tr
 >
 > Every AI system today treats reasoning as disposable. We built something different.
 >
-> This is Opus Nx -- the first AI system where reasoning itself is persistent, queryable, and evolving. We call it a Thinking Archaeology Platform."
+> This is Opus Nx -- where humans and AI reason together. Every thought is persistent, steerable, and explorable."
 
 ### Problem Statement (0:30-1:00)
 

@@ -20,7 +20,7 @@
 
 ## System Overview
 
-Opus Nx is a Thinking Archaeology Platform. It transforms Claude Opus 4.6's extended thinking into persistent, queryable reasoning graphs. Every time the AI thinks, that reasoning becomes a navigable data structure that can be searched, analyzed, visualized, and audited.
+Opus Nx is a human + AI co-thinking platform. It transforms Claude Opus 4.6's extended thinking into persistent, steerable reasoning graphs. Every time the AI thinks, that reasoning becomes a navigable data structure that humans can search, steer, verify, and build upon.
 
 ```
 +-----------------------------------------------------------------------------+

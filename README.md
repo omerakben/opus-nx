@@ -1,6 +1,6 @@
 # Opus Nx
 
-**Thinking Archaeology Platform** -- The first AI system where reasoning is persistent, queryable, and self-improving.
+**Human + AI co-thinking** -- Steer, explore, and shape AI reasoning in real time.
 
 Built for the [Cerebral Valley "Built with Opus 4.6" Hackathon](https://cv.inc/e/claude-code-hackathon) (Feb 10-16, 2026)
 
@@ -8,31 +8,31 @@ Built for the [Cerebral Valley "Built with Opus 4.6" Hackathon](https://cv.inc/e
 
 ## The Innovation
 
-Every AI system today treats extended thinking as a black box: reasoning happens, a response comes out, and the thinking vanishes. Opus Nx does something fundamentally different. It transforms Claude Opus 4.6's extended thinking into a **persistent, navigable data structure** that can be searched, analyzed, forked, verified, and learned from across sessions.
+Every AI system today treats extended thinking as a black box: reasoning happens, a response comes out, and the thinking vanishes. Opus Nx puts **humans in the driver's seat of AI reasoning**. It transforms Claude Opus 4.6's extended thinking into a **persistent, steerable data structure** where you co-think with AI -- steering branches, verifying steps, and shaping conclusions together.
 
-| What Others Do                       | What Opus Nx Does                                             |
-| ------------------------------------ | ------------------------------------------------------------- |
-| Extended thinking improves responses | Extended thinking becomes **queryable history**               |
-| AI conversations are stateless       | Every reasoning chain is **persistent and traversable**       |
-| "The AI said X"                      | "The AI reasoned A -> B -> C to conclude X"                   |
-| Black box decisions                  | **Transparent decision archaeology**                          |
-| Single reasoning path                | **Parallel branches** with convergence analysis               |
-| Trust the final answer               | **Step-by-step verification** of each reasoning step          |
-| Fixed context window                 | **Hierarchical memory** with automatic eviction and retrieval |
+| What Others Do                       | What Opus Nx Does                                                |
+| ------------------------------------ | ---------------------------------------------------------------- |
+| Extended thinking improves responses | Extended thinking becomes **navigable and steerable**            |
+| AI conversations are stateless       | Every reasoning chain is **persistent and traversable**          |
+| "The AI said X"                      | "We reasoned A -> B -> C together to conclude X"                 |
+| Black box decisions                  | **Transparent reasoning** you can explore and redirect           |
+| Single reasoning path                | **Parallel branches** you steer with convergence analysis        |
+| Trust the final answer               | **Step-by-step verification** -- check each reasoning step       |
+| Fixed context window                 | **Hierarchical memory** -- sessions that never forget            |
 
 ---
 
 ## Core Features
 
-### 1. ThinkGraph -- Reasoning as Data Structure
+### 1. ThinkGraph -- Navigate How Your AI Thinks
 
-Every extended thinking session is parsed into a persistent graph of reasoning nodes, decision points, and edges. Navigate reasoning chains visually with `@xyflow/react`, see which alternatives were considered at each decision point, and query past reasoning with natural language. The graph persists to Supabase with graceful degradation when the database is unavailable.
+Every extended thinking session is parsed into a persistent graph of reasoning nodes, decision points, and edges. Explore reasoning chains visually with `@xyflow/react`, see which alternatives were considered at each decision point, and query past reasoning with natural language. The graph persists to Supabase with graceful degradation when the database is unavailable.
 
-### 2. Metacognitive Self-Audit
+### 2. Metacognitive Self-Audit -- Understand Your AI's Patterns
 
-Using Opus 4.6's full 50k thinking token budget, the system turns reasoning inward -- analyzing its own patterns, detecting systematic biases, identifying recurring strategies, and generating self-improvement hypotheses. This is reasoning about reasoning, and it requires the deepest thinking budget available.
+Using Opus 4.6's full 50k thinking token budget, the system turns reasoning inward -- analyzing its own patterns, detecting systematic biases, identifying recurring strategies, and generating self-improvement hypotheses. Together, you and the AI identify thinking habits and calibrate reasoning quality.
 
-### 3. ThinkFork -- Parallel Reasoning Branches
+### 3. ThinkFork -- Steer Multiple Perspectives
 
 Complex decisions spawn up to four concurrent reasoning branches, each with a distinct perspective:
 
@@ -41,17 +41,17 @@ Complex decisions spawn up to four concurrent reasoning branches, each with a di
 - **Balanced** -- Weighted trade-off evaluation
 - **Contrarian** -- Challenges assumptions and conventional wisdom
 
-Includes debate mode for inter-branch argumentation, branch steering to redirect reasoning mid-stream, and convergence/divergence metrics to quantify agreement.
+You steer the reasoning: debate mode makes branches argue against each other, branch steering lets you redirect mid-stream, and convergence metrics quantify where perspectives agree or diverge.
 
-### 4. Graph of Thoughts (GoT) -- Arbitrary Reasoning Topologies
+### 4. Graph of Thoughts (GoT) -- Deep Dive Complex Problems
 
 Goes beyond linear chains and trees to support arbitrary graph structures for reasoning. Implements BFS, DFS, and best-first search strategies over thought nodes, with aggregation operations that merge insights from multiple reasoning paths and refinement operations that improve existing thoughts.
 
-### 5. Process Reward Model (PRM) -- Step-by-Step Verification
+### 5. Process Reward Model (PRM) -- Verify Before You Trust
 
-Rather than evaluating only final answers, the PRM verifier scores each individual reasoning step. Uses geometric mean scoring to identify the weakest links in a reasoning chain. Steps are rated as correct, incorrect, or neutral, with detailed justification for each judgment.
+Rather than trusting final answers blindly, the PRM verifier lets you inspect each individual reasoning step. Uses geometric mean scoring to identify the weakest links in a reasoning chain. Steps are rated as correct, incorrect, or neutral, with detailed justification for each judgment.
 
-### 6. Hierarchical Memory -- MemGPT-Inspired Three-Tier System
+### 6. Hierarchical Memory -- Sessions That Never Forget
 
 Implements a three-tier memory architecture inspired by the MemGPT paper:
 
@@ -59,7 +59,7 @@ Implements a three-tier memory architecture inspired by the MemGPT paper:
 - **Recall Storage** -- Recently accessed memories retrievable by semantic search
 - **Archival Storage** -- Long-term knowledge base with Voyage AI embeddings
 
-Includes automatic eviction paging that moves memories between tiers based on relevance and recency.
+Build on past reasoning across sessions with automatic eviction paging that moves memories between tiers based on relevance and recency.
 
 ### 7. Orchestrator -- Adaptive Session Management
 

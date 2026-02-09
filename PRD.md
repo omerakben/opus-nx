@@ -12,9 +12,9 @@
 
 ## Executive Summary
 
-Opus Nx is a **Thinking Archaeology Platform** - the first AI system where reasoning is persistent, queryable, and self-improving. While other AI systems treat extended thinking as a black box to improve response quality, Opus Nx transforms reasoning into a first-class, navigable data structure.
+Opus Nx is a **human + AI co-thinking platform** where reasoning is persistent, steerable, and self-improving. While other AI systems treat extended thinking as a black box to improve response quality, Opus Nx transforms reasoning into a first-class, navigable data structure that humans can steer, explore, and shape in real time.
 
-**Tagline**: *The first AI system where reasoning itself is persistent, queryable, and evolving*
+**Tagline**: *Human + AI co-thinking -- steer, explore, and shape AI reasoning in real time*
 
 ---
 
@@ -610,7 +610,7 @@ Opus Nx implements algorithms from four foundational papers:
 | **Checkpoint**               | Human-in-the-loop pause point for reviewing and redirecting reasoning      |
 | **Contradiction Resolution** | Process of reconciling conflicting knowledge with audit trail (descoped)   |
 | **Extended Thinking**        | Claude Opus 4.6's ability to "think" with configurable token budgets       |
-| **Thinking Archaeology**     | The practice of exploring and querying past reasoning chains               |
+| **Co-Thinking**              | Human + AI collaborative reasoning through steerable, persistent graphs   |
 
 ---
 
