@@ -12,6 +12,7 @@ import {
 import {
   steerForkAnalysis,
   getSessionForkAnalyses,
+  getSessionNodes,
   type ForkResponse,
   type DebateResponse,
   type SteeringResult,
@@ -111,6 +112,41 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
 
   // Last submitted query for retry (Improvement 2d)
   const [lastSubmittedQuery, setLastSubmittedQuery] = useState("");
+
+  // Dynamic suggestions derived from session's reasoning nodes
+  const [dynamicSuggestions, setDynamicSuggestions] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!sessionId) {
+      setDynamicSuggestions([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadNodeSuggestions() {
+      try {
+        const response = await getSessionNodes(sessionId!);
+        if (cancelled || response.error || !response.data?.nodes?.length) return;
+
+        // Extract unique inputQueries from thinking nodes (not compaction/fork nodes)
+        const queries = response.data.nodes
+          .filter((n) => n.inputQuery && n.nodeType !== "compaction" && n.inputQuery.length > 10)
+          .map((n) => n.inputQuery!)
+          .filter((q, i, arr) => arr.indexOf(q) === i) // dedupe
+          .slice(0, 3);
+
+        if (!cancelled && queries.length > 0) {
+          setDynamicSuggestions(queries);
+        }
+      } catch {
+        // Silent — suggestions are non-critical
+      }
+    }
+
+    loadNodeSuggestions();
+    return () => { cancelled = true; };
+  }, [sessionId]);
 
   // Load saved analysis when session changes
   useEffect(() => {
@@ -1501,21 +1537,38 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
                   Run 4 divergent reasoning paths on a complex decision.
                   Compare where they converge and diverge.
                 </p>
-                {/* Example query chips */}
+                {/* Dynamic suggestions from session reasoning, or fallback examples */}
                 <div className="mt-4 flex flex-wrap gap-2 justify-center">
-                  {[
-                    "Should a Series A startup pivot to enterprise?",
-                    "Remote-first vs hybrid work policy?",
-                    "Build in-house AI vs use third-party APIs?",
-                  ].map((example) => (
-                    <button
-                      key={example}
-                      onClick={() => setQuery(example)}
-                      className="text-[11px] px-2.5 py-1 rounded-full border border-[var(--border)] text-[var(--muted-foreground)] hover:border-violet-500/30 hover:text-violet-400 transition-colors focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-1 outline-none"
-                    >
-                      {example}
-                    </button>
-                  ))}
+                  {dynamicSuggestions.length > 0 ? (
+                    <>
+                      <p className="w-full text-[10px] text-violet-400/70 mb-0.5">
+                        From your reasoning:
+                      </p>
+                      {dynamicSuggestions.map((suggestion) => (
+                        <button
+                          key={suggestion}
+                          onClick={() => setQuery(suggestion)}
+                          className="text-[11px] px-2.5 py-1 rounded-full border border-violet-500/20 text-violet-400/80 hover:border-violet-500/40 hover:text-violet-400 bg-violet-500/5 transition-colors focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-1 outline-none"
+                        >
+                          {suggestion.length > 60 ? suggestion.slice(0, 57) + "..." : suggestion}
+                        </button>
+                      ))}
+                    </>
+                  ) : (
+                    [
+                      "Should a Series A startup pivot to enterprise?",
+                      "Remote-first vs hybrid work policy?",
+                      "Build in-house AI vs use third-party APIs?",
+                    ].map((example) => (
+                      <button
+                        key={example}
+                        onClick={() => setQuery(example)}
+                        className="text-[11px] px-2.5 py-1 rounded-full border border-[var(--border)] text-[var(--muted-foreground)] hover:border-violet-500/30 hover:text-violet-400 transition-colors focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-1 outline-none"
+                      >
+                        {example}
+                      </button>
+                    ))
+                  )}
                 </div>
                 <div className="mt-3 flex items-center justify-center gap-3 text-[11px] text-[var(--muted-foreground)]">
                   <span className="flex items-center gap-1">
