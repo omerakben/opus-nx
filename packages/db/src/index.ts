@@ -5,3 +5,4 @@ export * from "./agent-runs.js";
 export * from "./sessions.js";
 export * from "./thinking-nodes.js";
 export * from "./metacognition.js";
+export * from "./fork-analyses.js";

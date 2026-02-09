@@ -1,10 +1,12 @@
 import { z } from "zod";
 import { ThinkForkEngine } from "@opus-nx/core";
 import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
+import { appendSteeringResult } from "@/lib/db";
 
 const ForkStyleSchema = z.enum(["conservative", "aggressive", "balanced", "contrarian"]);
 
 const SteerRequestSchema = z.object({
+  analysisId: z.string().uuid().optional(),
   originalResult: z.object({
     branches: z.array(z.object({
       style: z.string(),
@@ -68,7 +70,7 @@ export async function POST(request: Request) {
         recoverable: true,
       });
     }
-    const { originalResult, action } = parsed.data;
+    const { originalResult, action, analysisId } = parsed.data;
 
     const thinkFork = new ThinkForkEngine();
 
@@ -76,6 +78,18 @@ export async function POST(request: Request) {
       originalResult as Parameters<typeof thinkFork.steer>[0],
       action as Parameters<typeof thinkFork.steer>[1]
     );
+
+    // Persist steering result to database if analysisId provided
+    if (analysisId) {
+      try {
+        await appendSteeringResult(
+          analysisId,
+          result as unknown as Record<string, unknown>
+        );
+      } catch (persistError) {
+        console.warn("[API] Failed to persist steering result:", persistError);
+      }
+    }
 
     return jsonSuccess(result, { correlationId });
   } catch (error) {

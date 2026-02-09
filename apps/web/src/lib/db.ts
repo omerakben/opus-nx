@@ -44,7 +44,13 @@ export {
   searchInsights,
   getInsightsForNode,
   getInsightCountsByType,
+  // Fork analyses
+  createForkAnalysis,
+  getSessionForkAnalyses as getSessionForkAnalysesDb,
+  getForkAnalysis,
+  appendSteeringResult,
   // Types
+  type ForkAnalysis,
   type Session,
   type ThinkingNode,
   type ReasoningEdge,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 
 import { Header } from "./Header";
@@ -12,6 +12,7 @@ import { ThinkingGraph } from "@/components/graph";
 import { DemoTour } from "@/components/tour/DemoTour";
 import { useSession, useThinkingStream, useGraph, useLiveGraph, useIsMobile, useTour, useSidebar, useRightSidebar } from "@/lib/hooks";
 import { getSessionInsights, type Insight } from "@/lib/api";
+import type { SelectedNodeData } from "@/components/thinking";
 
 export function Dashboard() {
   const isMobile = useIsMobile();
@@ -37,7 +38,7 @@ export function Dashboard() {
   const {
     nodes,
     edges,
-    selectedNode: _selectedNode,
+    selectedNode,
     isLoading: isLoadingGraph,
     onNodesChange,
     onEdgesChange,
@@ -56,6 +57,10 @@ export function Dashboard() {
     compactionSummary,
     elapsedMs,
     streamingNodes,
+    response: streamResponse,
+    nodeId: streamNodeId,
+    degraded: streamDegraded,
+    warnings: streamWarnings,
     start: startStream,
     stop: stopStream,
     clear: clearStream,
@@ -138,6 +143,27 @@ export function Dashboard() {
     [selectNode, isMobile]
   );
 
+  // Derive selected node data for the BottomPanel historical reasoning view
+  const selectedNodeData: SelectedNodeData | null = useMemo(() => {
+    if (!selectedNode) return null;
+    const d = selectedNode.data;
+    return {
+      id: d.id,
+      reasoning: d.reasoning,
+      response: d.response,
+      confidence: d.confidence,
+      tokenUsage: d.tokenUsage,
+      inputQuery: d.inputQuery,
+      createdAt: d.createdAt,
+      nodeType: d.nodeType,
+    };
+  }, [selectedNode]);
+
+  // Clear node selection (dismiss historical view)
+  const clearNodeSelection = useCallback(() => {
+    selectNode(null);
+  }, [selectNode]);
+
   // Handle session selection on mobile
   const handleSelectSession = useCallback(
     (sessionId: string) => {
@@ -210,6 +236,8 @@ export function Dashboard() {
                   isLoading={isLoadingGraph}
                   isMobile
                   onSeedDemo={handleSeedDemo}
+                  onBranchCreated={refreshGraph}
+                  selectedNodeId={selectedNode?.id}
                 />
               </ReactFlowProvider>
             </div>
@@ -231,6 +259,12 @@ export function Dashboard() {
                 compactionCount={compactionCount}
                 compactionSummary={compactionSummary}
                 elapsedMs={elapsedMs}
+                selectedNodeData={selectedNodeData}
+                onClearSelection={clearNodeSelection}
+                response={streamResponse}
+                streamNodeId={streamNodeId}
+                degraded={streamDegraded}
+                warnings={streamWarnings}
                 isMobile
               />
             </div>
@@ -324,11 +358,13 @@ export function Dashboard() {
                 onEdgesChange={onEdgesChange}
                 isLoading={isLoadingGraph}
                 onSeedDemo={handleSeedDemo}
+                onBranchCreated={refreshGraph}
+                selectedNodeId={selectedNode?.id}
               />
             </ReactFlowProvider>
           </div>
 
-          {/* Bottom Panel: Thinking Stream */}
+          {/* Bottom Panel: Thinking Stream + Historical Node Reasoning */}
           <BottomPanel
             thinking={thinking}
             tokenCount={tokenCount}
@@ -342,6 +378,12 @@ export function Dashboard() {
             compactionCount={compactionCount}
             compactionSummary={compactionSummary}
             elapsedMs={elapsedMs}
+            selectedNodeData={selectedNodeData}
+            onClearSelection={clearNodeSelection}
+            response={streamResponse}
+            streamNodeId={streamNodeId}
+            degraded={streamDegraded}
+            warnings={streamWarnings}
           />
         </div>
 

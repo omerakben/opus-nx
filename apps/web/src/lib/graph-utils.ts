@@ -1,6 +1,6 @@
 import type { Node, Edge } from "@xyflow/react";
 import type { ThinkingNode, ReasoningEdge } from "@opus-nx/db";
-import { EDGE_COLORS, getConfidenceColor, type EdgeType } from "./colors";
+import { EDGE_COLORS, type EdgeType } from "./colors";
 import { parseTokenUsage, truncate } from "./utils";
 
 // ============================================================
@@ -11,6 +11,8 @@ export interface GraphNode extends Node {
   data: {
     id: string;
     reasoning: string;
+    /** Model's final output/response */
+    response: string | null;
     structuredReasoning: Record<string, unknown>;
     confidence: number;
     tokenUsage: {
@@ -76,6 +78,7 @@ export function transformNodesToGraph(
       data: {
         id: node.id,
         reasoning: node.reasoning,
+        response: (node as ThinkingNode & { response?: string | null }).response ?? null,
         structuredReasoning: node.structuredReasoning,
         confidence: node.confidenceScore ?? 0.5,
         tokenUsage: {

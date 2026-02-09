@@ -70,13 +70,17 @@ export async function POST(request: Request) {
         0
       );
 
-    // Persist to graph
+    // Build the model's final response text
+    const responseText = result.textBlocks.map((b) => b.text).join("\n\n");
+
+    // Persist to graph (both reasoning AND response)
     const thinkGraph = new ThinkGraph();
     const graphResult = await thinkGraph.persistThinkingNode(
       result.thinkingBlocks,
       {
         sessionId,
         inputQuery: query,
+        response: responseText,
         tokenUsage: {
           ...result.usage,
           thinkingTokens,
@@ -92,7 +96,7 @@ export async function POST(request: Request) {
           .filter((b) => b.type === "thinking")
           .map((b) => (b as { thinking: string }).thinking)
           .join("\n\n"),
-        response: result.textBlocks.map((b) => b.text).join("\n\n"),
+        response: responseText,
         tokenUsage: {
           inputTokens: result.usage.inputTokens,
           outputTokens: result.usage.outputTokens,

@@ -1,4 +1,4 @@
-import { getSessionInsights, getRecentInsights } from "@/lib/db";
+import { getSessionInsights, getRecentInsights, type InsightType } from "@/lib/db";
 import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
 
 /**
@@ -15,10 +15,13 @@ export async function GET(request: Request) {
 
     let insights;
 
+    const types = searchParams.get("types")?.split(",").filter(Boolean) as InsightType[] | undefined;
+    const minConfidence = searchParams.has("minConfidence") ? parseFloat(searchParams.get("minConfidence")!) : undefined;
+
     if (sessionId) {
-      insights = await getSessionInsights(sessionId, { limit });
+      insights = await getSessionInsights(sessionId, { limit, types, minConfidence });
     } else {
-      insights = await getRecentInsights({ limit });
+      insights = await getRecentInsights({ limit, types });
     }
 
     const serializedInsights = insights.map((insight) => ({
@@ -108,6 +111,8 @@ export async function POST(request: Request) {
         nodesAnalyzed: result.nodesAnalyzed ?? 0,
         summary: result.summary ?? null,
         errors: result.errors ?? [],
+        hallucinationCount: result.hallucinationCount ?? 0,
+        invalidNodeRefs: result.invalidNodeRefs ?? [],
       },
       { correlationId }
     );

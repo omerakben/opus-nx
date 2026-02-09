@@ -6,3 +6,16 @@ export { useMediaQuery, useIsMobile } from "./use-media-query";
 export { useTour } from "./use-tour";
 export { useSidebar } from "./use-sidebar";
 export { useRightSidebar } from "./use-right-sidebar";
+export { useReasoningDetail } from "./use-reasoning-detail";
+export type {
+  ReasoningDetailData,
+  ReasoningNode,
+  ReasoningStep,
+  ReasoningStepType,
+  StructuredReasoning,
+  DecisionPoint,
+  DecisionPointAlternative,
+  PersistedDecisionPoint,
+  ReasoningEdge as ReasoningDetailEdge,
+  TokenUsage,
+} from "./use-reasoning-detail";

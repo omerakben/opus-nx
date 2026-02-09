@@ -12,59 +12,51 @@ export interface TourStep {
 
 const TOUR_STEPS: TourStep[] = [
   {
-    id: "graph-overview",
+    id: "welcome",
     target: "[data-tour='reasoning-graph']",
-    title: "Reasoning Graph",
+    title: "Welcome to Opus Nx",
     description:
-      "This is Claude's reasoning graph. Each node represents a step in extended thinking. Edges show how ideas influence, support, or contradict each other.",
+      "Opus Nx makes AI reasoning visible, steerable, and persistent. You're looking at a live reasoning graph — every node is a step in Claude Opus 4.6's extended thinking.",
     placement: "bottom",
   },
   {
-    id: "node-inspection",
-    target: ".react-flow__node-thinking",
-    title: "Thinking Nodes",
-    description:
-      "Click any node to see the full reasoning, confidence score, and token usage. Node colors reflect confidence levels.",
-    placement: "right",
-  },
-  {
-    id: "edge-legend",
+    id: "graph-overview",
     target: "[data-tour='graph-legend']",
-    title: "Edge Types",
+    title: "Reasoning Graph",
     description:
-      "Five relationship types connect reasoning: influences, supports, refines, supersedes, and contradicts.",
+      "Nodes connect via 5 edge types: influences, supports, refines, supersedes, and contradicts. Special node types show compaction boundaries, fork branches, and human annotations.",
     placement: "top",
   },
   {
-    id: "session-stats",
-    target: "[data-tour='session-stats']",
-    title: "Session Statistics",
+    id: "node-checkpoints",
+    target: ".react-flow__node-thinking",
+    title: "Human-in-the-Loop Checkpoints",
     description:
-      "Track total nodes, edges, thinking tokens used, and average confidence across the session.",
+      "Hover any thinking node to verify, question, or disagree with the reasoning. Disagreements trigger re-reasoning and create a new branch in the graph.",
     placement: "right",
   },
   {
-    id: "thinking-input",
-    target: "[data-tour='thinking-input']",
-    title: "Start Thinking",
+    id: "fork-panel",
+    target: "[data-tour='fork-tab']",
+    title: "ThinkFork — 4 Divergent Paths",
     description:
-      "Ask Claude a complex question to see extended thinking in real-time. The graph builds as Claude reasons through the problem.",
-    placement: "top",
+      "Fork any question into 4 reasoning perspectives with different assumptions. Toggle to Debate mode for multi-round adversarial reasoning where perspectives challenge each other.",
+    placement: "left",
   },
   {
     id: "insights-panel",
     target: "[data-tour='insights-tab']",
     title: "Metacognitive Insights",
     description:
-      "Claude analyzes its own reasoning for biases, patterns, and improvement hypotheses — AI that reflects on how it thinks.",
+      "Claude analyzes its own reasoning patterns for biases, recurring structures, and improvement hypotheses — AI self-reflection powered by 50k thinking tokens.",
     placement: "left",
   },
   {
-    id: "fork-panel",
-    target: "[data-tour='fork-tab']",
-    title: "ThinkFork Analysis",
+    id: "evidence-nav",
+    target: "[data-tour='insights-tab']",
+    title: "Evidence Navigation",
     description:
-      "Fork any question into 4 reasoning perspectives — analytical, creative, critical, and practical — then steer the synthesis.",
+      "Click any evidence link in an insight to animate the graph to the referenced reasoning node. Every insight is grounded in specific thinking steps.",
     placement: "left",
   },
 ];

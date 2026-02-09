@@ -17,7 +17,8 @@ import {
   type InsightType,
   type EvidenceItem,
 } from "./types/metacognition.js";
-import type { OrchestratorConfig, ToolUseBlock } from "./types/orchestrator.js";
+import type { OrchestratorConfig, ToolUseBlock, ThinkingBlock } from "./types/orchestrator.js";
+import type Anthropic from "@anthropic-ai/sdk";
 
 const logger = createLogger("MetacognitionEngine");
 
@@ -139,6 +140,9 @@ export class MetacognitionEngine {
 
   constructor(options: MetacognitionEngineOptions = {}) {
     // Use adaptive thinking (Claude 4.6 recommended mode)
+    // maxTokens must be large enough for thinking + multiple tool calls + summary.
+    // With effort: "max", Claude uses extensive thinking, so we need headroom for
+    // 5-8 record_insight tool calls (~400 tokens each) plus summary text.
     const config: OrchestratorConfig = {
       model: "claude-opus-4-6",
       thinking: {
@@ -146,7 +150,7 @@ export class MetacognitionEngine {
         effort: "max",
       },
       streaming: true,
-      maxTokens: 16384,
+      maxTokens: 32768,
     };
 
     this.thinkingEngine = new ThinkingEngine({
@@ -225,16 +229,17 @@ export class MetacognitionEngine {
       contextLength: formattedContext.length,
     });
 
-    // 3. Build analysis prompt
-    const analysisPrompt = this.buildAnalysisPrompt(formattedContext, focusAreas);
+    // 3. Build system prompt with reasoning context, and user prompt with focus instructions
+    const systemPromptWithContext = this.systemPrompt.replace("{REASONING_CONTEXT}", formattedContext);
+    const userPrompt = this.buildAnalysisPrompt(focusAreas);
 
     // 4. Execute extended thinking analysis with error handling
     const startTime = Date.now();
     let result;
     try {
       result = await this.thinkingEngine.think(
-        this.systemPrompt,
-        [{ role: "user", content: analysisPrompt }],
+        systemPromptWithContext,
+        [{ role: "user", content: userPrompt }],
         [INSIGHT_EXTRACTION_TOOL]
       );
     } catch (error) {
@@ -270,14 +275,166 @@ export class MetacognitionEngine {
       durationMs: analysisTime,
       toolCalls: result.toolUseBlocks.length,
       thinkingBlocks: result.thinkingBlocks.length,
+      stopReason: result.stopReason,
     });
 
-    // 5. Parse and persist insights with comprehensive error tracking
+    // Detect truncation
+    if (result.stopReason === "max_tokens") {
+      errors.push("Analysis was truncated due to token limit — some insights may be missing");
+      logger.warn("Analysis truncated at max_tokens", {
+        toolCallsBeforeTruncation: result.toolUseBlocks.length,
+      });
+    }
+
+    // 5. Parse and persist insights from first pass
     const parseResult = await this.parseAndPersistInsights(
       result.toolUseBlocks,
       sessionId ?? null,
       nodeIds
     );
+
+    // 6. Follow-up loop: request missing insight types iteratively
+    // Claude produces 1 tool call per turn (stopReason: "tool_use"), so we loop
+    // until all 3 required types are covered or we hit max iterations.
+    const MAX_FOLLOW_UP_ITERATIONS = 3;
+    const typeLabels: Record<string, string> = {
+      bias_detection: "Bias Detection (systematic biases like anchoring, confirmation, availability, overconfidence)",
+      pattern: "Pattern Recognition (recurring reasoning structures, decision frameworks, information gathering sequences)",
+      improvement_hypothesis: "Improvement Hypotheses (concrete, testable suggestions for better reasoning)",
+    };
+    const allTypes: InsightType[] = ["bias_detection", "pattern", "improvement_hypothesis"];
+
+    // Build conversation history for multi-turn — starts with the first exchange
+    let conversationMessages: Anthropic.MessageParam[] = [
+      { role: "user", content: userPrompt },
+    ];
+
+    // Add the first assistant response to conversation
+    const firstAssistantContent = result.content.map((block) => {
+      if (block.type === "tool_use") {
+        return block as unknown as Anthropic.ContentBlockParam;
+      }
+      if (block.type === "text") {
+        return { type: "text" as const, text: block.text };
+      }
+      if (block.type === "thinking") {
+        return { type: "thinking" as const, thinking: block.thinking, signature: (block as ThinkingBlock).signature };
+      }
+      return { type: "text" as const, text: "" };
+    }).filter((b) => b.type === "text" || b.type === "tool_use" || b.type === "thinking");
+
+    conversationMessages.push({ role: "assistant", content: firstAssistantContent });
+
+    // Add tool results for the first pass
+    const firstToolResults: Anthropic.ToolResultBlockParam[] = result.toolUseBlocks.map((tb) => ({
+      type: "tool_result" as const,
+      tool_use_id: tb.id,
+      content: "Insight recorded successfully.",
+    }));
+
+    let lastToolResults = firstToolResults;
+    let lastResult = result;
+    let followUpCount = 0;
+
+    for (let iteration = 0; iteration < MAX_FOLLOW_UP_ITERATIONS; iteration++) {
+      const producedTypes = new Set(parseResult.persisted.map((i) => i.insightType));
+      const missingTypes = allTypes.filter((t) => !producedTypes.has(t));
+
+      if (missingTypes.length === 0) {
+        logger.info("All insight types covered", { iteration, totalInsights: parseResult.persisted.length });
+        break;
+      }
+
+      if (lastResult.stopReason === "max_tokens") {
+        logger.warn("Stopping follow-up loop — previous turn hit max_tokens");
+        break;
+      }
+
+      logger.info("Requesting follow-up for missing insight types", {
+        iteration: iteration + 1,
+        missingTypes,
+        producedSoFar: [...producedTypes],
+      });
+
+      const followUpPrompt = `You generated ${parseResult.persisted.length} insight(s) of type: ${[...producedTypes].join(", ")}.
+
+You are MISSING these required types: ${missingTypes.map((t) => `**${typeLabels[t]}**`).join(", ")}.
+
+Generate exactly 1 insight for the type **${typeLabels[missingTypes[0]]}** using the \`record_insight\` tool. Even if evidence is moderate (confidence 0.4-0.7), report a finding rather than skip the category.
+
+DO NOT repeat insights you already generated.`;
+
+      try {
+        // Append tool results + follow-up prompt as user turn
+        conversationMessages.push({
+          role: "user",
+          content: lastToolResults.length > 0
+            ? [...lastToolResults, { type: "text" as const, text: followUpPrompt }]
+            : followUpPrompt,
+        });
+
+        const followUpResult = await this.thinkingEngine.think(
+          systemPromptWithContext,
+          conversationMessages,
+          [INSIGHT_EXTRACTION_TOOL]
+        );
+
+        logger.info("Follow-up analysis completed", {
+          iteration: iteration + 1,
+          toolCalls: followUpResult.toolUseBlocks.length,
+          stopReason: followUpResult.stopReason,
+        });
+
+        // Parse and persist follow-up insights
+        const followUpParse = await this.parseAndPersistInsights(
+          followUpResult.toolUseBlocks,
+          sessionId ?? null,
+          nodeIds
+        );
+
+        // Merge results
+        parseResult.persisted.push(...followUpParse.persisted);
+        parseResult.failed.push(...followUpParse.failed);
+        parseResult.validationErrors.push(...followUpParse.validationErrors);
+        parseResult.invalidNodeRefs.push(...followUpParse.invalidNodeRefs);
+
+        // Append follow-up summary text
+        const followUpSummary = followUpResult.textBlocks.map((b) => b.text).join("\n");
+        if (followUpSummary) {
+          result.textBlocks.push({ type: "text", text: followUpSummary });
+        }
+
+        // Build assistant content for next iteration
+        const followUpAssistantContent = followUpResult.content.map((block) => {
+          if (block.type === "tool_use") {
+            return block as unknown as Anthropic.ContentBlockParam;
+          }
+          if (block.type === "text") {
+            return { type: "text" as const, text: block.text };
+          }
+          if (block.type === "thinking") {
+            return { type: "thinking" as const, thinking: block.thinking, signature: (block as ThinkingBlock).signature };
+          }
+          return { type: "text" as const, text: "" };
+        }).filter((b) => b.type === "text" || b.type === "tool_use" || b.type === "thinking");
+
+        conversationMessages.push({ role: "assistant", content: followUpAssistantContent });
+
+        // Prepare tool results for next iteration
+        lastToolResults = followUpResult.toolUseBlocks.map((tb) => ({
+          type: "tool_result" as const,
+          tool_use_id: tb.id,
+          content: "Insight recorded successfully.",
+        }));
+        lastResult = followUpResult;
+        followUpCount++;
+      } catch (followUpError) {
+        const msg = followUpError instanceof Error ? followUpError.message : String(followUpError);
+        logger.warn("Follow-up iteration failed, returning partial results", { iteration: iteration + 1, error: msg });
+        errors.push(`Follow-up iteration ${iteration + 1} failed: ${msg}`);
+        break;
+      }
+    }
 
     // Track all types of failures
     if (parseResult.failed.length > 0) {
@@ -292,7 +449,7 @@ export class MetacognitionEngine {
       });
     }
 
-    // 6. Extract summary from text response
+    // 7. Extract summary from text response
     const summary = result.textBlocks.map((b) => b.text).join("\n").slice(0, 2000) || undefined;
 
     const analysisResult: MetacognitionResult = {
@@ -301,6 +458,8 @@ export class MetacognitionEngine {
       analysisTokensUsed: result.usage.outputTokens,
       summary,
       errors: errors.length > 0 ? errors : undefined,
+      invalidNodeRefs: parseResult.invalidNodeRefs.length > 0 ? parseResult.invalidNodeRefs : undefined,
+      hallucinationCount: parseResult.invalidNodeRefs.length > 0 ? parseResult.invalidNodeRefs.length : undefined,
     };
 
     logger.info("Metacognitive analysis complete", {
@@ -310,6 +469,7 @@ export class MetacognitionEngine {
       biasDetections: parseResult.persisted.filter((i) => i.insightType === "bias_detection").length,
       patterns: parseResult.persisted.filter((i) => i.insightType === "pattern").length,
       improvements: parseResult.persisted.filter((i) => i.insightType === "improvement_hypothesis").length,
+      followUpIterations: followUpCount,
     });
 
     return analysisResult;
@@ -401,10 +561,10 @@ ${reasoning}
   }
 
   /**
-   * Build the analysis prompt with focus area instructions.
-   * Uses object lookup instead of switch for cleaner code.
+   * Build the user-facing analysis prompt with focus areas and diversity requirements.
+   * The system prompt (with reasoning context) is passed separately to think().
    */
-  private buildAnalysisPrompt(formattedContext: string, focusAreas: string[]): string {
+  private buildAnalysisPrompt(focusAreas: string[]): string {
     const focusInstructions = focusAreas
       .filter((area) => area in FOCUS_AREA_DESCRIPTIONS)
       .map((area) => {
@@ -413,24 +573,33 @@ ${reasoning}
       })
       .join("\n");
 
-    // Inject formatted context into system prompt placeholder
-    const promptWithContext = this.systemPrompt.replace("{REASONING_CONTEXT}", formattedContext);
-
     return `## Focus Areas for This Analysis
 
 ${focusInstructions}
 
-${promptWithContext}
-
 ## Your Task
 
-Analyze the reasoning history above. For each insight you discover:
-1. Use the \`record_insight\` tool to capture it with proper evidence
-2. Aim for 3-7 high-quality insights (quality over quantity)
-3. Focus on patterns that appear across multiple reasoning sessions
-4. Be specific - cite node IDs and quote relevant excerpts
+Analyze the reasoning history provided in the system prompt. You MUST generate insights across ALL THREE categories:
 
-After recording all insights, provide a brief summary of your overall observations about the reasoning patterns.`;
+1. **bias_detection** — At least 1 insight identifying systematic biases (anchoring, confirmation, availability, overconfidence, premature closure, sunk cost, or other biases)
+2. **pattern** — At least 1 insight identifying recurring reasoning structures (decision frameworks, information gathering sequences, how alternatives are explored, reasoning depth patterns)
+3. **improvement_hypothesis** — At least 1 insight proposing concrete, testable hypotheses for improving reasoning quality
+
+### Requirements
+
+- Aim for **5-8 total insights** distributed across all three types
+- Each insight MUST include evidence with exact node IDs and quoted excerpts
+- If a category genuinely has no findings, explain why in your summary — but try hard to find at least one per category
+- Focus areas above should guide WHERE you look, but all three insight types should be produced regardless
+- Be specific: cite node IDs, quote relevant reasoning, and explain the significance
+
+### Mapping Focus Areas to Insight Types
+
+- **Bias Detection** focus → Generate \`bias_detection\` insights
+- **Reasoning Patterns** / **Confidence Calibration** → Generate \`pattern\` insights about how reasoning is structured
+- **Alternative Exploration** / **Decision Quality** → Generate \`improvement_hypothesis\` insights about what could be done better
+
+After recording all insights with the \`record_insight\` tool, provide a brief summary of your overall observations.`;
   }
 
   /**
@@ -584,7 +753,7 @@ For each insight, use the record_insight tool with:
 - evidence: Array of {nodeId, excerpt, relevance} references
 - confidence: 0.0-1.0 based on evidence strength
 
-Focus on patterns that appear multiple times. Be specific and cite node IDs.
+IMPORTANT: You MUST generate insights across ALL THREE types (bias_detection, pattern, improvement_hypothesis). Generate at least one of each type. Focus on patterns that appear multiple times. Be specific and cite node IDs.
 
 {REASONING_CONTEXT}`;
   }

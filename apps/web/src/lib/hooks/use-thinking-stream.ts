@@ -10,6 +10,11 @@ export interface StreamingNode {
   nodeType: "thinking" | "compaction";
 }
 
+export interface StreamWarning {
+  code: string;
+  message: string;
+}
+
 interface ThinkingStreamState {
   thinking: string;
   tokenCount: number;
@@ -27,6 +32,14 @@ interface ThinkingStreamState {
   elapsedMs: number;
   /** Number of recoverable SSE parse errors seen in this stream */
   parseErrorCount: number;
+  /** Model's final response text (captured from done event) */
+  response: string | null;
+  /** Node ID of the persisted thinking node */
+  nodeId: string | null;
+  /** Whether the result was degraded (persistence issues) */
+  degraded: boolean;
+  /** Recoverable warnings emitted during the stream */
+  warnings: StreamWarning[];
 }
 
 interface UseThinkingStreamReturn extends ThinkingStreamState {
@@ -67,6 +80,10 @@ export function useThinkingStream(): UseThinkingStreamReturn {
     streamingNodes: [],
     elapsedMs: 0,
     parseErrorCount: 0,
+    response: null,
+    nodeId: null,
+    degraded: false,
+    warnings: [],
   });
 
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -106,6 +123,10 @@ export function useThinkingStream(): UseThinkingStreamReturn {
       streamingNodes: [],
       elapsedMs: 0,
       parseErrorCount: 0,
+      response: null,
+      nodeId: null,
+      degraded: false,
+      warnings: [],
     });
   }, [stop]);
 
@@ -127,6 +148,10 @@ export function useThinkingStream(): UseThinkingStreamReturn {
         streamingNodes: [],
         elapsedMs: 0,
         parseErrorCount: 0,
+        response: null,
+        nodeId: null,
+        degraded: false,
+        warnings: [],
       });
 
       // Start elapsed timer
@@ -238,6 +263,18 @@ export function useThinkingStream(): UseThinkingStreamReturn {
                         phase: null,
                         tokenCount: data.totalTokens ?? prev.tokenCount,
                         elapsedMs: Date.now() - startTimeRef.current,
+                        nodeId: data.nodeId ?? prev.nodeId,
+                        response: data.response ?? null,
+                        degraded: data.degraded ?? false,
+                        warnings: data.warnings?.length
+                          ? [
+                              ...prev.warnings,
+                              ...data.warnings.map((w: string) => ({
+                                code: "STREAM_WARNING",
+                                message: w,
+                              })),
+                            ]
+                          : prev.warnings,
                       }));
                       if (timerRef.current) {
                         clearInterval(timerRef.current);
@@ -255,8 +292,18 @@ export function useThinkingStream(): UseThinkingStreamReturn {
                         timerRef.current = null;
                       }
                     } else if (data.type === "warning") {
-                      // Warnings are not parse errors — do not conflate the two
+                      // Capture warnings in state for UI display
                       console.warn("[use-thinking-stream] Recoverable stream warning", data);
+                      setState((prev) => ({
+                        ...prev,
+                        warnings: [
+                          ...prev.warnings,
+                          {
+                            code: data.code ?? "UNKNOWN_WARNING",
+                            message: data.message ?? "Unknown warning",
+                          },
+                        ],
+                      }));
                     }
                   } catch (parseError) {
                     // Ignore malformed events but surface recoverable error telemetry in state.

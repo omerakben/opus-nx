@@ -151,7 +151,27 @@ The key insight from this reasoning process: the question "Can AI be conscious?"
       inputQuery: "Can AI systems develop genuine consciousness?",
     });
 
-    // 3. Create reasoning edges
+    // 2b. Add special node types for demo showcase
+
+    // Compaction boundary node — shows context consolidation visual
+    const compactionNode = await createThinkingNode({
+      sessionId: session.id,
+      reasoning: `Context compaction checkpoint: Consolidated 4 reasoning nodes into a single summary. Key retained insights: (1) Consciousness is substrate-dependent vs substrate-independent debate remains open, (2) IIT predicts low Φ for current transformers, (3) Ethical precautionary principle applies. Dropped: intermediate deliberation about Chinese Room variants.`,
+      confidenceScore: 0.85,
+      inputQuery: undefined,
+      nodeType: "compaction",
+    });
+
+    // Fork branch node — shows ThinkFork integration in the graph
+    const forkBranchNode = await createThinkingNode({
+      sessionId: session.id,
+      reasoning: `[Contrarian perspective] What if consciousness is NOT substrate-independent? If biological wetware provides something computation cannot — quantum coherence effects in microtubules (Penrose-Hameroff), or continuous-valued analog processing — then digital AI may be fundamentally incapable of consciousness regardless of architectural sophistication. This challenges the dominant computational theory of mind.`,
+      confidenceScore: 0.58,
+      inputQuery: "Contrarian fork: Is consciousness necessarily substrate-dependent?",
+      nodeType: "fork_branch",
+    });
+
+    // 3. Create reasoning edges (including all 5 edge types for demo)
     await Promise.all([
       createReasoningEdge({ sourceId: node1.id, targetId: node2.id, edgeType: "influences", weight: 0.9 }),
       createReasoningEdge({ sourceId: node2.id, targetId: node3.id, edgeType: "influences", weight: 0.85 }),
@@ -161,6 +181,12 @@ The key insight from this reasoning process: the question "Can AI be conscious?"
       createReasoningEdge({ sourceId: node5.id, targetId: node6.id, edgeType: "influences", weight: 0.95 }),
       createReasoningEdge({ sourceId: node2.id, targetId: node4.id, edgeType: "supports", weight: 0.6 }),
       createReasoningEdge({ sourceId: node3.id, targetId: node6.id, edgeType: "refines", weight: 0.65 }),
+      // Compaction node edges
+      createReasoningEdge({ sourceId: node4.id, targetId: compactionNode.id, edgeType: "supersedes", weight: 0.8 }),
+      createReasoningEdge({ sourceId: compactionNode.id, targetId: node5.id, edgeType: "influences", weight: 0.75 }),
+      // Fork branch edges — contrarian contradicts the main line
+      createReasoningEdge({ sourceId: node2.id, targetId: forkBranchNode.id, edgeType: "influences", weight: 0.65 }),
+      createReasoningEdge({ sourceId: forkBranchNode.id, targetId: node5.id, edgeType: "contradicts", weight: 0.7 }),
     ]);
 
     // 4. Create decision points

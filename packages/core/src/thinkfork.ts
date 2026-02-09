@@ -817,13 +817,21 @@ Respond to this challenge. If the challenge has merit, revise your conclusion. I
 
   /**
    * Create a ThinkingEngine config with the specified effort level.
+   * maxTokens scales with effort to balance cost and reasoning depth.
    */
   private createThinkingConfig(effort: "low" | "medium" | "high" | "max"): OrchestratorConfig {
+    const EFFORT_MAX_TOKENS: Record<string, number> = {
+      low: 4096,
+      medium: 8192,
+      high: 16384,
+      max: 32768,
+    };
+
     return {
       model: "claude-opus-4-6",
       thinking: { type: "adaptive", effort },
       streaming: true,
-      maxTokens: 16384,
+      maxTokens: EFFORT_MAX_TOKENS[effort] ?? 16384,
     };
   }
 

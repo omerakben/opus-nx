@@ -45,6 +45,8 @@ export interface ThinkingNode {
   sessionId: string;
   parentNodeId: string | null;
   reasoning: string;
+  /** Model's final output/response (the conclusion after thinking) */
+  response: string | null;
   structuredReasoning: Record<string, unknown>;
   confidenceScore: number | null;
   thinkingBudget: number | null;
@@ -81,6 +83,8 @@ export interface CreateThinkingNodeInput {
   sessionId: string;
   parentNodeId?: string;
   reasoning: string;
+  /** Model's final output/response */
+  response?: string;
   structuredReasoning?: Record<string, unknown>;
   confidenceScore?: number;
   thinkingBudget?: number;
@@ -151,11 +155,12 @@ export async function createThinkingNode(
 ): Promise<ThinkingNode> {
   const supabase = getSupabase();
 
-  // Build insert payload - node_type omitted until migration 003 is applied
+  // Build insert payload
   const insertPayload: Record<string, unknown> = {
     session_id: input.sessionId,
     parent_node_id: input.parentNodeId ?? null,
     reasoning: input.reasoning,
+    response: input.response ?? null,
     structured_reasoning: input.structuredReasoning ?? {},
     confidence_score: input.confidenceScore ?? null,
     thinking_budget: input.thinkingBudget ?? null,
@@ -590,6 +595,7 @@ function mapThinkingNode(row: Record<string, unknown>): ThinkingNode {
     sessionId: row.session_id as string,
     parentNodeId: row.parent_node_id as string | null,
     reasoning: row.reasoning as string,
+    response: (row.response as string | null) ?? null,
     structuredReasoning: (row.structured_reasoning as Record<string, unknown>) ?? {},
     confidenceScore: row.confidence_score as number | null,
     thinkingBudget: row.thinking_budget as number | null,

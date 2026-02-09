@@ -197,7 +197,10 @@ export async function POST(request: Request) {
             controller.enqueue(encoder.encode(`data: ${warningData}\n\n`));
           }
 
-          // Persist to graph after streaming completes
+          // Build the model's final response text
+          const responseText = result.textBlocks.map((b) => b.text).join("\n\n");
+
+          // Persist to graph after streaming completes (both reasoning AND response)
           const thinkGraph = new ThinkGraph();
           const graphResult = await thinkGraph.persistThinkingNode(
             result.thinkingBlocks,
@@ -205,6 +208,7 @@ export async function POST(request: Request) {
               sessionId,
               parentNodeId,
               inputQuery: query,
+              response: responseText,
               tokenUsage: {
                 ...result.usage,
                 thinkingTokens: actualThinkingTokens,
@@ -255,11 +259,12 @@ export async function POST(request: Request) {
             }
           }
 
-          // Send completion event
+          // Send completion event (includes model response for UI display)
           const doneData = JSON.stringify({
             type: "done",
             nodeId: graphResult.node.id,
             totalTokens: actualThinkingTokens,
+            response: responseText,
             compacted: result.compacted,
             degraded:
               graphResult.degraded ||

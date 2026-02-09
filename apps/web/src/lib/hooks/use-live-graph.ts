@@ -69,6 +69,7 @@ export function useLiveGraph({
       data: {
         id: latestStreaming.id,
         reasoning: latestStreaming.reasoning,
+        response: null, // Not yet available during streaming
         structuredReasoning: {},
         confidence: Math.min(tokenCount / 5000, 0.9), // Confidence fills as tokens accumulate
         tokenUsage: {

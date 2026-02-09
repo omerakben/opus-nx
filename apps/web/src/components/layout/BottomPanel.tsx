@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { ThinkingStream } from "@/components/thinking";
+import { ThinkingStream, type SelectedNodeData } from "@/components/thinking";
+import type { StreamWarning } from "@/lib/hooks/use-thinking-stream";
 
 interface BottomPanelProps {
   thinking: string;
@@ -18,6 +19,18 @@ interface BottomPanelProps {
   compactionSummary?: string | null;
   elapsedMs?: number;
   isMobile?: boolean;
+  /** Selected graph node data for historical reasoning display */
+  selectedNodeData?: SelectedNodeData | null;
+  /** Callback to dismiss the selected node view */
+  onClearSelection?: () => void;
+  /** Model's final response from the completed stream */
+  response?: string | null;
+  /** Node ID of the persisted thinking node */
+  streamNodeId?: string | null;
+  /** Whether the stream result was degraded */
+  degraded?: boolean;
+  /** Recoverable warnings emitted during the stream */
+  warnings?: StreamWarning[];
 }
 
 export function BottomPanel({
@@ -34,6 +47,12 @@ export function BottomPanel({
   compactionSummary,
   elapsedMs,
   isMobile,
+  selectedNodeData,
+  onClearSelection,
+  response,
+  streamNodeId,
+  degraded,
+  warnings,
 }: BottomPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -53,6 +72,12 @@ export function BottomPanel({
           compactionCount={compactionCount}
           compactionSummary={compactionSummary}
           elapsedMs={elapsedMs}
+          selectedNodeData={selectedNodeData}
+          onClearSelection={onClearSelection}
+          response={response}
+          streamNodeId={streamNodeId}
+          degraded={degraded}
+          warnings={warnings}
           isMobile
         />
       </div>
@@ -82,6 +107,12 @@ export function BottomPanel({
         elapsedMs={elapsedMs}
         isExpanded={isExpanded}
         onToggleExpand={() => setIsExpanded(!isExpanded)}
+        selectedNodeData={selectedNodeData}
+        onClearSelection={onClearSelection}
+        response={response}
+        streamNodeId={streamNodeId}
+        degraded={degraded}
+        warnings={warnings}
       />
     </div>
   );

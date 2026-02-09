@@ -197,6 +197,8 @@ export interface ForkBranch {
   keyInsights: string[];
   risks?: string[];
   opportunities?: string[];
+  assumptions?: string[];
+  error?: string;
 }
 
 export interface ForkResponse {
@@ -211,6 +213,7 @@ export interface ForkResponse {
     topic: string;
     positions: Array<{ style: string; position: string; confidence: number }>;
     significance: "high" | "medium" | "low";
+    recommendation?: string;
   }>;
   metaInsight: string;
   recommendedApproach?: {
@@ -220,6 +223,7 @@ export interface ForkResponse {
   };
   appliedGuidance?: BranchGuidance[];
   fallbackPromptsUsed?: string[];
+  analysisId?: string;
 }
 
 export async function runForkAnalysis(
@@ -228,6 +232,53 @@ export async function runForkAnalysis(
   return fetchApi<ForkResponse>("/api/fork", {
     method: "POST",
     body: JSON.stringify(request),
+  });
+}
+
+// ============================================================
+// Debate API
+// ============================================================
+
+export interface DebateRound {
+  style: string;
+  round: number;
+  response: string;
+  confidence: number;
+  positionChanged: boolean;
+  keyCounterpoints: string[];
+  concessions: string[];
+}
+
+export interface DebateResponse {
+  initialFork: ForkResponse;
+  rounds: DebateRound[];
+  finalPositions: Array<{
+    style: string;
+    conclusion: string;
+    confidence: number;
+    changedFromInitial: boolean;
+  }>;
+  consensus?: string;
+  consensusConfidence?: number;
+  totalRounds: number;
+  totalTokensUsed: number;
+  totalDurationMs: number;
+  analysisId?: string;
+}
+
+export async function runDebateAnalysis(request: {
+  query: string;
+  sessionId?: string;
+  styles?: string[];
+  effort?: "low" | "medium" | "high" | "max";
+  debateRounds?: number;
+}): Promise<ApiResponse<DebateResponse>> {
+  return fetchApi<DebateResponse>("/api/fork", {
+    method: "POST",
+    body: JSON.stringify({
+      ...request,
+      mode: "debate",
+    }),
   });
 }
 
@@ -255,12 +306,32 @@ export interface SteeringResult {
 
 export async function steerForkAnalysis(
   originalResult: ForkResponse,
-  action: SteeringAction
+  action: SteeringAction,
+  analysisId?: string
 ): Promise<ApiResponse<SteeringResult>> {
   return fetchApi<SteeringResult>("/api/fork/steer", {
     method: "POST",
-    body: JSON.stringify({ originalResult, action }),
+    body: JSON.stringify({ originalResult, action, analysisId }),
   });
+}
+
+// ============================================================
+// Saved Fork Analyses API
+// ============================================================
+
+export interface SavedForkAnalysis {
+  id: string;
+  query: string;
+  mode: "fork" | "debate";
+  result: ForkResponse | DebateResponse;
+  steeringHistory: SteeringResult[];
+  createdAt: string;
+}
+
+export async function getSessionForkAnalyses(
+  sessionId: string
+): Promise<ApiResponse<{ analyses: SavedForkAnalysis[] }>> {
+  return fetchApi<{ analyses: SavedForkAnalysis[] }>(`/api/fork?sessionId=${sessionId}`);
 }
 
 // ============================================================
@@ -270,6 +341,7 @@ export async function steerForkAnalysis(
 export interface Insight {
   id: string;
   sessionId: string | null;
+  thinkingNodesAnalyzed: string[];
   insightType: "bias_detection" | "pattern" | "improvement_hypothesis";
   insight: string;
   evidence: Array<{
@@ -278,6 +350,7 @@ export interface Insight {
     relevance: number;
   }>;
   confidence: number;
+  metadata: Record<string, unknown>;
   createdAt: string;
 }
 
@@ -290,13 +363,48 @@ export async function getSessionInsights(
 /**
  * Trigger metacognitive analysis for a session
  */
+export interface InsightsAnalysisResult {
+  insights: Insight[];
+  nodesAnalyzed: number;
+  summary: string | null;
+  errors: string[];
+  hallucinationCount: number;
+  invalidNodeRefs: string[];
+}
+
 export async function runInsightsAnalysis(
-  sessionId: string
-): Promise<ApiResponse<Insight[]>> {
-  return fetchApi<Insight[]>("/api/insights", {
+  sessionId: string,
+  options?: {
+    nodeLimit?: number;
+    focusAreas?: string[];
+  }
+): Promise<ApiResponse<InsightsAnalysisResult>> {
+  return fetchApi<InsightsAnalysisResult>("/api/insights", {
     method: "POST",
-    body: JSON.stringify({ sessionId }),
+    body: JSON.stringify({ sessionId, ...options }),
   });
+}
+
+export async function searchInsights(
+  query: string,
+  sessionId?: string
+): Promise<ApiResponse<Insight[]>> {
+  const params = new URLSearchParams({ q: query });
+  if (sessionId) params.set("sessionId", sessionId);
+  return fetchApi<Insight[]>(`/api/insights/search?${params}`);
+}
+
+export interface InsightStats {
+  total: number;
+  byType: Record<string, number>;
+  averageConfidence: number;
+}
+
+export async function getInsightStats(
+  sessionId?: string
+): Promise<ApiResponse<InsightStats>> {
+  const params = sessionId ? `?sessionId=${sessionId}` : "";
+  return fetchApi<InsightStats>(`/api/insights/stats${params}`);
 }
 
 // ============================================================
@@ -308,6 +416,8 @@ export interface ThinkingNode {
   sessionId: string;
   parentNodeId: string | null;
   reasoning: string;
+  /** Model's final output/response (the conclusion after thinking) */
+  response: string | null;
   structuredReasoning: Record<string, unknown>;
   confidenceScore: number | null;
   tokenUsage: Record<string, unknown>;
@@ -379,4 +489,100 @@ export async function createCheckpoint(
     method: "POST",
     body: JSON.stringify(request),
   });
+}
+
+// ============================================================
+// Reasoning Detail API
+// ============================================================
+
+export interface ReasoningStep {
+  stepNumber: number;
+  content: string;
+  type?: "analysis" | "hypothesis" | "evaluation" | "conclusion" | "consideration";
+}
+
+export interface DecisionPointDetail {
+  id: string;
+  thinkingNodeId: string;
+  stepNumber: number;
+  description: string;
+  chosenPath: string;
+  alternatives: Array<{ path: string; reasonRejected: string }>;
+  confidence?: number;
+  reasoningExcerpt?: string;
+  createdAt: string;
+}
+
+export interface ReasoningDetailResponse {
+  node: {
+    id: string;
+    sessionId: string;
+    parentNodeId: string | null;
+    reasoning: string;
+    response: string | null;
+    structuredReasoning: {
+      steps: ReasoningStep[];
+      decisionPoints: Array<{
+        stepNumber: number;
+        description: string;
+        chosenPath: string;
+        alternatives: Array<{ path: string; reasonRejected: string }>;
+        confidence?: number;
+        reasoningExcerpt?: string;
+      }>;
+      mainConclusion?: string;
+      confidenceFactors?: string[];
+      alternativesConsidered: number;
+    };
+    confidenceScore: number | null;
+    tokenUsage: { inputTokens?: number; outputTokens?: number; thinkingTokens?: number };
+    inputQuery: string | null;
+    nodeType?: string;
+    createdAt: string;
+  };
+  decisionPoints: DecisionPointDetail[];
+  related: {
+    incomingEdges: Array<{
+      id: string;
+      sourceId: string;
+      targetId: string;
+      edgeType: string;
+      weight: number;
+      createdAt: string;
+    }>;
+    outgoingEdges: Array<{
+      id: string;
+      sourceId: string;
+      targetId: string;
+      edgeType: string;
+      weight: number;
+      createdAt: string;
+    }>;
+  };
+}
+
+export async function getReasoningDetail(
+  nodeId: string
+): Promise<ApiResponse<ReasoningDetailResponse>> {
+  return fetchApi<ReasoningDetailResponse>(`/api/reasoning/${nodeId}`);
+}
+
+// ============================================================
+// Reasoning Search API
+// ============================================================
+
+export interface ReasoningSearchResult {
+  nodeId: string;
+  reasoning: string;
+  confidenceScore: number | null;
+  rank: number;
+}
+
+export async function searchReasoning(
+  sessionId: string,
+  query: string
+): Promise<ApiResponse<{ results: ReasoningSearchResult[] }>> {
+  return fetchApi<{ results: ReasoningSearchResult[] }>(
+    `/api/reasoning/search?sessionId=${encodeURIComponent(sessionId)}&q=${encodeURIComponent(query)}`
+  );
 }

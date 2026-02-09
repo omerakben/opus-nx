@@ -211,4 +211,111 @@ The best approach is to implement JWT with short expiration times to mitigate th
       expect(result.structuredReasoning.confidenceFactors.length).toBeGreaterThan(0);
     });
   });
+
+  // ============================================================
+  // Medium Confidence Scoring
+  // ============================================================
+
+  describe("medium confidence scoring", () => {
+    it("scores balanced reasoning with hedging between 0.4 and 0.7", () => {
+      const mediumThinking: ThinkingBlock[] = [
+        {
+          type: "thinking",
+          thinking: `This is a reasonable approach and could work well. There are some potential issues to consider, but overall it seems like a viable solution. I think it's worth trying, though we should monitor the results carefully.`,
+          signature: "test-sig-mc",
+        },
+      ];
+      const result = thinkGraph.parseThinkingToNode(mediumThinking);
+      expect(result.confidenceScore).not.toBeNull();
+      expect(result.confidenceScore!).toBeGreaterThanOrEqual(0.3);
+      expect(result.confidenceScore!).toBeLessThanOrEqual(0.8);
+    });
+
+    it("scores text with both confident and uncertain language as moderate", () => {
+      const mixedThinking: ThinkingBlock[] = [
+        {
+          type: "thinking",
+          thinking: `I'm fairly certain this will work based on the evidence. However, there are some uncertainties. The data strongly suggests this path, but I'm not entirely sure about edge cases. On balance, this seems right.`,
+          signature: "test-sig-mixed",
+        },
+      ];
+      const result = thinkGraph.parseThinkingToNode(mixedThinking);
+      expect(result.confidenceScore).not.toBeNull();
+      // Mixed signals should land in the middle range
+      expect(result.confidenceScore!).toBeGreaterThanOrEqual(0.3);
+      expect(result.confidenceScore!).toBeLessThanOrEqual(0.85);
+    });
+  });
+
+  // ============================================================
+  // Opus 4.6 Summarized Thinking Patterns
+  // ============================================================
+
+  describe("Opus 4.6 reasoning patterns", () => {
+    it("extracts decision points from summarized thinking format", () => {
+      const opus46Thinking: ThinkingBlock[] = [
+        {
+          type: "thinking",
+          thinking: `I need to decide between two architectures.
+
+Option A: Microservices - would allow independent scaling and deployment. The main benefit is team autonomy.
+
+Option B: Monolith - simpler to build and deploy initially. Better for small teams.
+
+After careful consideration, I'll go with the monolith because the team is small and simplicity matters more at this stage. The microservices approach was rejected because it would add unnecessary infrastructure complexity for a 3-person team.
+
+I'm fairly confident this is the right call for the current stage of the project.`,
+          signature: "test-sig-opus46",
+        },
+      ];
+
+      const result = thinkGraph.parseThinkingToNode(opus46Thinking);
+      expect(result.decisionPoints.length).toBeGreaterThan(0);
+      expect(result.structuredReasoning.alternativesConsidered).toBeGreaterThan(0);
+    });
+
+    it("handles multi-step reasoning with structured format", () => {
+      const structuredThinking: ThinkingBlock[] = [
+        {
+          type: "thinking",
+          thinking: `Let me work through this step by step.
+
+First, I need to understand the requirements. The system needs to handle 10k concurrent users with sub-100ms latency.
+
+Second, I should evaluate the caching strategy. Redis would give us the performance we need, but adds operational complexity.
+
+Third, let me consider the database choice. PostgreSQL with connection pooling should handle the load. I'm comparing this against DynamoDB which would scale more easily but has a steeper learning curve.
+
+My conclusion: Use PostgreSQL with Redis caching. This gives us the best balance of performance, familiarity, and operational simplicity. I'm confident in this recommendation because both technologies are well-proven for this scale.`,
+          signature: "test-sig-structured",
+        },
+      ];
+
+      const result = thinkGraph.parseThinkingToNode(structuredThinking);
+      expect(result.structuredReasoning.steps.length).toBeGreaterThan(2);
+      expect(result.structuredReasoning.mainConclusion).toBeTruthy();
+      expect(result.confidenceScore).not.toBeNull();
+      expect(result.confidenceScore!).toBeGreaterThanOrEqual(0.6);
+    });
+
+    it("extracts conclusion from 'therefore' / 'in conclusion' patterns", () => {
+      const conclusionThinking: ThinkingBlock[] = [
+        {
+          type: "thinking",
+          thinking: `Analyzing the tradeoffs between REST and GraphQL for this API.
+
+REST is simpler and more widely understood. It works well for CRUD operations.
+
+GraphQL offers more flexibility for clients and reduces over-fetching. However, it introduces complexity in caching and error handling.
+
+Therefore, I recommend REST for this project because the data model is simple and we don't have complex nested queries. The team's familiarity with REST is also a significant factor.`,
+          signature: "test-sig-conclusion",
+        },
+      ];
+
+      const result = thinkGraph.parseThinkingToNode(conclusionThinking);
+      expect(result.structuredReasoning.mainConclusion).toBeTruthy();
+      expect(result.structuredReasoning.mainConclusion!.toLowerCase()).toContain("rest");
+    });
+  });
 });

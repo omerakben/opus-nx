@@ -4,8 +4,10 @@ import { useRef, useEffect, useState } from "react";
 import { cn, formatNumber } from "@/lib/utils";
 import { TokenCounter } from "./TokenCounter";
 import { ThinkingInput } from "./ThinkingInput";
+import { ReasoningDetail, ModelOutput } from "./ReasoningDetail";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui";
 import {
+  AlertTriangle,
   Brain,
   Square,
   ChevronUp,
@@ -19,6 +21,24 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui";
+import type { StreamWarning } from "@/lib/hooks/use-thinking-stream";
+
+/** Data from a selected graph node for historical reasoning display */
+export interface SelectedNodeData {
+  id: string;
+  reasoning: string;
+  /** Model's final output/response */
+  response: string | null;
+  confidence: number;
+  tokenUsage: {
+    inputTokens: number;
+    outputTokens: number;
+    thinkingTokens: number;
+  };
+  inputQuery: string | null;
+  createdAt: Date;
+  nodeType?: string;
+}
 
 type ThinkingPhase = "analyzing" | "reasoning" | "deciding" | "concluding" | "compacting" | null;
 
@@ -49,6 +69,18 @@ interface ThinkingStreamProps {
   /** Controlled expand/collapse from parent */
   isExpanded?: boolean;
   onToggleExpand?: () => void;
+  /** Historical node reasoning to display when a graph node is clicked */
+  selectedNodeData?: SelectedNodeData | null;
+  /** Callback to dismiss the selected node view */
+  onClearSelection?: () => void;
+  /** Model's final response from the completed stream */
+  response?: string | null;
+  /** Node ID of the persisted thinking node from the completed stream */
+  streamNodeId?: string | null;
+  /** Whether the stream result was degraded (persistence issues) */
+  degraded?: boolean;
+  /** Recoverable warnings emitted during the stream */
+  warnings?: StreamWarning[];
 }
 
 function formatElapsed(ms: number): string {
@@ -75,6 +107,12 @@ export function ThinkingStream({
   isMobile,
   isExpanded = false,
   onToggleExpand,
+  selectedNodeData,
+  onClearSelection,
+  response,
+  streamNodeId,
+  degraded = false,
+  warnings = [],
 }: ThinkingStreamProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [effort, setEffort] = useState<string>("high");
@@ -92,6 +130,9 @@ export function ThinkingStream({
     }
   };
 
+  // Determine display mode: streaming takes priority, then selected node, then last stream
+  const isViewingNode = !isStreaming && !!selectedNodeData;
+
   const phaseConfig = phase ? PHASE_CONFIG[phase] : null;
   const PhaseIcon = phaseConfig?.icon ?? Brain;
 
@@ -99,10 +140,23 @@ export function ThinkingStream({
     <Card className={cn("h-full flex flex-col", isMobile && "rounded-none border-0")}>
       <CardHeader className={cn(
         "flex-row items-center justify-between py-2 px-4 border-b border-[var(--border)]",
-        isMobile && "px-3"
+        isMobile && "px-3",
+        isViewingNode && "border-b-violet-500/30"
       )}>
         <div className="flex items-center gap-2">
-          {isStreaming && phaseConfig ? (
+          {isViewingNode ? (
+            <div className="flex items-center gap-1.5 text-violet-400">
+              <Database className="w-4 h-4" />
+              <CardTitle className="text-sm font-medium text-violet-400">
+                Saved Reasoning
+              </CardTitle>
+              <span className="text-[10px] text-[var(--muted-foreground)] ml-1">
+                {selectedNodeData.inputQuery
+                  ? `"${selectedNodeData.inputQuery.length > 40 ? selectedNodeData.inputQuery.slice(0, 40) + "..." : selectedNodeData.inputQuery}"`
+                  : "Node " + selectedNodeData.id.slice(0, 8)}
+              </span>
+            </div>
+          ) : isStreaming && phaseConfig ? (
             <div className={cn("flex items-center gap-1.5", phaseConfig.color)}>
               <PhaseIcon className="w-4 h-4 animate-pulse" />
               <span className="text-xs font-medium">{phaseConfig.label}</span>
@@ -132,51 +186,75 @@ export function ThinkingStream({
           )}
         </div>
         <div className="flex items-center gap-1.5">
-          <TokenCounter count={tokenCount} isStreaming={isStreaming} />
-          {/* Effort selector — segmented control */}
-          {!isStreaming && (
-            <div className="relative flex items-center rounded-lg border border-[var(--border)] bg-[var(--muted)]/40 p-0.5 overflow-hidden">
-              {/* Sliding indicator */}
-              <div
-                className="absolute top-0.5 bottom-0.5 rounded-md bg-[var(--card)] shadow-sm border border-[var(--border)] transition-transform duration-200 ease-out"
-                style={{
-                  width: `${100 / EFFORT_LEVELS.length}%`,
-                  transform: `translateX(${EFFORT_LEVELS.indexOf(effort as typeof EFFORT_LEVELS[number]) * 100}%)`,
-                }}
-              />
-              {EFFORT_LEVELS.map((e) => (
-                <button
-                  key={e}
-                  onClick={() => setEffort(e)}
-                  className={cn(
-                    "relative z-10 px-2 py-0.5 text-[11px] font-medium rounded-md transition-colors cursor-pointer",
-                    isMobile && "px-2.5 py-1 text-xs",
-                    effort === e
-                      ? "text-[var(--foreground)]"
-                      : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                  )}
-                  title={`${e} effort thinking${e === "max" ? " (Opus 4.6 exclusive)" : ""}`}
-                >
-                  {e === "max" ? (
-                    <span className="flex items-center gap-0.5">
-                      <Sparkles className="w-2.5 h-2.5" />
-                      max
-                    </span>
-                  ) : e}
-                </button>
-              ))}
-            </div>
-          )}
-          {isStreaming && (
-            <Button variant="outline" size="sm" onClick={onStop} className={cn("h-6 px-2 text-xs", isMobile && "h-8 px-3")}>
-              <Square className="w-3 h-3 mr-1" />
-              Stop
-            </Button>
-          )}
-          {thinking && !isStreaming && (
-            <Button variant="ghost" size="sm" onClick={onClear} className="h-6 px-2 text-[10px] text-[var(--muted-foreground)]">
-              Clear
-            </Button>
+          {isViewingNode ? (
+            <>
+              <TokenCounter count={selectedNodeData.tokenUsage.thinkingTokens} isStreaming={false} />
+              <span className={cn(
+                "text-[10px] font-semibold px-1.5 py-0.5 rounded-full",
+                selectedNodeData.confidence >= 0.8 ? "bg-green-500/10 text-green-400"
+                  : selectedNodeData.confidence >= 0.5 ? "bg-amber-500/10 text-amber-400"
+                  : "bg-red-500/10 text-red-400"
+              )}>
+                {Math.round(selectedNodeData.confidence * 100)}%
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onClearSelection}
+                className="h-6 px-2 text-[10px] text-violet-400 hover:text-violet-300"
+              >
+                Dismiss
+              </Button>
+            </>
+          ) : (
+            <>
+              <TokenCounter count={tokenCount} isStreaming={isStreaming} />
+              {/* Effort selector — segmented control */}
+              {!isStreaming && (
+                <div className="relative flex items-center rounded-lg border border-[var(--border)] bg-[var(--muted)]/40 p-0.5 overflow-hidden">
+                  {/* Sliding indicator */}
+                  <div
+                    className="absolute top-0.5 bottom-0.5 rounded-md bg-[var(--card)] shadow-sm border border-[var(--border)] transition-transform duration-200 ease-out"
+                    style={{
+                      width: `${100 / EFFORT_LEVELS.length}%`,
+                      transform: `translateX(${EFFORT_LEVELS.indexOf(effort as typeof EFFORT_LEVELS[number]) * 100}%)`,
+                    }}
+                  />
+                  {EFFORT_LEVELS.map((e) => (
+                    <button
+                      key={e}
+                      onClick={() => setEffort(e)}
+                      className={cn(
+                        "relative z-10 px-2 py-0.5 text-[11px] font-medium rounded-md transition-colors cursor-pointer",
+                        isMobile && "px-2.5 py-1 text-xs",
+                        effort === e
+                          ? "text-[var(--foreground)]"
+                          : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                      )}
+                      title={`${e} effort thinking${e === "max" ? " (Opus 4.6 exclusive)" : ""}`}
+                    >
+                      {e === "max" ? (
+                        <span className="flex items-center gap-0.5">
+                          <Sparkles className="w-2.5 h-2.5" />
+                          max
+                        </span>
+                      ) : e}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {isStreaming && (
+                <Button variant="outline" size="sm" onClick={onStop} className={cn("h-6 px-2 text-xs", isMobile && "h-8 px-3")}>
+                  <Square className="w-3 h-3 mr-1" />
+                  Stop
+                </Button>
+              )}
+              {thinking && !isStreaming && (
+                <Button variant="ghost" size="sm" onClick={onClear} className="h-6 px-2 text-[10px] text-[var(--muted-foreground)]">
+                  Clear
+                </Button>
+              )}
+            </>
           )}
           {!isMobile && onToggleExpand && (
             <button
@@ -243,23 +321,55 @@ export function ThinkingStream({
           </div>
         )}
 
-        {/* Stream display */}
+        {/* Warning / degradation banner */}
+        {!isStreaming && (degraded || warnings.length > 0) && (
+          <div className="px-4 py-1.5 bg-amber-500/10 border-b border-amber-500/20 flex items-start gap-2">
+            <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0 mt-0.5" />
+            <div className="text-[11px] text-amber-400 space-y-0.5">
+              {degraded && (
+                <p>Result degraded — some data may not have persisted correctly.</p>
+              )}
+              {warnings.map((w, i) => (
+                <p key={i}>{w.message}</p>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Stream display OR historical node reasoning */}
         <div
           ref={containerRef}
           className={cn(
-            "flex-1 overflow-y-auto p-4 font-mono text-sm leading-relaxed bg-[var(--background)] border-l-2 border-amber-500/30",
-            isMobile && "text-xs p-3"
+            "flex-1 overflow-y-auto bg-[var(--background)]",
+            !isViewingNode && "p-4 font-mono text-sm leading-relaxed",
+            isViewingNode ? "border-l-2 border-violet-500/30" : "border-l-2 border-amber-500/30",
+            isMobile && !isViewingNode && "text-xs p-3"
           )}
         >
-          {error ? (
+          {isViewingNode ? (
+            <ReasoningDetail
+              nodeId={selectedNodeData.id}
+              fallbackReasoning={selectedNodeData.reasoning}
+              fallbackResponse={selectedNodeData.response}
+            />
+          ) : error ? (
             <div className="text-red-400">Error: {error}</div>
           ) : thinking ? (
-            <div className="text-[var(--foreground)] whitespace-pre-wrap leading-relaxed">
-              {thinking}
-              {isStreaming && (
-                <span className="inline-block w-1.5 h-4 bg-amber-400 animate-pulse ml-0.5 rounded-sm" />
+            <>
+              <div className="text-[var(--foreground)] whitespace-pre-wrap leading-relaxed">
+                {thinking}
+                {isStreaming && (
+                  <span className="inline-block w-1.5 h-4 bg-amber-400 animate-pulse ml-0.5 rounded-sm" />
+                )}
+              </div>
+
+              {/* Model response after stream completes */}
+              {!isStreaming && response && (
+                <div className="mt-4 border-t border-violet-500/20 pt-4">
+                  <ModelOutput content={response} />
+                </div>
               )}
-            </div>
+            </>
           ) : (
             <div className="text-[var(--muted-foreground)] italic flex flex-col items-center justify-center h-full gap-2">
               {sessionId ? (
@@ -277,8 +387,34 @@ export function ThinkingStream({
           )}
         </div>
 
-        {/* Stats bar when complete */}
-        {thinking && !isStreaming && (
+        {/* Stats bar: historical node view */}
+        {isViewingNode && (
+          <div className="px-4 py-1.5 border-t border-[var(--border)] flex items-center gap-3 text-[10px] text-[var(--muted-foreground)] bg-[var(--card)]">
+            <span className="flex items-center gap-1">
+              <Gauge className="w-3 h-3" />
+              {formatNumber(selectedNodeData.tokenUsage.thinkingTokens)} thinking tokens
+            </span>
+            <span className="flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {selectedNodeData.createdAt instanceof Date
+                ? selectedNodeData.createdAt.toLocaleString()
+                : new Date(selectedNodeData.createdAt).toLocaleString()}
+            </span>
+            {selectedNodeData.nodeType && selectedNodeData.nodeType !== "thinking" && (
+              <span className="flex items-center gap-1 text-violet-400">
+                <Database className="w-3 h-3" />
+                {selectedNodeData.nodeType}
+              </span>
+            )}
+            <span className="ml-auto text-violet-400 flex items-center gap-1">
+              <Database className="w-3 h-3" />
+              Persisted
+            </span>
+          </div>
+        )}
+
+        {/* Stats bar when stream complete (only shown when NOT viewing a node) */}
+        {!isViewingNode && thinking && !isStreaming && (
           <div className="px-4 py-1.5 border-t border-[var(--border)] flex items-center gap-3 text-[10px] text-[var(--muted-foreground)] bg-[var(--card)]">
             <span className="flex items-center gap-1">
               <Gauge className="w-3 h-3" />
@@ -292,6 +428,12 @@ export function ThinkingStream({
               <span className="flex items-center gap-1 text-amber-400">
                 <Database className="w-3 h-3" />
                 {compactionCount} compaction{compactionCount > 1 ? "s" : ""}
+              </span>
+            )}
+            {streamNodeId && (
+              <span className="flex items-center gap-1 text-violet-400">
+                <Database className="w-3 h-3" />
+                Persisted
               </span>
             )}
             <span className="ml-auto text-green-400 flex items-center gap-1">

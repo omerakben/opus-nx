@@ -146,6 +146,8 @@ export const MetacognitionResultSchema = z.object({
   analysisTokensUsed: z.number().optional(),
   summary: z.string().optional(),
   errors: z.array(z.string()).optional(),
+  invalidNodeRefs: z.array(z.string()).optional(),
+  hallucinationCount: z.number().optional(),
 });
 
 export type MetacognitionResult = z.infer<typeof MetacognitionResultSchema>;

@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ReactFlow,
   Background,
   BackgroundVariant,
   MiniMap,
+  useReactFlow,
   type NodeMouseHandler,
   type OnNodesChange,
   type OnEdgesChange,
@@ -27,6 +28,21 @@ const nodeTypes = {
   streaming: StreamingNode,
 };
 
+function FitViewHelper({ selectedNodeId }: { selectedNodeId?: string }) {
+  const { fitView } = useReactFlow();
+
+  useEffect(() => {
+    if (selectedNodeId) {
+      const timeout = setTimeout(() => {
+        fitView({ nodes: [{ id: selectedNodeId }], duration: 300, padding: 0.5 });
+      }, 100);
+      return () => clearTimeout(timeout);
+    }
+  }, [selectedNodeId, fitView]);
+
+  return null;
+}
+
 interface ThinkingGraphProps {
   nodes: GraphNode[];
   edges: GraphEdge[];
@@ -36,6 +52,8 @@ interface ThinkingGraphProps {
   isLoading?: boolean;
   isMobile?: boolean;
   onSeedDemo?: () => void;
+  onBranchCreated?: () => void;
+  selectedNodeId?: string;
 }
 
 export function ThinkingGraph({
@@ -47,7 +65,72 @@ export function ThinkingGraph({
   isLoading,
   isMobile,
   onSeedDemo,
+  onBranchCreated,
+  selectedNodeId,
 }: ThinkingGraphProps) {
+  // Edge filter and confidence filter state
+  const [activeEdgeTypes, setActiveEdgeTypes] = useState<Set<string>>(
+    new Set(["influences", "contradicts", "supports", "supersedes", "refines"])
+  );
+  const [confidenceThreshold, setConfidenceThreshold] = useState(0);
+
+  const handleEdgeFilterChange = useCallback((edgeType: string) => {
+    setActiveEdgeTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(edgeType)) {
+        next.delete(edgeType);
+      } else {
+        next.add(edgeType);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleConfidenceFilterChange = useCallback((value: number) => {
+    setConfidenceThreshold(value);
+  }, []);
+
+  // Filter nodes by confidence
+  const filteredNodes = useMemo(() => {
+    const threshold = confidenceThreshold / 100;
+    if (threshold <= 0) return nodes;
+    return nodes.map((node) => {
+      const confidence = (node.data as { confidence?: number })?.confidence ?? 1;
+      return {
+        ...node,
+        hidden: confidence < threshold,
+      };
+    });
+  }, [nodes, confidenceThreshold]);
+
+  // Filter edges by type and hide edges to/from hidden nodes
+  const filteredEdges = useMemo(() => {
+    const hiddenNodeIds = new Set(
+      filteredNodes.filter((n) => n.hidden).map((n) => n.id)
+    );
+    return edges.map((edge) => {
+      const edgeType = (edge.data as { edgeType?: string })?.edgeType ?? edge.type ?? "influences";
+      const typeHidden = !activeEdgeTypes.has(edgeType);
+      const nodeHidden = hiddenNodeIds.has(edge.source) || hiddenNodeIds.has(edge.target);
+      return {
+        ...edge,
+        hidden: typeHidden || nodeHidden,
+      };
+    });
+  }, [edges, activeEdgeTypes, filteredNodes]);
+
+  // Inject onBranchCreated callback into each node's data
+  const nodesWithCallbacks = useMemo(() => {
+    if (!onBranchCreated) return filteredNodes;
+    return filteredNodes.map((node) => ({
+      ...node,
+      data: {
+        ...node.data,
+        onBranchCreated,
+      },
+    }));
+  }, [filteredNodes, onBranchCreated]);
+
   // Handle node click
   const handleNodeClick: NodeMouseHandler<GraphNode> = useCallback(
     (_event, node) => {
@@ -137,8 +220,8 @@ export function ThinkingGraph({
 
   return (
     <ReactFlow
-      nodes={nodes}
-      edges={edges}
+      nodes={nodesWithCallbacks}
+      edges={filteredEdges}
       nodeTypes={nodeTypes}
       edgeTypes={edgeTypes}
       onNodesChange={onNodesChange}
@@ -168,8 +251,14 @@ export function ThinkingGraph({
           zoomable
         />
       )}
-      <GraphControls />
+      <GraphControls
+        activeEdgeTypes={activeEdgeTypes}
+        onEdgeFilterChange={handleEdgeFilterChange}
+        confidenceThreshold={confidenceThreshold}
+        onConfidenceFilterChange={handleConfidenceFilterChange}
+      />
       {!isMobile && <GraphLegend />}
+      {selectedNodeId && <FitViewHelper selectedNodeId={selectedNodeId} />}
     </ReactFlow>
   );
 }

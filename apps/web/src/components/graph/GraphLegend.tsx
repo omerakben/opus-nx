@@ -43,10 +43,7 @@ export function GraphLegend() {
         className="flex items-center gap-1.5 p-2 rounded-lg border border-[var(--border)] bg-[var(--card)]/90 backdrop-blur-sm shadow-sm hover:bg-[var(--muted)] transition-colors"
       >
         <span className="text-xs font-medium text-[var(--muted-foreground)]">
-          Edges
-        </span>
-        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--muted)]/50 text-[var(--muted-foreground)]">
-          {edgeTypes.length}
+          Legend
         </span>
         {isCollapsed ? (
           <ChevronDown className="w-3 h-3 text-[var(--muted-foreground)]" />
@@ -57,9 +54,10 @@ export function GraphLegend() {
       <div
         id="graph-legend-content"
         className="overflow-hidden transition-all duration-200"
-        style={{ maxHeight: isCollapsed ? 0 : 200, opacity: isCollapsed ? 0 : 1 }}
+        style={{ maxHeight: isCollapsed ? 0 : 400, opacity: isCollapsed ? 0 : 1 }}
       >
         <div className="mt-1 p-2.5 rounded-lg border border-[var(--border)] bg-[var(--card)]/90 backdrop-blur-sm shadow-sm">
+          <div className="text-[10px] font-medium text-[var(--muted-foreground)] mb-1.5">Edge Types</div>
           <div className="space-y-1.5">
             {edgeTypes.map((type) => (
               <div key={type} className="flex items-center gap-2">
@@ -69,6 +67,32 @@ export function GraphLegend() {
                 </span>
               </div>
             ))}
+          </div>
+
+          {/* Node Types Section */}
+          <div className="mt-2 pt-2 border-t border-[var(--border)]">
+            <div className="text-[10px] font-medium text-[var(--muted-foreground)] mb-1.5">Node Types</div>
+            <div className="space-y-1.5">
+              {[
+                { label: "Thinking", borderColor: "var(--border)", dashed: false },
+                { label: "Compaction", borderColor: "#f59e0b", dashed: true },
+                { label: "Human Note", borderColor: "#06b6d4", dashed: false },
+                { label: "Fork Branch", borderColor: "#8b5cf6", dashed: false },
+              ].map((node) => (
+                <div key={node.label} className="flex items-center gap-2">
+                  <div
+                    className="w-5 h-3.5 rounded-sm border-2 shrink-0"
+                    style={{
+                      borderColor: node.borderColor,
+                      borderStyle: node.dashed ? "dashed" : "solid",
+                    }}
+                  />
+                  <span className="text-[11px] text-[var(--foreground)]">
+                    {node.label}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

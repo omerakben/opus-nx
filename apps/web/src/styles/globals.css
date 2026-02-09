@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 :root {
   --background: #0a0a0a;
@@ -424,6 +425,71 @@ button:active:not(:disabled) {
 
 .animate-breathing {
   animation: breathing 2.5s ease-in-out infinite;
+}
+
+/* ============================================================
+   Insight Panel Enhancements
+   ============================================================ */
+
+/* Analysis metadata banner appear */
+@keyframes metadataBannerAppear {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 200px;
+  }
+}
+
+.insight-card[aria-expanded="true"] {
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.08);
+}
+
+/* Evidence navigation toast pulse */
+@keyframes evidenceToastPulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+/* Focus area panel slide-in */
+@keyframes focusPanelSlide {
+  from {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 200px;
+  }
+}
+
+/* Insight search input amber glow on focus */
+.insight-search:focus {
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.3), 0 0 12px rgba(245, 158, 11, 0.1);
+}
+
+/* Confidence slider custom track styling */
+input[type="range"].accent-amber-500::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+input[type="range"].accent-amber-500::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #f59e0b;
+  margin-top: -5px;
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.3);
 }
 
 /* Reduced motion guard */

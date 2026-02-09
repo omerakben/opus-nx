@@ -124,6 +124,8 @@ export interface PersistThinkingOptions {
   sessionId: string;
   parentNodeId?: string;
   inputQuery?: string;
+  /** Model's final output/response text (the conclusion after thinking) */
+  response?: string;
   thinkingBudget?: number;
   signature?: string;
   tokenUsage?: TokenUsage;
@@ -659,6 +661,7 @@ export class ThinkGraph {
       sessionId: validatedOptions.sessionId,
       parentNodeId: validatedOptions.parentNodeId,
       reasoning: parsed.reasoning,
+      response: validatedOptions.response,
       structuredReasoning: toDBStructuredReasoning(parsed.structuredReasoning),
       confidenceScore: parsed.confidenceScore !== null ? parsed.confidenceScore : undefined,
       thinkingBudget: validatedOptions.thinkingBudget,
