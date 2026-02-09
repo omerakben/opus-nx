@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Orchestrator, type OrchestratorOptions, type OrchestratorResult } from "./orchestrator.js";
 import type {
   OrchestratorConfig,
@@ -182,7 +182,7 @@ class TestableOrchestrator extends Orchestrator {
   }
 
   public testCheckBudgetWarning(): void {
-    return (this as any).checkBudgetWarning();
+    (this as any).checkBudgetWarning();
   }
 
   public testGetBudgetStatus(): OrchestratorResult["budgetStatus"] {

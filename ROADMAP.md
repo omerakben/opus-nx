@@ -944,7 +944,7 @@ Correct filenames for all core modules (some differ from original plan):
 | `metacognition.ts`          | `metacognition.ts`    | Hackathon | As planned                 |
 | `thinking-engine.ts`        | `thinking-engine.ts`  | Hackathon | As planned                 |
 | `orchestrator.ts`           | `orchestrator.ts`     | Hackathon | As planned                 |
-| `memory-manager.ts`         | `memory-manager.ts`   | Hackathon | As planned                 |
+| `memory-manager.ts`         | `memory-manager.ts`   | Future    | As planned                 |
 | `prm-verifier.ts`           | `prm-verifier.ts`     | Hackathon | New (not in original plan) |
 | `got-engine.ts`             | `got-engine.ts`       | Future    | New (not in original plan) |
 | `memory-hierarchy.ts`       | `memory-hierarchy.ts` | Future    | New (not in original plan) |

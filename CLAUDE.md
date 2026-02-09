@@ -188,10 +188,10 @@ export * from "./thinking-engine.js";  // Note the .js even for .ts files
 
 - `DEMO_MODE` -- Optional; set to `"true"` to enable demo data seeder (not in .env.example)
 
-**Future Scope**
+**Future Scope (graceful degradation when absent)**
 
-- `VOYAGE_API_KEY` -- [Future] Embeddings (voyage-3, 1024-dim) for Memory Manager
-- `TAVILY_API_KEY` -- [Future] Web search for Research Agent
+- `VOYAGE_API_KEY` -- Embeddings (voyage-3, 1024-dim) for Memory Manager; Orchestrator calls `buildContextString()` but degrades gracefully if unavailable
+- `TAVILY_API_KEY` -- Web search for Research Agent
 
 ## Research Foundation
 

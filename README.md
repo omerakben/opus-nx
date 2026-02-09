@@ -1,6 +1,6 @@
 # Opus Nx
 
-### AI reasoning you can see, steer, and verify.
+## AI reasoning you can see, steer, and verify.
 
 Opus Nx transforms Claude Opus 4.6's extended thinking from an invisible black box into **persistent, navigable reasoning graphs**. Explore how your AI thinks, fork it into competing perspectives, and verify every step -- all in real time.
 
@@ -115,7 +115,7 @@ The core wrapper around Claude Opus 4.6 that makes everything else possible. Sup
 
 ### Monorepo Structure
 
-```
+```text
 apps/web/              Next.js 16 dashboard (App Router, Turbopack)
 packages/
   core/                ThinkingEngine, ThinkGraph, ThinkFork, Metacognition,

@@ -28,7 +28,6 @@ These features are fully built, integrated into the dashboard, and represent the
 | **ThinkingEngine** (Opus 4.6 wrapper) | `thinking-engine.ts` | -- |
 | **Checkpoint System** | API route | -- |
 | **Dashboard UI** (37 components) | `apps/web/` | -- |
-| **Memory Manager** (embeddings + search) | `memory-manager.ts` | -- |
 
 ### Future Scope (Built, Not Primary Demo)
 
@@ -36,6 +35,7 @@ These modules are implemented and functional as core library code. Full dashboar
 
 | Feature | Module | Research Basis |
 | --- | --- | --- |
+| **Memory Manager** (embeddings + search) | `memory-manager.ts` | -- |
 | **Graph of Thoughts** (BFS/DFS/best-first) | `got-engine.ts` | [Graph of Thoughts](https://arxiv.org/abs/2308.09687) |
 | **Hierarchical Memory** (3-tier paging) | `memory-hierarchy.ts` | [MemGPT](https://arxiv.org/abs/2310.08560) |
 
