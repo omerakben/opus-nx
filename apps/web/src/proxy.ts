@@ -45,7 +45,7 @@ async function verifyAuthCookie(cookieValue: string): Promise<boolean> {
  * Checks for a signed `opus-nx-auth` cookie on every request.
  * Unauthenticated users are redirected to /login.
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow access to public routes without auth
