@@ -400,8 +400,8 @@ function DivergenceCard({
         {point.recommendation && (
           <div className="mt-2 pt-2 border-t border-[var(--border)]">
             <div className="flex items-start gap-1.5">
-              <Lightbulb className="w-3.5 h-3.5 text-amber-400/70 flex-shrink-0 mt-0.5" />
-              <p className="text-[10px] text-amber-400/70 leading-relaxed italic">
+              <Lightbulb className="w-3.5 h-3.5 text-violet-400 flex-shrink-0 mt-0.5" />
+              <p className="text-[10px] text-[var(--muted-foreground)] leading-relaxed italic">
                 AI suggests: {point.recommendation}
               </p>
             </div>

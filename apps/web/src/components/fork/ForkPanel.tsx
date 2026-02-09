@@ -42,7 +42,8 @@ import {
   Target,
   Zap,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { appEvents } from "@/lib/events";
 import { BranchCard } from "./BranchCard";
 import { Convergence } from "./Convergence";
 
@@ -116,44 +117,58 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
   // Dynamic suggestions derived from session's reasoning nodes
   const [dynamicSuggestions, setDynamicSuggestions] = useState<string[]>([]);
 
-  useEffect(() => {
-    if (!sessionId) {
-      setDynamicSuggestions([]);
-      return;
-    }
+  // Track previous sessionId to detect changes
+  const prevSessionIdRef = useRef(sessionId);
 
-    let cancelled = false;
+  const loadDynamicSuggestions = useCallback(async (sid: string) => {
+    try {
+      const response = await getSessionNodes(sid);
+      if (response.error || !response.data?.nodes?.length) return;
 
-    async function loadNodeSuggestions() {
-      try {
-        const response = await getSessionNodes(sessionId!);
-        if (cancelled || response.error || !response.data?.nodes?.length) return;
+      const queries = response.data.nodes
+        .filter((n) => n.inputQuery && n.nodeType !== "compaction" && n.inputQuery.length > 10)
+        .map((n) => n.inputQuery!)
+        .filter((q, i, arr) => arr.indexOf(q) === i)
+        .slice(0, 3);
 
-        // Extract unique inputQueries from thinking nodes (not compaction/fork nodes)
-        const queries = response.data.nodes
-          .filter((n) => n.inputQuery && n.nodeType !== "compaction" && n.inputQuery.length > 10)
-          .map((n) => n.inputQuery!)
-          .filter((q, i, arr) => arr.indexOf(q) === i) // dedupe
-          .slice(0, 3);
-
-        if (!cancelled && queries.length > 0) {
-          setDynamicSuggestions(queries);
-        }
-      } catch {
-        // Silent — suggestions are non-critical
+      if (queries.length > 0) {
+        setDynamicSuggestions(queries);
       }
+    } catch {
+      // Silent — suggestions are non-critical
+    }
+  }, []);
+
+  // Reset ALL local state when session changes, then load saved data
+  useEffect(() => {
+    const sessionChanged = prevSessionIdRef.current !== sessionId;
+    prevSessionIdRef.current = sessionId;
+
+    // Clear stale state from previous session
+    if (sessionChanged) {
+      setResult(null);
+      setDebateResult(null);
+      setSteeringHistory([]);
+      setExpandedSteeringIdx(0);
+      setAnalysisId(null);
+      setError(null);
+      setErrorTimestamp(null);
+      setQuery("");
+      setActiveBranch(null);
+      setExpandedDebateEntries(new Set());
+      setSelectedAssumptions({});
+      setDynamicSuggestions([]);
+      forkStream.clear();
     }
 
-    loadNodeSuggestions();
-    return () => { cancelled = true; };
-  }, [sessionId]);
-
-  // Load saved analysis when session changes
-  useEffect(() => {
     if (!sessionId) return;
 
     let cancelled = false;
 
+    // Load dynamic suggestions
+    loadDynamicSuggestions(sessionId);
+
+    // Load saved analyses
     async function loadSaved() {
       try {
         const response = await getSessionForkAnalyses(sessionId!);
@@ -177,7 +192,6 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
           setResult(latest.result as ForkResponse);
         }
 
-        // Restore steering history if any
         if (latest.steeringHistory.length > 0) {
           setSteeringHistory(
             (latest.steeringHistory as SteeringResult[]).slice().reverse()
@@ -194,6 +208,16 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
     loadSaved();
     return () => { cancelled = true; };
   }, [sessionId]);
+
+  // Subscribe to thinking:complete to refresh dynamic suggestions
+  useEffect(() => {
+    const unsub = appEvents.on("thinking:complete", (payload) => {
+      if (payload.sessionId === sessionId && sessionId) {
+        loadDynamicSuggestions(sessionId);
+      }
+    });
+    return unsub;
+  }, [sessionId, loadDynamicSuggestions]);
 
   // Sync streaming results to local state when done
   useEffect(() => {
@@ -1617,7 +1641,7 @@ const DEBATE_LOADING_MESSAGES = [
   "Checking for consensus...",
 ];
 
-function LoadingProgress({ mode }: { mode: "fork" | "debate" }) {
+function _LoadingProgress({ mode }: { mode: "fork" | "debate" }) {
   const [step, setStep] = useState(0);
   const messages = mode === "debate" ? DEBATE_LOADING_MESSAGES : FORK_LOADING_MESSAGES;
 

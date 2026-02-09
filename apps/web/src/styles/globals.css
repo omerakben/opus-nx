@@ -496,6 +496,39 @@ input[type="range"].accent-amber-500::-webkit-slider-thumb {
   box-shadow: 0 0 6px rgba(245, 158, 11, 0.3);
 }
 
+/* ============================================================
+   Thinking Input – Animated Brand Gradient Border
+   ============================================================ */
+
+@keyframes borderGlow {
+  0%, 100% {
+    background-position: 0% 50%;
+    filter: brightness(1);
+  }
+  50% {
+    background-position: 100% 50%;
+    filter: brightness(1.15);
+  }
+}
+
+.thinking-input-border {
+  background: linear-gradient(
+    90deg,
+    var(--brand-warm),
+    #D4845A,
+    var(--brand-cool),
+    #96C0D8,
+    var(--brand-warm)
+  );
+  background-size: 300% 100%;
+  animation: borderGlow 4s ease-in-out infinite;
+}
+
+.thinking-input-border:focus-within {
+  animation: borderGlow 2s ease-in-out infinite;
+  filter: brightness(1.1);
+}
+
 /* Reduced motion guard */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

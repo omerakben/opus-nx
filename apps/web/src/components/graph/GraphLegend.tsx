@@ -32,7 +32,7 @@ function EdgeMiniLine({ type }: { type: EdgeType }) {
 }
 
 export function GraphLegend() {
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
     <div className="absolute top-4 left-4 z-10" data-tour="graph-legend">

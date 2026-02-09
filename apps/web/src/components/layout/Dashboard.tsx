@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 
 import { Header } from "./Header";
@@ -12,6 +12,7 @@ import { ThinkingGraph } from "@/components/graph";
 import { DemoTour } from "@/components/tour/DemoTour";
 import { useSession, useThinkingStream, useGraph, useLiveGraph, useIsMobile, useTour, useSidebar, useRightSidebar } from "@/lib/hooks";
 import { getSessionInsights, type Insight } from "@/lib/api";
+import { appEvents } from "@/lib/events";
 import type { SelectedNodeData } from "@/components/thinking";
 
 export function Dashboard() {
@@ -165,15 +166,22 @@ export function Dashboard() {
     selectNode(null);
   }, [selectNode]);
 
-  // Handle session selection on mobile
+  // Handle session selection — clear stale state from previous session
   const handleSelectSession = useCallback(
     (sessionId: string) => {
+      const previousId = activeSession?.id ?? null;
       selectSession(sessionId);
+      selectNode(null); // Clear node selection (prevents stale right panel)
+      setInsights([]); // Clear insights until reloaded for new session
+
+      // Emit event so ForkPanel and others can reset
+      appEvents.emit("session:changed", { sessionId, previousSessionId: previousId });
+
       if (isMobile) {
         setMobileView("graph");
       }
     },
-    [selectSession, isMobile]
+    [selectSession, selectNode, activeSession?.id, isMobile]
   );
 
   // Seed demo data and refresh
@@ -182,22 +190,42 @@ export function Dashboard() {
       const res = await fetch("/api/seed", { method: "POST" });
       if (res.ok) {
         await refreshSessions();
-        refreshGraph();
+        await refreshGraph();
+        appEvents.emit("data:stale", { scope: "all" });
       }
     } catch (error) {
       console.error("Demo seed failed:", error);
     }
   }, [refreshSessions, refreshGraph]);
 
-  // Refresh graph when stream completes
+  // Refresh ALL data when stream completes (graph, sessions, insights)
+  const prevIsStreamingRef = useRef(isStreaming);
   useEffect(() => {
-    if (!isStreaming && thinking) {
-      const timeout = setTimeout(() => {
-        refreshGraph();
-      }, 1000);
+    const justFinished = prevIsStreamingRef.current && !isStreaming;
+    prevIsStreamingRef.current = isStreaming;
+
+    if (justFinished && activeSession?.id) {
+      const sessionId = activeSession.id;
+      const timeout = setTimeout(async () => {
+        // Refresh graph, sessions, and insights together
+        await Promise.all([
+          refreshGraph(),
+          refreshSessions(),
+        ]);
+
+        // Reload insights for the current session
+        const insightResponse = await getSessionInsights(sessionId);
+        if (insightResponse.data) {
+          setInsights(insightResponse.data);
+        }
+
+        // Notify other components (ForkPanel, etc.) that thinking completed
+        appEvents.emit("thinking:complete", { sessionId, nodeId: streamNodeId ?? undefined });
+        appEvents.emit("data:stale", { scope: "all", sessionId });
+      }, 800);
       return () => clearTimeout(timeout);
     }
-  }, [isStreaming, thinking, refreshGraph]);
+  }, [isStreaming, activeSession?.id, refreshGraph, refreshSessions, streamNodeId]);
 
   // Auto-start tour when graph has nodes loaded (e.g., after demo seed)
   const hasNodes = nodes.length > 0;
@@ -325,7 +353,7 @@ export function Dashboard() {
           activeSessionId={activeSession?.id ?? null}
           isLoading={isLoadingSession}
           nodes={nodes}
-          onSelectSession={selectSession}
+          onSelectSession={handleSelectSession}
           onCreateSession={createNewSession}
           onRefresh={refreshSessions}
           onArchiveSession={archiveSession}

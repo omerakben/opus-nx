@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import {
   useNodesState,
   useEdgesState,
 } from "@xyflow/react";
 import { getSessionNodes } from "@/lib/api";
+import { appEvents } from "@/lib/events";
 import {
   transformNodesToGraph,
   transformEdgesToGraph,
@@ -31,6 +32,11 @@ export function useGraph(sessionId: string | null): UseGraphReturn {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Track selectedNodeId in a ref so refreshGraph can read it without
+  // re-creating its identity every time selection changes.
+  const selectedNodeIdRef = useRef(selectedNodeId);
+  selectedNodeIdRef.current = selectedNodeId;
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null;
 
@@ -66,7 +72,7 @@ export function useGraph(sessionId: string | null): UseGraphReturn {
 
       const graphNodes = transformNodesToGraph(
         dbNodes as unknown as import("@opus-nx/db").ThinkingNode[],
-        selectedNodeId ?? undefined
+        selectedNodeIdRef.current ?? undefined
       );
       const graphEdges = transformEdgesToGraph(
         dbEdges as unknown as import("@opus-nx/db").ReasoningEdge[]
@@ -77,7 +83,7 @@ export function useGraph(sessionId: string | null): UseGraphReturn {
     }
 
     setIsLoading(false);
-  }, [sessionId, selectedNodeId, setNodes, setEdges]);
+  }, [sessionId, setNodes, setEdges]);
 
   const selectNode = useCallback(
     (nodeId: string | null) => {
@@ -97,9 +103,24 @@ export function useGraph(sessionId: string | null): UseGraphReturn {
     [setNodes]
   );
 
+  // Reset selection and refetch when session changes
   useEffect(() => {
+    setSelectedNodeId(null);
     refreshGraph();
-  }, [refreshGraph]);
+  }, [sessionId]);
+
+  // Subscribe to data:stale events targeting graph scope
+  useEffect(() => {
+    const unsub = appEvents.on("data:stale", (payload) => {
+      if (
+        (payload.scope === "graph" || payload.scope === "all") &&
+        (!payload.sessionId || payload.sessionId === sessionId)
+      ) {
+        refreshGraph();
+      }
+    });
+    return unsub;
+  }, [sessionId, refreshGraph]);
 
   return {
     nodes,
