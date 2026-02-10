@@ -22,8 +22,10 @@ from __future__ import annotations
 import asyncio
 import re
 import time
+import uuid
 
 import structlog
+import structlog.contextvars
 
 from .agents.base import BaseOpusAgent
 from .agents.contrarian import ContrarianAgent
@@ -110,6 +112,16 @@ class SwarmManager:
         Phase 2: Synthesizer merges results (sequential)
         Phase 3: Metacognition analyzes the swarm (sequential)
         """
+        trace_id = str(uuid.uuid4())
+        structlog.contextvars.bind_contextvars(trace_id=trace_id)
+
+        try:
+            return await self._run_pipeline(query, session_id)
+        finally:
+            structlog.contextvars.unbind_contextvars("trace_id")
+
+    async def _run_pipeline(self, query: str, session_id: str) -> dict:
+        """Internal pipeline — runs inside trace_id context."""
         overall_start = time.monotonic()
 
         # Dynamic effort routing

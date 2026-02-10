@@ -11,15 +11,22 @@ Key invariants:
 
 from __future__ import annotations
 
+import asyncio
 import time
 from abc import ABC, abstractmethod
 
 import anthropic
+import structlog
 
 from ..events.bus import EventBus
 from ..events.types import AgentCompleted, AgentStarted, AgentThinking
 from ..graph.models import AgentName, AgentResult
 from ..graph.reasoning_graph import SharedReasoningGraph
+
+log = structlog.get_logger(__name__)
+
+_RATE_LIMIT_MAX_RETRIES = 3
+_RATE_LIMIT_BACKOFF_DELAYS = (1.0, 2.0, 4.0)
 
 
 class BaseOpusAgent(ABC):
@@ -89,25 +96,52 @@ class BaseOpusAgent(ABC):
         # Preserve ALL content blocks for multi-turn tool loops
         content_blocks: list[dict] = []
 
-        async with self.client.messages.stream(**params) as stream:
-            async for event in stream:
-                if event.type == "content_block_delta":
-                    if event.delta.type == "thinking_delta":
-                        thinking_text += event.delta.thinking
-                        if stream_thinking:
-                            await self.bus.publish(
-                                self.session_id,
-                                AgentThinking(
-                                    session_id=self.session_id,
-                                    agent=self.name.value,
-                                    delta=event.delta.thinking,
-                                ),
-                            )
-                    elif event.delta.type == "text_delta":
-                        response_text += event.delta.text
+        # Rate limit retry with exponential backoff
+        for attempt in range(_RATE_LIMIT_MAX_RETRIES + 1):
+            try:
+                async with self.client.messages.stream(**params) as stream:
+                    async for event in stream:
+                        if event.type == "content_block_delta":
+                            if event.delta.type == "thinking_delta":
+                                thinking_text += event.delta.thinking
+                                if stream_thinking:
+                                    await self.bus.publish(
+                                        self.session_id,
+                                        AgentThinking(
+                                            session_id=self.session_id,
+                                            agent=self.name.value,
+                                            delta=event.delta.thinking,
+                                        ),
+                                    )
+                            elif event.delta.type == "text_delta":
+                                response_text += event.delta.text
 
-            # Get the final message for complete content blocks and usage
-            final = await stream.get_final_message()
+                    # Get the final message for complete content blocks and usage
+                    final = await stream.get_final_message()
+                break  # Success — exit retry loop
+            except anthropic.RateLimitError:
+                if attempt < _RATE_LIMIT_MAX_RETRIES:
+                    delay = _RATE_LIMIT_BACKOFF_DELAYS[attempt]
+                    log.warning(
+                        "rate_limit_retrying",
+                        agent=self.name.value,
+                        attempt=attempt + 1,
+                        max_retries=_RATE_LIMIT_MAX_RETRIES,
+                        delay_seconds=delay,
+                    )
+                    # Reset accumulators for clean retry
+                    thinking_text = ""
+                    response_text = ""
+                    tool_uses = []
+                    content_blocks = []
+                    await asyncio.sleep(delay)
+                else:
+                    log.error(
+                        "rate_limit_retries_exhausted",
+                        agent=self.name.value,
+                        attempts=_RATE_LIMIT_MAX_RETRIES + 1,
+                    )
+                    raise
 
         # Collect content blocks — MUST preserve for tool loop continuation
         for block in final.content:

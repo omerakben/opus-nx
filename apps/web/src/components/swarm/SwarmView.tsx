@@ -9,13 +9,17 @@ import {
   CardTitle,
   Input,
   NeuralSubmitButton,
+  Tooltip,
 } from "@/components/ui";
+import type { ConnectionState } from "@/lib/swarm-client";
 import { useSwarm } from "@/lib/hooks/use-swarm";
 
 import { getConfidenceColor } from "@/lib/colors";
 import {
   AlertCircle,
   Brain,
+  Check,
+  Copy,
   Loader2,
   Network,
   Sparkles,
@@ -28,6 +32,12 @@ interface SwarmViewProps {
   sessionId: string | null;
 }
 
+const CONNECTION_INDICATOR: Record<ConnectionState, { color: string; label: string }> = {
+  connected: { color: "bg-green-500", label: "Connected" },
+  reconnecting: { color: "bg-yellow-500", label: "Reconnecting" },
+  disconnected: { color: "bg-red-500", label: "Disconnected" },
+};
+
 const EXAMPLE_QUERIES = [
   "Analyze the trade-offs of microservices vs monolith",
   "Evaluate our authentication strategy",
@@ -38,6 +48,7 @@ export function SwarmView({ sessionId }: SwarmViewProps) {
   const authSecret = process.env.NEXT_PUBLIC_AUTH_SECRET ?? "";
   const { state, start, stop } = useSwarm(authSecret);
   const [query, setQuery] = useState("");
+  const [copied, setCopied] = useState(false);
 
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -59,6 +70,14 @@ export function SwarmView({ sessionId }: SwarmViewProps) {
     stop();
   }, [stop]);
 
+  const handleCopySynthesis = useCallback(() => {
+    if (!state.synthesis) return;
+    navigator.clipboard.writeText(state.synthesis).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [state.synthesis]);
+
   const agents = Object.values(state.agents);
   const isRunning = state.phase === "running" || state.phase === "synthesis";
 
@@ -68,12 +87,31 @@ export function SwarmView({ sessionId }: SwarmViewProps) {
         <CardTitle className="text-base font-medium flex items-center gap-2">
           <Network className="w-4 h-4 text-cyan-400" />
           Agent Swarm
+          <Tooltip
+            content={
+              <span className="text-[11px]">
+                {CONNECTION_INDICATOR[state.connectionState].label}
+              </span>
+            }
+            side="bottom"
+          >
+            <span
+              className={`inline-block w-2 h-2 rounded-full ${CONNECTION_INDICATOR[state.connectionState].color}`}
+            />
+          </Tooltip>
           {isRunning && (
             <Loader2 className="w-3 h-3 text-cyan-400 animate-spin ml-auto" />
           )}
           {state.phase === "complete" && (
-            <span className="text-[11px] font-normal text-green-400 ml-auto">
+            <span className="text-[11px] font-normal text-green-400 ml-auto flex items-center gap-1.5">
               Complete
+              {(state.totalDuration !== null || state.totalTokens > 0) && (
+                <span className="text-[10px] text-[var(--muted-foreground)]">
+                  {state.totalDuration !== null && `${state.totalDuration}s`}
+                  {state.totalDuration !== null && state.totalTokens > 0 && " \u00B7 "}
+                  {state.totalTokens > 0 && `${state.totalTokens.toLocaleString()} tokens`}
+                </span>
+              )}
             </span>
           )}
         </CardTitle>
@@ -127,8 +165,8 @@ export function SwarmView({ sessionId }: SwarmViewProps) {
           {/* Running state: agent grid + timeline */}
           {isRunning && (
             <div className="space-y-4">
-              {/* Phase indicator */}
-              <div className="text-center py-2">
+              {/* Phase indicator (U4: role="status") */}
+              <div className="text-center py-2" role="status">
                 <div className="relative w-12 h-12 mx-auto mb-2">
                   <div className="absolute inset-0 rounded-full border-2 border-cyan-500/20 animate-ping" />
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -142,11 +180,17 @@ export function SwarmView({ sessionId }: SwarmViewProps) {
                 </p>
               </div>
 
-              {/* Agent grid */}
+              {/* Agent grid (U3: responsive, U4: aria-live) */}
               {agents.length > 0 && (
-                <div className="grid grid-cols-2 gap-2">
+                <div
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2"
+                  aria-live="polite"
+                >
                   {agents.map((agent) => (
-                    <AgentCard key={agent.name} agent={agent} />
+                    <AgentCard
+                      key={agent.name}
+                      agent={agent}
+                    />
                   ))}
                 </div>
               )}
@@ -161,13 +205,14 @@ export function SwarmView({ sessionId }: SwarmViewProps) {
                 </div>
               )}
 
-              {/* Stop button */}
+              {/* Stop button (U4: aria-label) */}
               <div className="flex justify-center">
                 <Button
                   variant="ghost"
                   size="sm"
                   className="text-xs gap-1 text-[var(--muted-foreground)]"
                   onClick={stop}
+                  aria-label="Stop swarm analysis"
                 >
                   Stop swarm
                 </Button>
@@ -178,7 +223,7 @@ export function SwarmView({ sessionId }: SwarmViewProps) {
           {/* Complete state: synthesis + agents + timeline */}
           {state.phase === "complete" && (
             <div className="space-y-4">
-              {/* Synthesis card */}
+              {/* Synthesis card (U5: copy button) */}
               {state.synthesis && (
                 <Card className="bg-green-500/10 border-green-500/30 overflow-hidden">
                   <div className="h-1 bg-gradient-to-r from-green-500 via-emerald-400 to-green-500" />
@@ -188,12 +233,32 @@ export function SwarmView({ sessionId }: SwarmViewProps) {
                       <span className="text-xs font-medium text-green-400">
                         Synthesis
                       </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs gap-1 h-5 px-1.5 ml-1"
+                        onClick={handleCopySynthesis}
+                        aria-label="Copy synthesis to clipboard"
+                      >
+                        {copied ? (
+                          <>
+                            <Check className="w-3 h-3 text-green-400" />
+                            <span className="text-green-400">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </Button>
                       {state.synthesisConfidence !== null && (
                         <span
                           className="text-[11px] font-semibold ml-auto"
                           style={{
                             color: getConfidenceColor(state.synthesisConfidence),
                           }}
+                          aria-label={`Confidence: ${Math.round(state.synthesisConfidence * 100)} percent`}
                         >
                           {Math.round(state.synthesisConfidence * 100)}%
                           confidence
@@ -207,13 +272,16 @@ export function SwarmView({ sessionId }: SwarmViewProps) {
                 </Card>
               )}
 
-              {/* Agent results grid */}
+              {/* Agent results grid (U3: responsive, U4: aria-live) */}
               {agents.length > 0 && (
                 <div>
                   <div className="text-[11px] font-medium text-[var(--muted-foreground)] mb-2">
                     Agent Results
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2"
+                    aria-live="polite"
+                  >
                     {agents.map((agent) => (
                       <AgentCard key={agent.name} agent={agent} />
                     ))}

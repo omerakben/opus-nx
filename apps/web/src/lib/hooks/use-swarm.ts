@@ -5,15 +5,17 @@
  * - startSwarm() to launch a swarm analysis
  * - Live event stream with per-agent status tracking
  * - Automatic WebSocket subscription/cleanup
+ * - Connection state tracking (connected/reconnecting/disconnected)
  * - Integration with the app event bus
  */
 
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   startSwarm as apiStartSwarm,
   subscribeSwarmEvents,
+  type ConnectionState,
   type SwarmEventUnion,
   type SwarmSubscription,
 } from "../swarm-client";
@@ -47,6 +49,14 @@ export interface SwarmState {
   insights: Array<{ type: string; description: string; agents: string[] }>;
   /** Error message if swarm fails */
   error: string | null;
+  /** Total tokens used across all agents */
+  totalTokens: number;
+  /** Total duration in seconds (from swarm_started to synthesis_ready) */
+  totalDuration: number | null;
+  /** Internal: timestamp when swarm started */
+  startTimestamp: string | null;
+  /** WebSocket connection state */
+  connectionState: ConnectionState;
 }
 
 const INITIAL_STATE: SwarmState = {
@@ -57,7 +67,14 @@ const INITIAL_STATE: SwarmState = {
   synthesisConfidence: null,
   insights: [],
   error: null,
+  totalTokens: 0,
+  totalDuration: null,
+  startTimestamp: null,
+  connectionState: "disconnected",
 };
+
+/** Polling interval for connection state (ms) */
+const CONNECTION_POLL_INTERVAL_MS = 2000;
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -66,6 +83,39 @@ const INITIAL_STATE: SwarmState = {
 export function useSwarm(authSecret: string) {
   const [state, setState] = useState<SwarmState>(INITIAL_STATE);
   const subscriptionRef = useRef<SwarmSubscription | null>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Poll connection state from the subscription
+  const startPolling = useCallback(() => {
+    if (pollTimerRef.current !== null) {
+      clearInterval(pollTimerRef.current);
+    }
+
+    pollTimerRef.current = setInterval(() => {
+      const sub = subscriptionRef.current;
+      if (!sub) return;
+
+      const connState = sub.connectionState();
+      setState((prev) => {
+        if (prev.connectionState === connState) return prev;
+        return { ...prev, connectionState: connState };
+      });
+    }, CONNECTION_POLL_INTERVAL_MS);
+  }, []);
+
+  const stopPolling = useCallback(() => {
+    if (pollTimerRef.current !== null) {
+      clearInterval(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+  }, []);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      stopPolling();
+    };
+  }, [stopPolling]);
 
   const handleEvent = useCallback((event: SwarmEventUnion) => {
     setState((prev) => {
@@ -77,6 +127,7 @@ export function useSwarm(authSecret: string) {
             ...prev,
             phase: "running",
             events,
+            startTimestamp: event.timestamp,
             agents: Object.fromEntries(
               event.agents.map((name) => [
                 name,
@@ -132,6 +183,7 @@ export function useSwarm(authSecret: string) {
           return {
             ...prev,
             events,
+            totalTokens: prev.totalTokens + (event.tokens_used ?? 0),
             agents: {
               ...prev.agents,
               [event.agent]: {
@@ -144,14 +196,23 @@ export function useSwarm(authSecret: string) {
             },
           };
 
-        case "synthesis_ready":
+        case "synthesis_ready": {
+          const duration = prev.startTimestamp
+            ? Math.round(
+                (new Date(event.timestamp).getTime() -
+                  new Date(prev.startTimestamp).getTime()) /
+                  1000
+              )
+            : null;
           return {
             ...prev,
             phase: "complete",
             events,
             synthesis: event.synthesis,
             synthesisConfidence: event.confidence,
+            totalDuration: duration,
           };
+        }
 
         case "metacognition_insight":
           return {
@@ -177,6 +238,7 @@ export function useSwarm(authSecret: string) {
     async (query: string, sessionId: string) => {
       // Clean up previous subscription
       subscriptionRef.current?.close();
+      stopPolling();
 
       // Reset state
       setState({ ...INITIAL_STATE, phase: "running" });
@@ -192,9 +254,21 @@ export function useSwarm(authSecret: string) {
               ...prev,
               phase: "error",
               error: "WebSocket connection failed",
+              connectionState: "disconnected",
             }));
+          },
+          {
+            onReconnect: () => {
+              setState((prev) => ({
+                ...prev,
+                connectionState: "reconnecting",
+              }));
+            },
           }
         );
+
+        // Start polling connection state
+        startPolling();
 
         // Start the swarm (fire-and-forget on the backend)
         await apiStartSwarm(query, sessionId);
@@ -206,13 +280,15 @@ export function useSwarm(authSecret: string) {
         }));
       }
     },
-    [authSecret, handleEvent]
+    [authSecret, handleEvent, startPolling, stopPolling]
   );
 
   const stop = useCallback(() => {
     subscriptionRef.current?.close();
     subscriptionRef.current = null;
-  }, []);
+    stopPolling();
+    setState((prev) => ({ ...prev, connectionState: "disconnected" }));
+  }, [stopPolling]);
 
   return { state, start, stop };
 }

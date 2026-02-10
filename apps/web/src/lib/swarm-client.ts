@@ -23,16 +23,32 @@ const SWARM_BASE_URL =
 // Auth — fetch token from server to keep AUTH_SECRET off the client
 // ---------------------------------------------------------------------------
 
-let cachedToken: { token: string; wsUrl: string } | null = null;
+/** Token cache with timestamp for expiration checking */
+let cachedToken: { token: string; wsUrl: string; fetchedAt: number } | null =
+  null;
+
+/** Maximum token age before re-fetch (60 minutes) */
+const TOKEN_MAX_AGE_MS = 60 * 60 * 1000;
 
 async function getSwarmToken(): Promise<{ token: string; wsUrl: string }> {
-  if (cachedToken) return cachedToken;
+  if (cachedToken && Date.now() - cachedToken.fetchedAt < TOKEN_MAX_AGE_MS) {
+    return cachedToken;
+  }
+
+  // Token expired or not cached — invalidate and re-fetch
+  cachedToken = null;
 
   const res = await fetch("/api/swarm/token");
   if (!res.ok) throw new Error("Failed to get swarm token");
 
-  cachedToken = await res.json();
-  return cachedToken!;
+  const data: { token: string; wsUrl: string } = await res.json();
+  cachedToken = { ...data, fetchedAt: Date.now() };
+  return data;
+}
+
+/** Manually invalidate the token cache (useful during reconnect) */
+export function clearTokenCache(): void {
+  cachedToken = null;
 }
 
 // ---------------------------------------------------------------------------
@@ -117,10 +133,47 @@ export type SwarmEventUnion =
   | MetacognitionInsightEvent;
 
 // ---------------------------------------------------------------------------
+// Event validation (W3)
+// ---------------------------------------------------------------------------
+
+/** The 9 known swarm event types */
+export const VALID_EVENT_TYPES = new Set([
+  "swarm_started",
+  "agent_started",
+  "agent_thinking",
+  "graph_node_created",
+  "agent_challenges",
+  "verification_score",
+  "agent_completed",
+  "synthesis_ready",
+  "metacognition_insight",
+] as const);
+
+/** Runtime validation for incoming WebSocket events */
+function isValidSwarmEvent(data: unknown): data is SwarmEventUnion {
+  if (typeof data !== "object" || data === null) return false;
+
+  const obj = data as Record<string, unknown>;
+
+  if (typeof obj.event !== "string") return false;
+  if (!VALID_EVENT_TYPES.has(obj.event as typeof VALID_EVENT_TYPES extends Set<infer T> ? T : never)) return false;
+  if (typeof obj.session_id !== "string") return false;
+  if (typeof obj.timestamp !== "string") return false;
+
+  return true;
+}
+
+// ---------------------------------------------------------------------------
 // Swarm event listener type
 // ---------------------------------------------------------------------------
 
 export type SwarmEventListener = (event: SwarmEventUnion) => void;
+
+// ---------------------------------------------------------------------------
+// Connection state (W1)
+// ---------------------------------------------------------------------------
+
+export type ConnectionState = "connected" | "reconnecting" | "disconnected";
 
 // ---------------------------------------------------------------------------
 // REST API
@@ -163,9 +216,20 @@ export async function getSwarmGraph(
 export interface SwarmSubscription {
   /** Unsubscribe and close the WebSocket */
   close: () => void;
-  /** Current connection state */
+  /** Current WebSocket readyState */
   readyState: () => number;
+  /** Current connection state: connected, reconnecting, or disconnected */
+  connectionState: () => ConnectionState;
 }
+
+/** Options for subscribeSwarmEvents */
+interface SubscribeOptions {
+  onReconnect?: () => void;
+}
+
+/** Reconnect configuration */
+const MAX_RECONNECT_ATTEMPTS = 3;
+const RECONNECT_BASE_DELAY_MS = 1000;
 
 /**
  * Subscribe to live swarm events via WebSocket.
@@ -174,43 +238,112 @@ export interface SwarmSubscription {
  * to the Python backend. Delivers typed events to the provided listener
  * and emits to the app-wide event bus for cross-component reactivity.
  *
+ * Includes auto-reconnect with exponential backoff (max 3 attempts).
+ *
  * @param sessionId - Session to subscribe to
+ * @param _authSecret - Auth secret (unused; token fetched server-side)
  * @param onEvent - Callback for each swarm event
  * @param onError - Optional error callback
- * @returns Subscription handle with close() method
+ * @param options - Optional config (onReconnect callback)
+ * @returns Subscription handle with close() and connectionState() methods
  */
 export function subscribeSwarmEvents(
   sessionId: string,
   _authSecret: string,
   onEvent: SwarmEventListener,
-  onError?: (error: Event) => void
+  onError?: (error: Event) => void,
+  options?: SubscribeOptions
 ): SwarmSubscription {
-  // We create the WebSocket asynchronously after fetching the token,
-  // but store a reference so close() works even before the WS opens.
   let ws: WebSocket | null = null;
   let closed = false;
+  let connState: ConnectionState = "disconnected";
+  let reconnectAttempt = 0;
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-  getSwarmToken()
-    .then(({ token, wsUrl }) => {
-      if (closed) return;
-      ws = new WebSocket(
-        `${wsUrl}/ws/${encodeURIComponent(sessionId)}?token=${token}`
+  function connect(): void {
+    if (closed) return;
+
+    // On reconnect, clear token cache so we get a fresh token
+    if (reconnectAttempt > 0) {
+      clearTokenCache();
+    }
+
+    getSwarmToken()
+      .then(({ token, wsUrl }) => {
+        if (closed) return;
+
+        ws = new WebSocket(
+          `${wsUrl}/ws/${encodeURIComponent(sessionId)}?token=${token}`
+        );
+
+        ws.onopen = () => {
+          connState = "connected";
+          reconnectAttempt = 0;
+        };
+
+        setupWebSocket(ws, sessionId, onEvent, onError, () => {
+          // onClose callback — attempt reconnection
+          if (closed) {
+            connState = "disconnected";
+            return;
+          }
+
+          attemptReconnect();
+        });
+      })
+      .catch(() => {
+        if (closed) return;
+
+        // Token fetch failed during reconnect — try again or give up
+        if (reconnectAttempt > 0) {
+          attemptReconnect();
+        } else {
+          connState = "disconnected";
+          onError?.(new Event("token_fetch_failed"));
+        }
+      });
+  }
+
+  function attemptReconnect(): void {
+    if (closed) return;
+
+    reconnectAttempt++;
+
+    if (reconnectAttempt > MAX_RECONNECT_ATTEMPTS) {
+      connState = "disconnected";
+      onError?.(
+        new Event(
+          `WebSocket reconnection failed after ${MAX_RECONNECT_ATTEMPTS} attempts`
+        )
       );
+      return;
+    }
 
-      setupWebSocket(ws, sessionId, onEvent, onError);
-    })
-    .catch(() => {
-      if (!closed) {
-        onError?.(new Event("token_fetch_failed"));
-      }
-    });
+    connState = "reconnecting";
+    const delay = RECONNECT_BASE_DELAY_MS * Math.pow(2, reconnectAttempt - 1);
+
+    reconnectTimer = setTimeout(() => {
+      if (closed) return;
+      options?.onReconnect?.();
+      connect();
+    }, delay);
+  }
+
+  // Start initial connection
+  connect();
 
   return {
     close: () => {
       closed = true;
+      connState = "disconnected";
+      if (reconnectTimer !== null) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
       ws?.close();
     },
     readyState: () => ws?.readyState ?? WebSocket.CONNECTING,
+    connectionState: () => connState,
   };
 }
 
@@ -219,25 +352,35 @@ function setupWebSocket(
   ws: WebSocket,
   sessionId: string,
   onEvent: SwarmEventListener,
-  onError?: (error: Event) => void
+  onError?: (error: Event) => void,
+  onClose?: () => void
 ): void {
-
   ws.onmessage = (msg) => {
     try {
-      const data = JSON.parse(msg.data) as { event: string };
+      const data: unknown = JSON.parse(msg.data);
 
       // Skip heartbeat pings (not part of SwarmEventUnion)
-      if (data.event === "ping") return;
+      if (
+        typeof data === "object" &&
+        data !== null &&
+        (data as Record<string, unknown>).event === "ping"
+      ) {
+        return;
+      }
 
-      const event = data as unknown as SwarmEventUnion;
+      // Validate event structure before processing
+      if (!isValidSwarmEvent(data)) {
+        console.warn("[swarm-client] Invalid event received:", data);
+        return;
+      }
 
       // Deliver to caller
-      onEvent(event);
+      onEvent(data);
 
       // Bridge to app-wide event bus for cross-component reactivity
-      bridgeToAppEvents(event, sessionId);
+      bridgeToAppEvents(data, sessionId);
     } catch {
-      // Ignore malformed messages
+      // Ignore malformed messages (unparseable JSON)
     }
   };
 
@@ -246,7 +389,7 @@ function setupWebSocket(
   };
 
   ws.onclose = () => {
-    // Connection closed — could implement reconnection here
+    onClose?.();
   };
 }
 

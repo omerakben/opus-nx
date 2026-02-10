@@ -1,11 +1,18 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import type { AgentStatus } from "@/lib/hooks/use-swarm";
 import { getConfidenceColor } from "@/lib/colors";
-import { Brain, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import {
+  Brain,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 
 const AGENT_COLORS: Record<string, string> = {
   deep_thinker: "#3b82f6",
@@ -54,18 +61,33 @@ function StatusIcon({ status }: { status: AgentStatus["status"] }) {
   }
 }
 
+interface AgentCardProps {
+  agent: AgentStatus;
+  /** Compact mode for mobile — show only name + status badge */
+  compact?: boolean;
+}
+
 export const AgentCard = memo(function AgentCard({
   agent,
-}: {
-  agent: AgentStatus;
-}) {
+  compact = false,
+}: AgentCardProps) {
+  const [thinkingExpanded, setThinkingExpanded] = useState(false);
   const borderColor = AGENT_COLORS[agent.name] ?? "var(--border)";
   const config = STATUS_CONFIG[agent.status];
+  const isError = agent.status === "error";
+
+  const toggleThinking = useCallback(() => {
+    setThinkingExpanded((prev) => !prev);
+  }, []);
 
   return (
     <Card
-      className="overflow-hidden"
-      style={{ borderLeftWidth: 3, borderLeftColor: borderColor }}
+      className={cn("overflow-hidden", isError && "bg-red-500/5")}
+      style={{
+        borderLeftWidth: 3,
+        borderLeftColor: isError ? "#ef4444" : borderColor,
+      }}
+      aria-label={`${formatAgentName(agent.name)} - ${config.label}`}
     >
       <CardContent className="p-2.5">
         {/* Header */}
@@ -73,7 +95,7 @@ export const AgentCard = memo(function AgentCard({
           <StatusIcon status={agent.status} />
           <span
             className="text-[11px] font-medium truncate flex-1"
-            style={{ color: borderColor }}
+            style={{ color: isError ? "#ef4444" : borderColor }}
           >
             {formatAgentName(agent.name)}
           </span>
@@ -87,17 +109,56 @@ export const AgentCard = memo(function AgentCard({
           </span>
         </div>
 
-        {/* Thinking preview */}
-        {agent.status === "thinking" && agent.thinkingPreview && (
-          <p className="text-[11px] text-[var(--muted-foreground)] line-clamp-2 mt-1">
-            {agent.thinkingPreview.length > 100
-              ? agent.thinkingPreview.slice(0, 100) + "..."
-              : agent.thinkingPreview}
+        {/* Error reason (U2) */}
+        {isError && agent.conclusion && !compact && (
+          <p className="text-[11px] text-red-400 mt-1">
+            {agent.conclusion}
           </p>
         )}
 
-        {/* Completed state */}
-        {agent.status === "completed" && (
+        {/* Thinking preview (U1) — hidden in compact mode */}
+        {!compact && agent.status === "thinking" && agent.thinkingPreview && (
+          <div className="mt-1">
+            {agent.thinkingPreview.length > 100 ? (
+              <>
+                {thinkingExpanded ? (
+                  <div className="max-h-24 overflow-y-auto scrollbar-thin">
+                    <p className="text-[11px] text-[var(--muted-foreground)]">
+                      {agent.thinkingPreview}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-[var(--muted-foreground)]">
+                    {agent.thinkingPreview.slice(0, 100)}...
+                  </p>
+                )}
+                <button
+                  onClick={toggleThinking}
+                  className="flex items-center gap-0.5 text-[10px] text-cyan-400 hover:text-cyan-300 mt-0.5 transition-colors"
+                >
+                  {thinkingExpanded ? (
+                    <>
+                      <ChevronUp className="w-3 h-3" />
+                      Show less
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="w-3 h-3" />
+                      Show more
+                    </>
+                  )}
+                </button>
+              </>
+            ) : (
+              <p className="text-[11px] text-[var(--muted-foreground)]">
+                {agent.thinkingPreview}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Completed state — hidden in compact mode */}
+        {!compact && agent.status === "completed" && (
           <>
             {/* Confidence bar */}
             <div className="mt-1.5 mb-1">
@@ -120,19 +181,21 @@ export const AgentCard = memo(function AgentCard({
           </>
         )}
 
-        {/* Footer */}
-        <div className="flex items-center gap-2 mt-1.5">
-          {agent.tokensUsed > 0 && (
-            <span className="text-[10px] text-[var(--muted-foreground)]">
-              {agent.tokensUsed.toLocaleString()} tokens
-            </span>
-          )}
-          {agent.effort && (
-            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)] ml-auto">
-              {agent.effort}
-            </span>
-          )}
-        </div>
+        {/* Footer — hidden in compact mode */}
+        {!compact && (
+          <div className="flex items-center gap-2 mt-1.5">
+            {agent.tokensUsed > 0 && (
+              <span className="text-[10px] text-[var(--muted-foreground)]">
+                {agent.tokensUsed.toLocaleString()} tokens
+              </span>
+            )}
+            {agent.effort && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[var(--muted)] text-[var(--muted-foreground)] ml-auto">
+                {agent.effort}
+              </span>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

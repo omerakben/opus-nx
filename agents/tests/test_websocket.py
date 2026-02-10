@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import json
 import os
 import sys
 from unittest.mock import MagicMock, patch
@@ -47,7 +46,7 @@ def _make_test_client():
     # Mock persistence modules before importing server
     mock_neo4j = MagicMock()
     mock_supabase = MagicMock()
-    persistence_mock = MagicMock()
+    MagicMock()
 
     with patch.dict(os.environ, _ENV_OVERRIDES, clear=False):
         # Ensure persistence modules can be imported even without neo4j/supabase packages
@@ -116,7 +115,7 @@ class TestWebSocketAuth:
         """Connection with a valid HMAC token should be accepted."""
         client, _ = _make_test_client()
         token = _generate_token()
-        with client.websocket_connect(f"/ws/test-session?token={token}") as ws:
+        with client.websocket_connect(f"/ws/test-session?token={token}"):
             # Connection was accepted -- exiting context manager closes cleanly
             pass
 
@@ -138,7 +137,6 @@ class TestWebSocketEventDelivery:
             # The bus normally calls event.model_dump() which produces
             # datetime objects; the server's send_json needs pure JSON types.
             # We use model_dump(mode="json") for test compatibility.
-            import asyncio
 
             event = AgentStarted(
                 session_id="test-delivery",
@@ -164,11 +162,12 @@ class TestSwarmEndpoint:
     def test_swarm_returns_started(self):
         """POST /api/swarm should return started status immediately."""
         client, _ = _make_test_client()
+        test_uuid = "550e8400-e29b-41d4-a716-446655440000"
         response = client.post(
             "/api/swarm",
-            json={"query": "Test query", "session_id": "test-swarm"},
+            json={"query": "Test query", "session_id": test_uuid},
         )
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "started"
-        assert data["session_id"] == "test-swarm"
+        assert data["session_id"] == test_uuid

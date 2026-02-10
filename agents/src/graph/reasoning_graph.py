@@ -98,6 +98,18 @@ class SharedReasoningGraph:
         """Export graph as JSON for API responses and dashboard."""
         return nx.node_link_data(self._graph, edges="edges")
 
+    async def cleanup_session(self, session_id: str) -> int:
+        """Remove all nodes (and their edges) for a session. Returns count removed."""
+        async with self._lock:
+            to_remove = [
+                nid
+                for nid, data in self._graph.nodes(data=True)
+                if data.get("session_id") == session_id
+            ]
+            for nid in to_remove:
+                self._graph.remove_node(nid)
+            return len(to_remove)
+
     def on_change(self, callback: Callable) -> None:
         """Register a listener for graph changes (feeds EventBus)."""
         self._listeners.append(callback)

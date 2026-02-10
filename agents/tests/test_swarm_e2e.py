@@ -7,14 +7,10 @@ graph construction, and result synthesis.
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
-import pytest
 
 from src.config import Settings
-from src.events.bus import EventBus
-from src.events.types import SwarmStarted
-from src.graph.reasoning_graph import SharedReasoningGraph
 from src.swarm import SwarmManager, classify_complexity
 
 

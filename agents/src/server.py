@@ -13,13 +13,14 @@ import asyncio
 import hashlib
 import hmac
 import json
+import re
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 import structlog
 from fastapi import FastAPI, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 from .config import Settings
 from .events.bus import EventBus
@@ -36,10 +37,28 @@ graph: SharedReasoningGraph = None  # type: ignore[assignment]
 bus: EventBus = None  # type: ignore[assignment]
 
 
+STALE_SESSION_CHECK_INTERVAL = 300  # 5 minutes
+STALE_SESSION_MAX_AGE = 1800  # 30 minutes
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Initialize shared state on startup, clean up on shutdown."""
     global settings, graph, bus
+
+    # Configure structlog with contextvars for trace_id propagation
+    structlog.configure(
+        processors=[
+            structlog.contextvars.merge_contextvars,
+            structlog.processors.add_log_level,
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.dev.ConsoleRenderer(),
+        ],
+        wrapper_class=structlog.make_filtering_bound_logger(0),
+        context_class=dict,
+        logger_factory=structlog.PrintLoggerFactory(),
+        cache_logger_on_first_use=True,
+    )
 
     settings = Settings()
     graph = SharedReasoningGraph()
@@ -71,9 +90,32 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     graph.on_change(on_graph_change)
 
+    # -- Background task: prune stale sessions every 5 minutes --
+    async def prune_stale_sessions() -> None:
+        while True:
+            try:
+                await asyncio.sleep(STALE_SESSION_CHECK_INTERVAL)
+                stale_ids = bus.get_stale_sessions(max_age_seconds=STALE_SESSION_MAX_AGE)
+                for sid in stale_ids:
+                    removed = await graph.cleanup_session(sid)
+                    bus.cleanup_session(sid)
+                    log.info("stale_session_pruned", session_id=sid, nodes_removed=removed)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                log.warning("stale_session_prune_error", error=str(e))
+
+    cleanup_task = asyncio.create_task(prune_stale_sessions())
+
     yield
 
-    # Shutdown: close persistence connections
+    # Shutdown: cancel background task and close persistence connections
+    cleanup_task.cancel()
+    try:
+        await cleanup_task
+    except asyncio.CancelledError:
+        pass
+
     if neo4j_persistence:
         await neo4j_persistence.close()
 
@@ -106,9 +148,22 @@ _setup_cors()
 # Request / response models
 # ---------------------------------------------------------------------------
 
+_UUID_PATTERN = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
+
+
 class SwarmRequest(BaseModel):
-    query: str
+    query: str = Field(max_length=2000)
     session_id: str
+
+    @field_validator("session_id")
+    @classmethod
+    def validate_session_id(cls, v: str) -> str:
+        if not _UUID_PATTERN.match(v):
+            raise ValueError("session_id must be a valid UUID (e.g. '550e8400-e29b-41d4-a716-446655440000')")
+        return v
 
 
 # ---------------------------------------------------------------------------

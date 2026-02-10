@@ -134,6 +134,8 @@ export const SwarmTimeline = memo(function SwarmTimeline({
     <div
       ref={containerRef}
       className="max-h-48 overflow-y-auto scrollbar-thin"
+      role="log"
+      aria-label="Swarm event timeline"
     >
       <div className="relative pl-5">
         {/* Vertical connector line */}
@@ -145,7 +147,11 @@ export const SwarmTimeline = memo(function SwarmTimeline({
               display.agent ? AGENT_COLORS[display.agent] ?? "var(--muted-foreground)" : undefined;
 
             return (
-              <div key={idx} className="relative flex items-start gap-2">
+              <div
+                key={idx}
+                className="relative flex items-start gap-2"
+                aria-label={display.description}
+              >
                 {/* Icon dot */}
                 <div className="absolute -left-5 mt-0.5 flex items-center justify-center w-4 h-4 rounded-full bg-[var(--background)] border border-[var(--border)]">
                   {display.icon}
