@@ -236,8 +236,9 @@ class DeepThinkerAgent(BaseOpusAgent):
         graph: SharedReasoningGraph,
         bus: EventBus,
         session_id: str,
+        api_key: str | None = None,
     ) -> None:
-        super().__init__(graph, bus, session_id)
+        super().__init__(graph, bus, session_id, api_key=api_key)
         self._node_ids: list[str] = []
         self._previous_node_id: str | None = None
 

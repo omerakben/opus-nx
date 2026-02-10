@@ -23,7 +23,7 @@ class EventBus:
         """
         for queue in self._subscribers.get(session_id, []):
             try:
-                queue.put_nowait(event.model_dump())
+                queue.put_nowait(event.model_dump(mode="json"))
             except asyncio.QueueFull:
                 pass  # Drop events if subscriber is too slow
 

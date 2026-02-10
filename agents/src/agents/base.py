@@ -39,8 +39,9 @@ class BaseOpusAgent(ABC):
         graph: SharedReasoningGraph,
         bus: EventBus,
         session_id: str,
+        api_key: str | None = None,
     ) -> None:
-        self.client = anthropic.AsyncAnthropic()  # async client
+        self.client = anthropic.AsyncAnthropic(api_key=api_key) if api_key else anthropic.AsyncAnthropic()
         self.graph = graph
         self.bus = bus
         self.session_id = session_id

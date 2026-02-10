@@ -97,7 +97,7 @@ export interface CreateThinkingNodeInput {
 export interface CreateReasoningEdgeInput {
   sourceId: string;
   targetId: string;
-  edgeType: "influences" | "contradicts" | "supports" | "supersedes" | "refines";
+  edgeType: "influences" | "contradicts" | "supports" | "supersedes" | "refines" | "challenges" | "verifies" | "merges" | "observes";
   weight?: number;
   metadata?: Record<string, unknown>;
 }

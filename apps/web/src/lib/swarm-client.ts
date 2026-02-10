@@ -9,7 +9,6 @@
  *   HMAC(key=AUTH_SECRET, message="opus-nx-authenticated")
  */
 
-import { createHmac } from "crypto";
 import { appEvents } from "./events";
 
 // ---------------------------------------------------------------------------
@@ -21,13 +20,19 @@ const SWARM_BASE_URL =
   process.env.NEXT_PUBLIC_SWARM_URL ?? "http://localhost:8000";
 
 // ---------------------------------------------------------------------------
-// Auth (same HMAC pattern as V1)
+// Auth — fetch token from server to keep AUTH_SECRET off the client
 // ---------------------------------------------------------------------------
 
-function generateSwarmToken(secret: string): string {
-  return createHmac("sha256", secret)
-    .update("opus-nx-authenticated")
-    .digest("hex");
+let cachedToken: { token: string; wsUrl: string } | null = null;
+
+async function getSwarmToken(): Promise<{ token: string; wsUrl: string }> {
+  if (cachedToken) return cachedToken;
+
+  const res = await fetch("/api/swarm/token");
+  if (!res.ok) throw new Error("Failed to get swarm token");
+
+  cachedToken = await res.json();
+  return cachedToken!;
 }
 
 // ---------------------------------------------------------------------------
@@ -125,7 +130,8 @@ export async function startSwarm(
   query: string,
   sessionId: string
 ): Promise<{ status: string; session_id: string }> {
-  const res = await fetch(`${SWARM_BASE_URL}/api/swarm`, {
+  // Use the Next.js proxy route — it attaches the HMAC token server-side
+  const res = await fetch("/api/swarm", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query, session_id: sessionId }),
@@ -164,27 +170,57 @@ export interface SwarmSubscription {
 /**
  * Subscribe to live swarm events via WebSocket.
  *
- * Opens a WebSocket to the Python backend and delivers typed events
- * to the provided listener. Also emits to the app-wide event bus
- * so graph, insights, and session panels update reactively.
+ * Fetches a signed HMAC token from the server, then opens a WebSocket
+ * to the Python backend. Delivers typed events to the provided listener
+ * and emits to the app-wide event bus for cross-component reactivity.
  *
  * @param sessionId - Session to subscribe to
- * @param authSecret - AUTH_SECRET for HMAC token generation
  * @param onEvent - Callback for each swarm event
  * @param onError - Optional error callback
  * @returns Subscription handle with close() method
  */
 export function subscribeSwarmEvents(
   sessionId: string,
-  authSecret: string,
+  _authSecret: string,
   onEvent: SwarmEventListener,
   onError?: (error: Event) => void
 ): SwarmSubscription {
-  const token = generateSwarmToken(authSecret);
-  const wsUrl = SWARM_BASE_URL.replace(/^http/, "ws");
-  const ws = new WebSocket(
-    `${wsUrl}/ws/${encodeURIComponent(sessionId)}?token=${token}`
-  );
+  // We create the WebSocket asynchronously after fetching the token,
+  // but store a reference so close() works even before the WS opens.
+  let ws: WebSocket | null = null;
+  let closed = false;
+
+  getSwarmToken()
+    .then(({ token, wsUrl }) => {
+      if (closed) return;
+      ws = new WebSocket(
+        `${wsUrl}/ws/${encodeURIComponent(sessionId)}?token=${token}`
+      );
+
+      setupWebSocket(ws, sessionId, onEvent, onError);
+    })
+    .catch(() => {
+      if (!closed) {
+        onError?.(new Event("token_fetch_failed"));
+      }
+    });
+
+  return {
+    close: () => {
+      closed = true;
+      ws?.close();
+    },
+    readyState: () => ws?.readyState ?? WebSocket.CONNECTING,
+  };
+}
+
+/** Wire up WebSocket event handlers. */
+function setupWebSocket(
+  ws: WebSocket,
+  sessionId: string,
+  onEvent: SwarmEventListener,
+  onError?: (error: Event) => void
+): void {
 
   ws.onmessage = (msg) => {
     try {
@@ -211,11 +247,6 @@ export function subscribeSwarmEvents(
 
   ws.onclose = () => {
     // Connection closed — could implement reconnection here
-  };
-
-  return {
-    close: () => ws.close(),
-    readyState: () => ws.readyState,
   };
 }
 

@@ -134,10 +134,12 @@ class SwarmManager:
             ),
         )
 
+        api_key = self.settings.anthropic_api_key
+
         primary_agents: list[BaseOpusAgent] = [
-            DeepThinkerAgent(self.graph, self.bus, session_id),
-            ContrarianAgent(self.graph, self.bus, session_id),
-            VerifierAgent(self.graph, self.bus, session_id),
+            DeepThinkerAgent(self.graph, self.bus, session_id, api_key=api_key),
+            ContrarianAgent(self.graph, self.bus, session_id, api_key=api_key),
+            VerifierAgent(self.graph, self.bus, session_id, api_key=api_key),
         ]
 
         # Override effort based on complexity classification
@@ -189,7 +191,7 @@ class SwarmManager:
         # Phase 2: Synthesizer merges all results (sequential)
         # ---------------------------------------------------------------
         log.info("phase2_synthesis", session_id=session_id)
-        synthesizer = SynthesizerAgent(self.graph, self.bus, session_id)
+        synthesizer = SynthesizerAgent(self.graph, self.bus, session_id, api_key=api_key)
         synthesizer.effort = effort
         synthesis_result = await self._run_with_timeout(
             synthesizer, query, session_id
@@ -200,7 +202,7 @@ class SwarmManager:
         # Phase 3: Metacognition analyzes the swarm (sequential)
         # ---------------------------------------------------------------
         log.info("phase3_metacognition", session_id=session_id)
-        metacog = MetacognitionAgent(self.graph, self.bus, session_id)
+        metacog = MetacognitionAgent(self.graph, self.bus, session_id, api_key=api_key)
         # Metacognition always uses max effort
         metacog.effort = "max"
         metacog_result = await self._run_with_timeout(

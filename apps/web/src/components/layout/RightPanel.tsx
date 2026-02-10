@@ -2,9 +2,10 @@
 
 import { InsightsPanel } from "@/components/insights";
 import { ForkPanel } from "@/components/fork";
+import { SwarmView } from "@/components/swarm";
 import { Tabs, TabsList, TabsTrigger, TabsContent, Button, Tooltip } from "@/components/ui";
 import type { Insight } from "@/lib/api";
-import { GitFork, Lightbulb, PanelRightOpen, PanelRightClose } from "lucide-react";
+import { GitFork, Lightbulb, Network, PanelRightOpen, PanelRightClose } from "lucide-react";
 
 interface RightPanelProps {
   insights: Insight[];
@@ -43,6 +44,10 @@ export function RightPanel({
               <GitFork className="w-3 h-3 mr-1" />
               ThinkFork
             </TabsTrigger>
+            <TabsTrigger value="swarm" className="text-xs">
+              <Network className="w-3 h-3 mr-1" />
+              Swarm
+            </TabsTrigger>
           </TabsList>
 
           <div className="flex-1 min-h-0 overflow-hidden">
@@ -58,6 +63,10 @@ export function RightPanel({
 
             <TabsContent value="fork" className="h-full m-0 mt-2">
               <ForkPanel sessionId={sessionId} />
+            </TabsContent>
+
+            <TabsContent value="swarm" className="h-full m-0 mt-2">
+              <SwarmView sessionId={sessionId} />
             </TabsContent>
           </div>
         </Tabs>
@@ -108,6 +117,13 @@ export function RightPanel({
               <GitFork className="w-4 h-4 text-violet-400" />
             </div>
           </Tooltip>
+
+          {/* Swarm status */}
+          <Tooltip content="Agent Swarm" side="left">
+            <div className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-[var(--muted)] transition-colors">
+              <Network className="w-4 h-4 text-cyan-400" />
+            </div>
+          </Tooltip>
         </div>
 
         {/* Screen reader status */}
@@ -153,6 +169,10 @@ export function RightPanel({
               <GitFork className="w-3 h-3 mr-1" />
               Fork
             </TabsTrigger>
+            <TabsTrigger value="swarm" className="text-xs flex-1" data-tour="swarm-tab">
+              <Network className="w-3 h-3 mr-1" />
+              Swarm
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -169,6 +189,10 @@ export function RightPanel({
 
           <TabsContent value="fork" className="h-full m-0 mt-2">
             <ForkPanel sessionId={sessionId} />
+          </TabsContent>
+
+          <TabsContent value="swarm" className="h-full m-0 mt-2">
+            <SwarmView sessionId={sessionId} />
           </TabsContent>
         </div>
       </Tabs>

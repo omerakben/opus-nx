@@ -53,7 +53,11 @@ export type EdgeType =
   | "contradicts"
   | "supports"
   | "supersedes"
-  | "refines";
+  | "refines"
+  | "challenges"
+  | "verifies"
+  | "merges"
+  | "observes";
 
 export const EDGE_COLORS: Record<EdgeType, string> = {
   influences: "#3b82f6", // blue-500
@@ -61,6 +65,10 @@ export const EDGE_COLORS: Record<EdgeType, string> = {
   supports: "#22c55e", // green-500
   supersedes: "#f97316", // orange-500
   refines: "#8b5cf6", // violet-500
+  challenges: "#f59e0b", // amber-500
+  verifies: "#06b6d4", // cyan-500
+  merges: "#ec4899", // pink-500
+  observes: "#6366f1", // indigo-500
 };
 
 export const EDGE_LABELS: Record<EdgeType, string> = {
@@ -69,6 +77,10 @@ export const EDGE_LABELS: Record<EdgeType, string> = {
   supports: "Supports",
   supersedes: "Supersedes",
   refines: "Refines",
+  challenges: "Challenges",
+  verifies: "Verifies",
+  merges: "Merges",
+  observes: "Observes",
 };
 
 export const EDGE_ICONS: Record<EdgeType, string> = {
@@ -77,6 +89,10 @@ export const EDGE_ICONS: Record<EdgeType, string> = {
   supports: "✓",
   supersedes: "↑",
   refines: "◇",
+  challenges: "⚔",
+  verifies: "✔",
+  merges: "∪",
+  observes: "👁",
 };
 
 /**
@@ -89,6 +105,10 @@ export function getEdgeClass(edgeType: EdgeType): string {
     supports: "stroke-green-500",
     supersedes: "stroke-orange-500",
     refines: "stroke-violet-500",
+    challenges: "stroke-amber-500",
+    verifies: "stroke-cyan-500",
+    merges: "stroke-pink-500",
+    observes: "stroke-indigo-500",
   };
   return classes[edgeType];
 }

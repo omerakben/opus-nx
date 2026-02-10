@@ -56,7 +56,12 @@ function createEdgeComponent(edgeType: EdgeType) {
             ...style,
             stroke: color,
             strokeWidth,
-            strokeDasharray: edgeType === "contradicts" ? "5,5" : undefined,
+            strokeDasharray:
+              edgeType === "contradicts"
+                ? "5,5"
+                : edgeType === "challenges"
+                  ? "6,2"
+                  : undefined,
           }}
           className={cn(isAnimated && "animated")}
         />
@@ -91,6 +96,10 @@ export const ContradictsEdge = createEdgeComponent("contradicts");
 export const SupportsEdge = createEdgeComponent("supports");
 export const SupersedesEdge = createEdgeComponent("supersedes");
 export const RefinesEdge = createEdgeComponent("refines");
+export const ChallengesEdge = createEdgeComponent("challenges");
+export const VerifiesEdge = createEdgeComponent("verifies");
+export const MergesEdge = createEdgeComponent("merges");
+export const ObservesEdge = createEdgeComponent("observes");
 
 // Export edge types map for React Flow
 export const edgeTypes = {
@@ -99,4 +108,8 @@ export const edgeTypes = {
   supports: SupportsEdge,
   supersedes: SupersedesEdge,
   refines: RefinesEdge,
+  challenges: ChallengesEdge,
+  verifies: VerifiesEdge,
+  merges: MergesEdge,
+  observes: ObservesEdge,
 };

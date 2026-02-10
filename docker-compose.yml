@@ -1,0 +1,53 @@
+# ============================================================
+# Opus NX V2 — Docker Compose
+# Services: Next.js dashboard + Python agent backend
+# ============================================================
+
+version: "3.8"
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - AUTH_SECRET=${AUTH_SECRET}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - NEXT_PUBLIC_SWARM_URL=http://agents:8000
+      - NEXT_PUBLIC_AUTH_SECRET=${AUTH_SECRET}
+    depends_on:
+      agents:
+        condition: service_healthy
+    networks:
+      - opus-nx
+
+  agents:
+    build:
+      context: ./agents
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - AUTH_SECRET=${AUTH_SECRET}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - NEO4J_URI=${NEO4J_URI:-}
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD:-}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/api/health').raise_for_status()"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - opus-nx
+
+networks:
+  opus-nx:
+    driver: bridge

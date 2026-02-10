@@ -215,6 +215,20 @@ Opus Nx implements algorithms from four foundational papers. Two are in hackatho
 
 Core tests use Vitest: `pnpm --filter @opus-nx/core test`
 
+### Pre-Commit Functional Verification (REQUIRED)
+
+**Passing tests and clean UI screenshots are NOT sufficient to validate that a feature works.** Unit tests use mocks and UI rendering only proves layout — neither proves the real wiring works end-to-end.
+
+Before every commit that touches functional code, you MUST:
+
+1. **Start all required services** (Python backend, Next.js dev server, databases)
+2. **Execute the feature end-to-end** through the real UI or API — not just run unit tests
+3. **Verify real data flows** across service boundaries (e.g., browser → Next.js → Python → back)
+4. **Check logs for errors** in all running services (browser console, server stdout, backend logs)
+5. **Confirm the user-visible outcome** matches expectations (events arrive, data renders, state updates)
+
+If any service fails to start or the end-to-end flow breaks, fix the issue BEFORE committing. Do not commit code that only passes mocked tests but fails in real execution.
+
 ## Tech Stack
 
 **Hackathon Core**

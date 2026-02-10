@@ -16,6 +16,7 @@ import json
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
+import structlog
 from fastapi import FastAPI, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -23,6 +24,9 @@ from pydantic import BaseModel
 from .config import Settings
 from .events.bus import EventBus
 from .graph.reasoning_graph import SharedReasoningGraph
+from .persistence import Neo4jPersistence, SupabasePersistence
+
+log = structlog.get_logger(__name__)
 
 HEARTBEAT_INTERVAL = 30  # seconds
 
@@ -41,9 +45,37 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     graph = SharedReasoningGraph()
     bus = EventBus()
 
+    # -- Persistence (optional, graceful degradation) --
+    neo4j_persistence = None
+    supabase_persistence = None
+
+    if settings.neo4j_uri:
+        try:
+            neo4j_persistence = Neo4jPersistence(settings)
+            log.info("neo4j_connected")
+        except Exception as e:
+            log.warning("neo4j_init_failed", error=str(e))
+
+    if settings.supabase_url:
+        try:
+            supabase_persistence = SupabasePersistence(settings)
+            log.info("supabase_persistence_connected")
+        except Exception as e:
+            log.warning("supabase_persistence_init_failed", error=str(e))
+
+    async def on_graph_change(event_type: str, data):
+        if neo4j_persistence:
+            asyncio.create_task(neo4j_persistence.save(event_type, data))
+        if supabase_persistence:
+            asyncio.create_task(supabase_persistence.sync(event_type, data))
+
+    graph.on_change(on_graph_change)
+
     yield
 
-    # Shutdown: nothing to clean up for in-memory state
+    # Shutdown: close persistence connections
+    if neo4j_persistence:
+        await neo4j_persistence.close()
 
 
 app = FastAPI(title="Opus NX Swarm", version="2.0.0", lifespan=lifespan)
