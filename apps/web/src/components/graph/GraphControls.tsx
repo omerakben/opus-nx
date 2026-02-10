@@ -11,6 +11,10 @@ const EDGE_TYPES: EdgeType[] = [
   "supports",
   "supersedes",
   "refines",
+  "challenges",
+  "verifies",
+  "merges",
+  "observes",
 ];
 
 interface GraphControlsProps {

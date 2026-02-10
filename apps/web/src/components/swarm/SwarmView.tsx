@@ -48,8 +48,7 @@ const EXAMPLE_QUERIES = [
 ];
 
 export function SwarmView({ sessionId }: SwarmViewProps) {
-  const authSecret = process.env.NEXT_PUBLIC_AUTH_SECRET ?? "";
-  const { state, start, stop } = useSwarm(authSecret);
+  const { state, start, stop } = useSwarm("");
   const [query, setQuery] = useState("");
   const [copied, setCopied] = useState(false);
   const [viewMode, setViewMode] = useState<"cards" | "graph">("graph");
