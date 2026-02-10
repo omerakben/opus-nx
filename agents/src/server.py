@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from .config import Settings
 from .events.bus import EventBus
+from .graph.models import AgentName, EdgeRelation, ReasoningEdge, ReasoningNode
 from .graph.reasoning_graph import SharedReasoningGraph
 from .persistence import Neo4jPersistence, SupabasePersistence
 
@@ -261,3 +262,71 @@ async def swarm_websocket(
     finally:
         heartbeat_task.cancel()
         bus.unsubscribe(session_id, queue)
+
+
+# ---------------------------------------------------------------------------
+# Human-in-the-loop checkpoint
+# ---------------------------------------------------------------------------
+
+
+class CheckpointRequest(BaseModel):
+    node_id: str
+    verdict: str  # verified | questionable | disagree
+    correction: str | None = None
+
+    @field_validator("verdict")
+    @classmethod
+    def validate_verdict(cls, v: str) -> str:
+        if v not in {"verified", "questionable", "disagree"}:
+            raise ValueError("verdict must be 'verified', 'questionable', or 'disagree'")
+        return v
+
+
+@app.post("/api/swarm/{session_id}/checkpoint")
+async def checkpoint_node(session_id: str, request: CheckpointRequest) -> dict:
+    """Annotate a reasoning node with a human verdict and optionally trigger a re-run."""
+    from .events.types import HumanCheckpoint
+    from .swarm import SwarmManager
+
+    # Write human annotation node to graph
+    annotation_node = ReasoningNode(
+        agent=AgentName.MAESTRO,  # Human annotations attributed to maestro
+        session_id=session_id,
+        content=f"Human checkpoint: {request.verdict}"
+        + (f"\nCorrection: {request.correction}" if request.correction else ""),
+        reasoning="human_annotation",
+        confidence=1.0,
+    )
+    node_id = await graph.add_node(annotation_node)
+
+    # Add annotation edge to the target node
+    annotation_edge = ReasoningEdge(
+        source_id=node_id,
+        target_id=request.node_id,
+        relation=EdgeRelation.OBSERVES,
+        weight=1.0,
+        metadata={"verdict": request.verdict},
+    )
+    await graph.add_edge(annotation_edge)
+
+    # Emit human checkpoint event
+    await bus.publish(
+        session_id,
+        HumanCheckpoint(
+            session_id=session_id,
+            node_id=request.node_id,
+            verdict=request.verdict,
+            correction=request.correction,
+        ),
+    )
+
+    # If disagree with correction, trigger targeted re-run
+    result = {"status": "annotated", "annotation_node_id": node_id}
+    if request.verdict == "disagree" and request.correction:
+        swarm = SwarmManager(settings, graph, bus)
+        asyncio.create_task(
+            swarm.rerun_with_correction(session_id, request.node_id, request.correction)
+        )
+        result["status"] = "rerun_started"
+
+    return result

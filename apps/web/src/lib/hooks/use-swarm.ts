@@ -34,6 +34,20 @@ export interface AgentStatus {
   tokensUsed: number;
 }
 
+export interface SwarmGraphNode {
+  id: string;
+  agent: string;
+  content: string;
+  confidence?: number;
+}
+
+export interface SwarmGraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  type: string; // challenges, verifies, etc.
+}
+
 export interface SwarmState {
   /** Overall swarm phase */
   phase: "idle" | "running" | "synthesis" | "complete" | "error";
@@ -57,6 +71,16 @@ export interface SwarmState {
   startTimestamp: string | null;
   /** WebSocket connection state */
   connectionState: ConnectionState;
+  /** Graph nodes for live SwarmGraph visualization */
+  graphNodes: SwarmGraphNode[];
+  /** Graph edges for live SwarmGraph visualization */
+  graphEdges: SwarmGraphEdge[];
+  /** Maestro decomposition plan */
+  maestroDecomposition: {
+    subtasks: string[];
+    selectedAgents: string[];
+    reasoning: string;
+  } | null;
 }
 
 const INITIAL_STATE: SwarmState = {
@@ -71,6 +95,9 @@ const INITIAL_STATE: SwarmState = {
   totalDuration: null,
   startTimestamp: null,
   connectionState: "disconnected",
+  graphNodes: [],
+  graphEdges: [],
+  maestroDecomposition: null,
 };
 
 /** Polling interval for connection state (ms) */
@@ -226,6 +253,57 @@ export function useSwarm(authSecret: string) {
                 agents: event.affected_agents,
               },
             ],
+          };
+
+        case "graph_node_created":
+          return {
+            ...prev,
+            events,
+            graphNodes: [
+              ...prev.graphNodes,
+              {
+                id: event.node_id,
+                agent: event.agent,
+                content: event.content_preview,
+              },
+            ],
+          };
+
+        case "agent_challenges":
+          return {
+            ...prev,
+            events,
+            graphEdges: [
+              ...prev.graphEdges,
+              {
+                id: `edge-challenge-${prev.graphEdges.length}`,
+                source: `challenger-${event.challenger}-${prev.graphNodes.length}`,
+                target: event.target_node_id,
+                type: "challenges",
+              },
+            ],
+          };
+
+        case "verification_score":
+          return {
+            ...prev,
+            events,
+            graphNodes: prev.graphNodes.map((n) =>
+              n.id === event.node_id
+                ? { ...n, confidence: event.score }
+                : n
+            ),
+          };
+
+        case "maestro_decomposition":
+          return {
+            ...prev,
+            events,
+            maestroDecomposition: {
+              subtasks: event.subtasks,
+              selectedAgents: event.selected_agents,
+              reasoning: event.reasoning_preview,
+            },
           };
 
         default:

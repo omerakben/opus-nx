@@ -25,7 +25,10 @@ import {
   Sparkles,
   Zap,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { AgentCard } from "./AgentCard";
+import { SwarmControls } from "./SwarmControls";
+import { SwarmGraph } from "./SwarmGraph";
 import { SwarmTimeline } from "./SwarmTimeline";
 
 interface SwarmViewProps {
@@ -49,6 +52,7 @@ export function SwarmView({ sessionId }: SwarmViewProps) {
   const { state, start, stop } = useSwarm(authSecret);
   const [query, setQuery] = useState("");
   const [copied, setCopied] = useState(false);
+  const [viewMode, setViewMode] = useState<"cards" | "graph">("graph");
 
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -87,6 +91,22 @@ export function SwarmView({ sessionId }: SwarmViewProps) {
         <CardTitle className="text-base font-medium flex items-center gap-2">
           <Network className="w-4 h-4 text-cyan-400" />
           Agent Swarm
+          {(isRunning || state.phase === "complete") && (
+            <div className="flex gap-1 ml-2">
+              <button
+                onClick={() => setViewMode("cards")}
+                className={cn("text-[10px] px-2 py-0.5 rounded", viewMode === "cards" ? "bg-cyan-500/20 text-cyan-400" : "text-[var(--muted-foreground)]")}
+              >
+                Cards
+              </button>
+              <button
+                onClick={() => setViewMode("graph")}
+                className={cn("text-[10px] px-2 py-0.5 rounded", viewMode === "graph" ? "bg-cyan-500/20 text-cyan-400" : "text-[var(--muted-foreground)]")}
+              >
+                Graph
+              </button>
+            </div>
+          )}
           <Tooltip
             content={
               <span className="text-[11px]">
@@ -180,8 +200,16 @@ export function SwarmView({ sessionId }: SwarmViewProps) {
                 </p>
               </div>
 
+              {/* Graph view (the money shot) */}
+              {viewMode === "graph" && (
+                <SwarmGraph
+                  graphNodes={state.graphNodes}
+                  graphEdges={state.graphEdges}
+                />
+              )}
+
               {/* Agent grid (U3: responsive, U4: aria-live) */}
-              {agents.length > 0 && (
+              {viewMode === "cards" && agents.length > 0 && (
                 <div
                   className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2"
                   aria-live="polite"
@@ -338,6 +366,17 @@ export function SwarmView({ sessionId }: SwarmViewProps) {
                   </div>
                   <SwarmTimeline events={state.events} />
                 </div>
+              )}
+
+              {/* Human-in-the-Loop Checkpoints */}
+              {state.graphNodes.length > 0 && sessionId && (
+                <SwarmControls
+                  graphNodes={state.graphNodes}
+                  sessionId={sessionId}
+                  onRerunStarted={() => {
+                    start(query.trim(), sessionId);
+                  }}
+                />
               )}
             </div>
           )}

@@ -65,7 +65,7 @@ export function RightPanel({
               <ForkPanel sessionId={sessionId} />
             </TabsContent>
 
-            <TabsContent value="swarm" className="h-full m-0 mt-2">
+            <TabsContent value="swarm" forceMount className="h-full m-0 mt-2">
               <SwarmView sessionId={sessionId} />
             </TabsContent>
           </div>
@@ -191,7 +191,7 @@ export function RightPanel({
             <ForkPanel sessionId={sessionId} />
           </TabsContent>
 
-          <TabsContent value="swarm" className="h-full m-0 mt-2">
+          <TabsContent value="swarm" forceMount className="h-full m-0 mt-2">
             <SwarmView sessionId={sessionId} />
           </TabsContent>
         </div>

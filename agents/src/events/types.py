@@ -78,3 +78,23 @@ class MetacognitionInsight(SwarmEvent):
     insight_type: str  # swarm_bias | groupthink | productive_tension
     description: str
     affected_agents: list[str]
+
+
+class MaestroDecomposition(SwarmEvent):
+    event: Literal["maestro_decomposition"] = "maestro_decomposition"
+    subtasks: list[str]
+    selected_agents: list[str]
+    reasoning_preview: str
+
+
+class HumanCheckpoint(SwarmEvent):
+    event: Literal["human_checkpoint"] = "human_checkpoint"
+    node_id: str
+    verdict: str  # verified | questionable | disagree
+    correction: str | None = None
+
+
+class SwarmRerunStarted(SwarmEvent):
+    event: Literal["swarm_rerun_started"] = "swarm_rerun_started"
+    agents: list[str]
+    correction_preview: str

@@ -121,6 +121,26 @@ export interface MetacognitionInsightEvent extends SwarmEvent {
   affected_agents: string[];
 }
 
+export interface MaestroDecompositionEvent extends SwarmEvent {
+  event: "maestro_decomposition";
+  subtasks: string[];
+  selected_agents: string[];
+  reasoning_preview: string;
+}
+
+export interface HumanCheckpointEvent extends SwarmEvent {
+  event: "human_checkpoint";
+  node_id: string;
+  verdict: string;
+  correction: string | null;
+}
+
+export interface SwarmRerunStartedEvent extends SwarmEvent {
+  event: "swarm_rerun_started";
+  agents: string[];
+  correction_preview: string;
+}
+
 export type SwarmEventUnion =
   | SwarmStartedEvent
   | AgentStartedEvent
@@ -130,13 +150,16 @@ export type SwarmEventUnion =
   | VerificationScoreEvent
   | AgentCompletedEvent
   | SynthesisReadyEvent
-  | MetacognitionInsightEvent;
+  | MetacognitionInsightEvent
+  | MaestroDecompositionEvent
+  | HumanCheckpointEvent
+  | SwarmRerunStartedEvent;
 
 // ---------------------------------------------------------------------------
 // Event validation (W3)
 // ---------------------------------------------------------------------------
 
-/** The 9 known swarm event types */
+/** The 12 known swarm event types */
 export const VALID_EVENT_TYPES = new Set([
   "swarm_started",
   "agent_started",
@@ -147,6 +170,9 @@ export const VALID_EVENT_TYPES = new Set([
   "agent_completed",
   "synthesis_ready",
   "metacognition_insight",
+  "maestro_decomposition",
+  "human_checkpoint",
+  "swarm_rerun_started",
 ] as const);
 
 /** Runtime validation for incoming WebSocket events */

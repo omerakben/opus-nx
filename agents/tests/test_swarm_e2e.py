@@ -194,12 +194,16 @@ class TestSwarmEvents:
 
         assert len(events) > 0, "Expected events to be emitted"
 
-        # First event should be swarm_started
-        assert events[0]["event"] == "swarm_started"
-        assert events[0]["session_id"] == session_id
-
         # Extract event types for ordering analysis
         event_types = [e["event"] for e in events]
+
+        # Phase 0 Maestro events come first (agent_started/completed),
+        # then swarm_started, then primary agent events
+        swarm_started_idx = event_types.index("swarm_started")
+        assert swarm_started_idx >= 0, "Expected swarm_started event"
+
+        swarm_started_event = events[swarm_started_idx]
+        assert swarm_started_event["session_id"] == session_id
 
         # agent_started events should appear before agent_completed events
         started_indices = [i for i, t in enumerate(event_types) if t == "agent_started"]
@@ -218,11 +222,15 @@ class TestSwarmEvents:
 
         await swarm.run("Investigate performance issues", session_id)
 
-        first_event = queue.get_nowait()
-        assert first_event["event"] == "swarm_started"
-        assert "deep_thinker" in first_event["agents"]
-        assert "contrarian" in first_event["agents"]
-        assert "verifier" in first_event["agents"]
+        # Collect events and find swarm_started (may not be first due to Phase 0 Maestro)
+        events = []
+        while not queue.empty():
+            events.append(queue.get_nowait())
+
+        swarm_started = next(e for e in events if e["event"] == "swarm_started")
+        assert "deep_thinker" in swarm_started["agents"]
+        assert "contrarian" in swarm_started["agents"]
+        assert "verifier" in swarm_started["agents"]
 
 
 class TestSwarmGraphConstruction:
