@@ -23,7 +23,8 @@ const AGENT_COLORS: Record<string, string> = {
   maestro: "#06b6d4",
 };
 
-function formatAgentName(name: string): string {
+function formatAgentName(name: string | undefined): string {
+  if (!name) return "Unknown Agent";
   return name
     .replace(/_/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());

@@ -83,7 +83,8 @@ function getEventDisplay(event: SwarmEventUnion): EventDisplay | null {
   }
 }
 
-function formatName(name: string): string {
+function formatName(name: string | undefined): string {
+  if (!name) return "Unknown";
   return name
     .replace(/_/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
