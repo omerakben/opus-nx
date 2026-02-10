@@ -32,5 +32,10 @@ pnpm-debug.log*
 coverage/
 .nyc_output/
 
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
 # Misc
 *.tsbuildinfo
