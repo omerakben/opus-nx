@@ -14,6 +14,7 @@ interface SessionListProps {
   onRefresh: () => void;
   onArchiveSession?: (sessionId: string) => void;
   onDeleteSession?: (sessionId: string) => void;
+  onShareSession?: (sessionId: string) => void;
   onToggleCollapse?: () => void;
 }
 
@@ -26,6 +27,7 @@ export function SessionList({
   onRefresh,
   onArchiveSession,
   onDeleteSession,
+  onShareSession,
   onToggleCollapse,
 }: SessionListProps) {
   return (
@@ -109,6 +111,13 @@ export function SessionList({
               onDelete={
                 onDeleteSession
                   ? () => onDeleteSession(session.id)
+                  : undefined
+              }
+              onShare={
+                onShareSession
+                  ? () => {
+                    void onShareSession(session.id);
+                  }
                   : undefined
               }
               displayName={session.displayName ?? undefined}

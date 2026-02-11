@@ -16,6 +16,7 @@ interface LeftPanelProps {
   onRefresh: () => void;
   onArchiveSession?: (sessionId: string) => void;
   onDeleteSession?: (sessionId: string) => void;
+  onShareSession?: (sessionId: string) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   isMobile?: boolean;
@@ -31,6 +32,7 @@ export function LeftPanel({
   onRefresh,
   onArchiveSession,
   onDeleteSession,
+  onShareSession,
   isCollapsed = false,
   onToggleCollapse,
   isMobile,
@@ -49,6 +51,7 @@ export function LeftPanel({
             onRefresh={onRefresh}
             onArchiveSession={onArchiveSession}
             onDeleteSession={onDeleteSession}
+            onShareSession={onShareSession}
           />
 
           {nodes.length > 0 && (
@@ -125,6 +128,7 @@ export function LeftPanel({
           onRefresh={onRefresh}
           onArchiveSession={onArchiveSession}
           onDeleteSession={onDeleteSession}
+          onShareSession={onShareSession}
           onToggleCollapse={onToggleCollapse}
         />
       </div>

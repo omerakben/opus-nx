@@ -133,6 +133,19 @@ export async function deleteSession(
   });
 }
 
+export interface SessionShareLink {
+  shareUrl: string;
+  expiresAt: string;
+}
+
+export async function createSessionShareLink(
+  sessionId: string
+): Promise<ApiResponse<SessionShareLink>> {
+  return fetchApi<SessionShareLink>(`/api/sessions/${sessionId}/share`, {
+    method: "POST",
+  });
+}
+
 // ============================================================
 // Thinking API
 // ============================================================

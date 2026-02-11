@@ -51,6 +51,7 @@ export async function proxy(request: NextRequest) {
   // Allow access to public routes without auth
   if (
     pathname === "/login" ||
+    pathname.startsWith("/share/") ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/demo") ||
     pathname.startsWith("/api/health") ||

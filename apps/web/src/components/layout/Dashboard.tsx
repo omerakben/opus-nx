@@ -29,6 +29,7 @@ export function Dashboard() {
     refreshSessions,
     archiveSession,
     deleteSessionWithUndo,
+    shareSessionLink,
   } = useSession();
 
   // Sidebar state
@@ -323,6 +324,7 @@ export function Dashboard() {
                 onRefresh={refreshSessions}
                 onArchiveSession={archiveSession}
                 onDeleteSession={deleteSessionWithUndo}
+                onShareSession={shareSessionLink}
                 isMobile
               />
             </div>
@@ -369,6 +371,7 @@ export function Dashboard() {
           onRefresh={refreshSessions}
           onArchiveSession={archiveSession}
           onDeleteSession={deleteSessionWithUndo}
+          onShareSession={shareSessionLink}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={toggleSidebar}
         />

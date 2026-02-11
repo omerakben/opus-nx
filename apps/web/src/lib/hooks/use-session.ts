@@ -7,6 +7,7 @@ import {
   archiveSession as archiveSessionApi,
   deleteSession as deleteSessionApi,
   restoreSession as restoreSessionApi,
+  createSessionShareLink as createSessionShareLinkApi,
   type Session,
 } from "@/lib/api";
 import { toast } from "@/components/ui/sonner";
@@ -21,6 +22,7 @@ interface UseSessionReturn {
   refreshSessions: () => Promise<void>;
   archiveSession: (sessionId: string) => Promise<void>;
   deleteSessionWithUndo: (sessionId: string) => Promise<void>;
+  shareSessionLink: (sessionId: string) => Promise<void>;
 }
 
 // Undo window duration in milliseconds
@@ -172,6 +174,45 @@ export function useSession(): UseSessionReturn {
     [sessions, activeSessionId, refreshSessions]
   );
 
+  const shareSessionLink = useCallback(
+    async (sessionId: string) => {
+      const session = sessions.find((s) => s.id === sessionId);
+      const sessionName = session?.displayName || "Session";
+
+      const response = await createSessionShareLinkApi(sessionId);
+      if (response.error || !response.data) {
+        toast.error("Failed to create share link", {
+          description: response.error?.message ?? "Please try again.",
+        });
+        return;
+      }
+
+      const { shareUrl, expiresAt } = response.data;
+      const expiresLabel = new Intl.DateTimeFormat(undefined, {
+        month: "short",
+        day: "numeric",
+      }).format(new Date(expiresAt));
+
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success("Share link copied", {
+          description: `${sessionName} · expires ${expiresLabel}`,
+        });
+      } catch {
+        toast.success("Share link created", {
+          description: "Clipboard access blocked. Open link from the action.",
+          action: {
+            label: "Open",
+            onClick: () => {
+              window.open(shareUrl, "_blank", "noopener,noreferrer");
+            },
+          },
+        });
+      }
+    },
+    [sessions]
+  );
+
   // Cleanup pending deletions on unmount
   useEffect(() => {
     return () => {
@@ -194,5 +235,6 @@ export function useSession(): UseSessionReturn {
     refreshSessions,
     archiveSession,
     deleteSessionWithUndo,
+    shareSessionLink,
   };
 }

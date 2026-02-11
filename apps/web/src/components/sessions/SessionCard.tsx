@@ -11,12 +11,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui";
 import type { Session } from "@/lib/api";
-import { Archive, MessageSquare, MoreHorizontal, Star, Trash2 } from "lucide-react";
+import { Archive, MessageSquare, MoreHorizontal, Share2, Star, Trash2 } from "lucide-react";
 
 interface SessionCardProps {
   session: Session;
   isActive: boolean;
   onClick: () => void;
+  onShare?: () => void;
   onArchive?: () => void;
   onDelete?: () => void;
   /** Display name derived from first query */
@@ -27,6 +28,7 @@ export function SessionCard({
   session,
   isActive,
   onClick,
+  onShare,
   onArchive,
   onDelete,
   displayName,
@@ -74,7 +76,7 @@ export function SessionCard({
           </Badge>
 
           {/* Action menu - visible on hover */}
-          {(onArchive || onDelete) && (
+          {(onShare || onArchive || onDelete) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -90,6 +92,18 @@ export function SessionCard({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-36">
+                {onShare && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onShare();
+                    }}
+                  >
+                    <Share2 className="w-4 h-4 mr-2" />
+                    Share link
+                  </DropdownMenuItem>
+                )}
+                {onShare && (onArchive || onDelete) && <DropdownMenuSeparator />}
                 {onArchive && (
                   <DropdownMenuItem
                     onClick={(e) => {
