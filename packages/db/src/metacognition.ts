@@ -422,6 +422,20 @@ export async function getInsightCountsByType(
   return counts;
 }
 
+/**
+ * Get average confidence for insights, selecting only the confidence column.
+ */
+export async function getAverageInsightConfidence(sessionId?: string): Promise<number> {
+  const supabase = getSupabase();
+  let query = supabase.from("metacognitive_insights").select("confidence");
+  if (sessionId) {
+    query = query.eq("session_id", sessionId);
+  }
+  const { data, error } = await query;
+  if (error || !data || data.length === 0) return 0;
+  return data.reduce((sum, r) => sum + (r as { confidence: number }).confidence, 0) / data.length;
+}
+
 // ============================================================
 // Mapper
 // ============================================================

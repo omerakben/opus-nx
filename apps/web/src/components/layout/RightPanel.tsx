@@ -49,6 +49,10 @@ export function RightPanel({
               <Network className="w-3 h-3 mr-1" />
               Swarm
             </TabsTrigger>
+            <TabsTrigger value="memory" className="text-xs">
+              <Database className="w-3 h-3 mr-1" />
+              Memory
+            </TabsTrigger>
           </TabsList>
 
           <div className="flex-1 min-h-0 overflow-hidden">
@@ -68,6 +72,12 @@ export function RightPanel({
 
             <TabsContent value="swarm" forceMount className="h-full m-0 mt-2">
               <SwarmView sessionId={sessionId} />
+            </TabsContent>
+
+            <TabsContent value="memory" className="h-full m-0 mt-2">
+              <div className="h-full overflow-y-auto">
+                <MemoryPanel sessionId={sessionId} />
+              </div>
             </TabsContent>
           </div>
         </Tabs>

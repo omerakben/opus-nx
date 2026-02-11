@@ -1,9 +1,9 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Network, Brain, MessageSquare, Lightbulb } from "lucide-react";
+import { Network, Brain, MessageSquare, Lightbulb, Sparkles } from "lucide-react";
 
-export type MobileView = "graph" | "think" | "sessions" | "insights";
+export type MobileView = "graph" | "think" | "sessions" | "insights" | "got";
 
 interface MobileNavProps {
   activeView: MobileView;
@@ -14,6 +14,7 @@ interface MobileNavProps {
 const NAV_ITEMS: { view: MobileView; icon: typeof Brain; label: string }[] = [
   { view: "graph", icon: Network, label: "Graph" },
   { view: "think", icon: Brain, label: "Think" },
+  { view: "got", icon: Sparkles, label: "GoT" },
   { view: "sessions", icon: MessageSquare, label: "Sessions" },
   { view: "insights", icon: Lightbulb, label: "Insights" },
 ];

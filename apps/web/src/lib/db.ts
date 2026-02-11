@@ -44,6 +44,7 @@ export {
   searchInsights,
   getInsightsForNode,
   getInsightCountsByType,
+  getAverageInsightConfidence,
   // Fork analyses
   createForkAnalysis,
   getSessionForkAnalyses as getSessionForkAnalysesDb,

@@ -86,6 +86,10 @@ export async function POST(request: Request) {
     const engine = new MetacognitionEngine();
 
     type FocusArea = "bias_detection" | "decision_quality" | "reasoning_patterns" | "confidence_calibration" | "alternative_exploration";
+    const VALID_FOCUS_AREAS = new Set<string>([
+      "bias_detection", "decision_quality", "reasoning_patterns",
+      "confidence_calibration", "alternative_exploration",
+    ]);
     const defaultAreas: FocusArea[] = [
       "reasoning_patterns",
       "bias_detection",
@@ -93,13 +97,16 @@ export async function POST(request: Request) {
       "alternative_exploration",
     ];
 
+    const sanitized = Array.isArray(focusAreas)
+      ? focusAreas.filter((a): a is FocusArea => typeof a === "string" && VALID_FOCUS_AREAS.has(a))
+      : defaultAreas;
+    const effectiveFocusAreas = sanitized.length > 0 ? sanitized : defaultAreas;
+
     const result = await engine.analyze({
       sessionId,
       nodeLimit: typeof nodeLimit === "number" ? nodeLimit : 20,
       analysisScope: "session",
-      focusAreas: Array.isArray(focusAreas)
-        ? (focusAreas as FocusArea[])
-        : defaultAreas,
+      focusAreas: effectiveFocusAreas,
     });
 
     const serializedInsights = result.insights.map((insight) => ({

@@ -113,6 +113,16 @@ export interface GoTEngineOptions {
   onAggregation?: (inputCount: number, output: Thought) => void;
   /** Callback for streaming thinking */
   onThinkingStream?: (thinking: string) => void;
+  /** Callback when a new depth level begins */
+  onDepthStart?: (depth: number, maxDepth: number, frontierSize: number) => void;
+  /** Callback when thought generation fails */
+  onGenerationFailed?: (parentId: string, depth: number, error: string) => void;
+  /** Callback when thought evaluation fails */
+  onEvaluationFailed?: (thoughtId: string, error: string) => void;
+  /** Callback when thought aggregation fails */
+  onAggregationFailed?: (inputCount: number, error: string) => void;
+  /** Callback for progress updates (partial stats snapshot) */
+  onProgress?: (stats: GoTResult["stats"]) => void;
 }
 
 // ============================================================
@@ -214,6 +224,8 @@ export class GoTEngine {
       maxDepthReached: 0,
       totalTokens: 0,
       totalDurationMs: 0,
+      generationErrors: 0,
+      evaluationErrors: 0,
     };
 
     try {
@@ -296,6 +308,8 @@ export class GoTEngine {
       maxDepthReached: 0,
       totalTokens: 0,
       totalDurationMs: 0,
+      generationErrors: 0,
+      evaluationErrors: 0,
     };
 
     for (let depth = 1; depth <= config.maxDepth; depth++) {
@@ -304,6 +318,7 @@ export class GoTEngine {
 
       logger.debug(`BFS depth ${depth}`, { frontierSize: frontier.length });
       stats.maxDepthReached = depth;
+      this.options.onDepthStart?.(depth, config.maxDepth, frontier.length);
 
       const nextFrontier: Thought[] = [];
 
@@ -351,6 +366,7 @@ export class GoTEngine {
       }
 
       frontier = topK;
+      this.options.onProgress?.({ ...stats });
     }
 
     return stats;
@@ -380,6 +396,8 @@ export class GoTEngine {
       maxDepthReached: 0,
       totalTokens: 0,
       totalDurationMs: 0,
+      generationErrors: 0,
+      evaluationErrors: 0,
     };
 
     await this.dfsRecurse(root, 1, state, config, stats);
@@ -427,6 +445,9 @@ export class GoTEngine {
       stats.thoughtsExplored++;
       await this.dfsRecurse(viable[0], depth + 1, state, config, stats);
     }
+
+    // Progress at backtrack points
+    this.options.onProgress?.({ ...stats });
   }
 
   /**
@@ -449,6 +470,8 @@ export class GoTEngine {
       maxDepthReached: 0,
       totalTokens: 0,
       totalDurationMs: 0,
+      generationErrors: 0,
+      evaluationErrors: 0,
     };
 
     while (openSet.length > 0 && state.thoughts.length < config.maxThoughts) {
@@ -496,6 +519,9 @@ export class GoTEngine {
           stats.aggregationsMade++;
         }
       }
+
+      // Progress after each expansion
+      this.options.onProgress?.({ ...stats });
     }
 
     return stats;
@@ -619,10 +645,31 @@ Use the record_thoughts tool to submit your thoughts.`;
 
       return thoughts;
     } catch (error) {
-      logger.error("Thought generation failed", {
-        error: error instanceof Error ? error.message : String(error),
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      logger.error("Thought generation failed", { error: errorMsg });
+      stats.generationErrors++;
+
+      // Create a visible "failed" node so the error appears in the graph
+      const failedThought = this.createThought(
+        `[Generation failed] ${errorMsg}`,
+        depth,
+        "generation",
+        [parent.id]
+      );
+      failedThought.state = "rejected";
+      failedThought.score = 0;
+      failedThought.metadata.tags = ["generation_error"];
+
+      state.thoughts.push(failedThought);
+      state.edges.push({
+        sourceId: parent.id,
+        targetId: failedThought.id,
+        type: "influences",
+        weight: 0.2,
       });
-      stats.refinementsMade++; // Track generation failures (reusing refinementsMade as it's otherwise unused)
+      parent.childIds.push(failedThought.id);
+
+      this.options.onGenerationFailed?.(parent.id, depth, errorMsg);
       return [];
     }
   }
@@ -682,9 +729,13 @@ Use the evaluate_thought tool to record your evaluation.`;
       // No tool use in response — treat as failed evaluation
       return 0.0;
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
       logger.warn("Thought evaluation failed, scoring at 0.0 (below prune threshold)", {
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMsg,
       });
+      thought.metadata.tags = thought.metadata.tags ?? [];
+      thought.metadata.tags.push("evaluation_error");
+      this.options.onEvaluationFailed?.(thought.id, errorMsg);
       return 0.0;
     }
   }
@@ -759,9 +810,9 @@ Combine the strongest elements from these thoughts into a unified reasoning step
 
       return null;
     } catch (error) {
-      logger.warn("Aggregation failed", {
-        error: error instanceof Error ? error.message : String(error),
-      });
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      logger.warn("Aggregation failed", { error: errorMsg });
+      this.options.onAggregationFailed?.(thoughts.length, errorMsg);
       return null;
     }
   }

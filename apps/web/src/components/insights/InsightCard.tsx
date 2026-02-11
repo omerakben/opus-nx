@@ -185,7 +185,7 @@ export function InsightCard({ insight, onEvidenceClick }: InsightCardProps) {
               className="space-y-1 overflow-hidden transition-[max-height] duration-300 ease-out"
               style={{
                 maxHeight: isEvidenceExpanded
-                  ? `${insight.evidence.length * 80}px`
+                  ? `${Math.max(200, insight.evidence.length * 100)}px`
                   : "72px",
               }}
             >

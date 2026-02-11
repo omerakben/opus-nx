@@ -23,6 +23,7 @@ export function Dashboard() {
   const isMobile = useIsMobile();
   const [mobileView, setMobileView] = useState<MobileView>("graph");
   const [centerTab, setCenterTab] = useState<"thinkgraph" | "swarm" | "got" | "verify">("thinkgraph");
+  const [verifyInitialSteps, setVerifyInitialSteps] = useState<Array<{ content: string; type?: string }> | undefined>(undefined);
 
   // Session management
   const {
@@ -68,6 +69,7 @@ export function Dashboard() {
     nodeId: streamNodeId,
     degraded: streamDegraded,
     warnings: streamWarnings,
+    memoryStats,
     start: startStream,
     stop: stopStream,
     clear: clearStream,
@@ -111,6 +113,8 @@ export function Dashboard() {
     const response = await getSessionInsights(activeSession.id);
     if (response.data) {
       setInsights(response.data);
+    } else if (response.error) {
+      console.warn("[Dashboard] Failed to load insights:", response.error.message);
     }
     setIsLoadingInsights(false);
   }, [activeSession?.id]);
@@ -129,6 +133,29 @@ export function Dashboard() {
     });
     return unsub;
   }, [activeSession?.id, loadInsights]);
+
+  // Reload insights when GoT completes
+  useEffect(() => {
+    const unsub = appEvents.on("got:complete", (payload) => {
+      if (payload.sessionId === activeSession?.id) {
+        setTimeout(() => loadInsights(), 500);
+      }
+    });
+    return unsub;
+  }, [activeSession?.id, loadInsights]);
+
+  // Handle GoT -> Verify cross-feature navigation
+  const handleSendToVerify = useCallback(
+    (steps: Array<{ content: string; type?: string }>) => {
+      setVerifyInitialSteps(steps);
+      if (isMobile) {
+        // On mobile there's no verify tab in the center — just set state
+        // (VerificationPanel is in the center tabs on desktop)
+      }
+      setCenterTab("verify");
+    },
+    [isMobile]
+  );
 
   // Handle starting a new thinking stream
   const handleStartStream = useCallback(
@@ -234,6 +261,8 @@ export function Dashboard() {
         const insightResponse = await getSessionInsights(sessionId);
         if (insightResponse.data) {
           setInsights(insightResponse.data);
+        } else if (insightResponse.error) {
+          console.warn("[Dashboard] Failed to reload insights after stream:", insightResponse.error.message);
         }
 
         // Notify other components (ForkPanel, etc.) that thinking completed
@@ -243,6 +272,13 @@ export function Dashboard() {
       return () => clearTimeout(timeout);
     }
   }, [isStreaming, activeSession?.id, refreshGraph, refreshSessions, streamNodeId]);
+
+  // Dispatch memory update events so MemoryPanel can react in real-time
+  useEffect(() => {
+    if (memoryStats) {
+      appEvents.emit("memory:update", { stats: memoryStats });
+    }
+  }, [memoryStats]);
 
   // Auto-start tour when graph has nodes loaded (e.g., after demo seed)
   const hasNodes = nodes.length > 0;
@@ -331,6 +367,16 @@ export function Dashboard() {
                 onDeleteSession={deleteSessionWithUndo}
                 onShareSession={shareSessionLink}
                 isMobile
+              />
+            </div>
+          )}
+
+          {/* GoT View */}
+          {mobileView === "got" && (
+            <div className="h-full overflow-y-auto animate-fade-in">
+              <GoTPanel
+                sessionId={activeSession?.id ?? null}
+                onSendToVerify={handleSendToVerify}
               />
             </div>
           )}
@@ -438,75 +484,92 @@ export function Dashboard() {
             </button>
           </div>
 
-          {/* ThinkGraph Tab — always mounted for ReactFlow state */}
-          <div className={cn("flex-1 flex flex-col overflow-hidden", centerTab !== "thinkgraph" && "hidden")}>
-            <div className="flex-1 overflow-hidden relative" data-tour="reasoning-graph">
-              {isStreaming && (
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-[var(--card)]/90 border border-amber-500/30 backdrop-blur-sm flex items-center gap-2 animate-breathing">
-                  <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                  <span className="text-xs text-amber-400 font-medium">
-                    Opus is thinking...
-                  </span>
-                  <span className="text-[10px] text-[var(--muted-foreground)] opacity-70">
-                    Graph updates on completion
-                  </span>
-                </div>
-              )}
-              <ReactFlowProvider>
-                <ThinkingGraph
-                  nodes={liveNodes}
-                  edges={liveEdges}
-                  onNodeClick={selectNode}
-                  onNodesChange={onNodesChange}
-                  onEdgesChange={onEdgesChange}
-                  isLoading={isLoadingGraph}
-                  onSeedDemo={handleSeedDemo}
-                  onBranchCreated={refreshGraph}
-                  selectedNodeId={selectedNode?.id}
-                />
-              </ReactFlowProvider>
+          {/* Tab panels — stacked via absolute positioning so ReactFlow keeps measurable dimensions */}
+          <div className="flex-1 relative overflow-hidden">
+            {/* ThinkGraph Tab — uses invisible (not hidden/display:none) to preserve ReactFlow container dimensions.
+                display:none causes getBoundingClientRect to return 0×0, which makes fitView produce NaN viewport values.
+                z-index ensures active tab paints above inactive ones so ReactFlow nodes don't bleed through.
+                `isolate` creates a stacking context boundary so internal z-indices don't escape into sibling tabs. */}
+            <div className={cn(
+              "absolute inset-0 flex flex-col overflow-hidden isolate",
+              centerTab === "thinkgraph" ? "z-20" : "invisible pointer-events-none -z-10"
+            )}>
+              <div className="flex-1 overflow-hidden relative" data-tour="reasoning-graph">
+                {isStreaming && (
+                  <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-[var(--card)]/90 border border-amber-500/30 backdrop-blur-sm flex items-center gap-2 animate-breathing">
+                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    <span className="text-xs text-amber-400 font-medium">
+                      Opus is thinking...
+                    </span>
+                    <span className="text-[10px] text-[var(--muted-foreground)] opacity-70">
+                      Graph updates on completion
+                    </span>
+                  </div>
+                )}
+                <ReactFlowProvider>
+                  <ThinkingGraph
+                    nodes={liveNodes}
+                    edges={liveEdges}
+                    onNodeClick={selectNode}
+                    onNodesChange={onNodesChange}
+                    onEdgesChange={onEdgesChange}
+                    isLoading={isLoadingGraph}
+                    onSeedDemo={handleSeedDemo}
+                    onBranchCreated={refreshGraph}
+                    selectedNodeId={selectedNode?.id}
+                  />
+                </ReactFlowProvider>
+              </div>
+
+              <BottomPanel
+                thinking={thinking}
+                tokenCount={tokenCount}
+                isStreaming={isStreaming}
+                error={streamError}
+                sessionId={activeSession?.id ?? null}
+                onStart={handleStartStream}
+                onStop={stopStream}
+                onClear={clearStream}
+                phase={phase}
+                compactionCount={compactionCount}
+                compactionSummary={compactionSummary}
+                elapsedMs={elapsedMs}
+                selectedNodeData={selectedNodeData}
+                onClearSelection={clearNodeSelection}
+                response={streamResponse}
+                streamNodeId={streamNodeId}
+                degraded={streamDegraded}
+                warnings={streamWarnings}
+              />
             </div>
 
-            <BottomPanel
-              thinking={thinking}
-              tokenCount={tokenCount}
-              isStreaming={isStreaming}
-              error={streamError}
-              sessionId={activeSession?.id ?? null}
-              onStart={handleStartStream}
-              onStop={stopStream}
-              onClear={clearStream}
-              phase={phase}
-              compactionCount={compactionCount}
-              compactionSummary={compactionSummary}
-              elapsedMs={elapsedMs}
-              selectedNodeData={selectedNodeData}
-              onClearSelection={clearNodeSelection}
-              response={streamResponse}
-              streamNodeId={streamNodeId}
-              degraded={streamDegraded}
-              warnings={streamWarnings}
-            />
+            {/* Swarm Tab — always mounted for WebSocket persistence */}
+            <div className={cn("absolute inset-0 overflow-hidden", centerTab === "swarm" ? "z-20" : "hidden")}>
+              <SwarmView sessionId={activeSession?.id ?? null} />
+            </div>
+
+            {/* GoT Tab — uses invisible for ReactFlow (GoTGraph) container dimensions.
+                z-index ensures active tab paints above inactive ones (prevents ThinkGraph bleed-through).
+                `bg-[var(--background)]` makes the tab opaque so ThinkGraph doesn't bleed through.
+                `isolate` creates a stacking context boundary for ReactFlow z-index containment. */}
+            <div className={cn(
+              "absolute inset-0 overflow-y-auto bg-[var(--background)] isolate",
+              centerTab === "got" ? "z-20" : "invisible pointer-events-none -z-10"
+            )}>
+              <GoTPanel
+                sessionId={activeSession?.id ?? null}
+                onSendToVerify={handleSendToVerify}
+              />
+            </div>
+
+            {/* Verify Tab — always mounted to preserve state across tab switches */}
+            <div className={cn("absolute inset-0 overflow-y-auto", centerTab === "verify" ? "z-20" : "hidden")}>
+              <VerificationPanel
+                sessionId={activeSession?.id ?? null}
+                initialSteps={verifyInitialSteps}
+              />
+            </div>
           </div>
-
-          {/* Swarm Tab — always mounted for WebSocket persistence */}
-          <div className={cn("flex-1 overflow-hidden", centerTab !== "swarm" && "hidden")}>
-            <SwarmView sessionId={activeSession?.id ?? null} />
-          </div>
-
-          {/* GoT Tab */}
-          {centerTab === "got" && (
-            <div className="flex-1 overflow-y-auto">
-              <GoTPanel sessionId={activeSession?.id ?? null} />
-            </div>
-          )}
-
-          {/* Verify Tab */}
-          {centerTab === "verify" && (
-            <div className="flex-1 overflow-y-auto">
-              <VerificationPanel sessionId={activeSession?.id ?? null} />
-            </div>
-          )}
         </div>
 
         {/* Right Panel: Insights & Fork */}

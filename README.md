@@ -1,6 +1,6 @@
 # Opus Nx
 
-## AI reasoning you can see, steer, and verify.
+## AI reasoning you can see, steer, and verify
 
 Opus Nx transforms Claude Opus 4.6's extended thinking from an invisible black box into **persistent, navigable reasoning graphs**. Deploy a swarm of 6 specialized AI agents, fork reasoning into competing perspectives, verify every step, and watch metacognitive self-audits -- all in real time.
 
@@ -14,14 +14,14 @@ Every AI system today treats reasoning as disposable. Extended thinking improves
 
 **The problem is trust.** When you cannot see *how* an AI reached its conclusion, you cannot verify it, steer it, or build on it.
 
-| Status Quo | Opus Nx |
-| --- | --- |
-| Reasoning happens behind a wall | Reasoning becomes a **navigable graph** you can explore |
-| Single AI perspective | **6 specialized agents** collaborate, debate, and synthesize |
-| "Trust the final output" | **Step-by-step verification** with scored confidence |
-| No competing viewpoints | **4 concurrent reasoning styles** you steer in real time |
-| Conversations are stateless | Every reasoning chain is **persistent and searchable** |
-| No self-awareness | **Metacognitive self-audit** detects the AI's own biases and blind spots |
+| Status Quo                      | Opus Nx                                                                  |
+| ------------------------------- | ------------------------------------------------------------------------ |
+| Reasoning happens behind a wall | Reasoning becomes a **navigable graph** you can explore                  |
+| Single AI perspective           | **6 specialized agents** collaborate, debate, and synthesize             |
+| "Trust the final output"        | **Step-by-step verification** with scored confidence                     |
+| No competing viewpoints         | **4 concurrent reasoning styles** you steer in real time                 |
+| Conversations are stateless     | Every reasoning chain is **persistent and searchable**                   |
+| No self-awareness               | **Metacognitive self-audit** detects the AI's own biases and blind spots |
 
 ---
 
@@ -182,75 +182,75 @@ Bottom Panel: Thinking stream + query input
 
 ### Core Reasoning
 
-| Route | Method | Purpose |
-| --- | --- | --- |
-| `/api/thinking` | POST | Extended thinking request with adaptive effort |
-| `/api/thinking/stream` | POST | SSE streaming for real-time thinking deltas |
-| `/api/fork` | POST | Spawn ThinkFork parallel reasoning branches |
-| `/api/fork/steer` | POST | Redirect a branch mid-reasoning |
-| `/api/verify` | POST | PRM step-by-step verification |
-| `/api/got` | POST | Graph of Thoughts reasoning |
-| `/api/insights` | GET/POST | Metacognitive self-audit |
-| `/api/memory` | GET/POST | Hierarchical memory operations |
+| Route                  | Method   | Purpose                                        |
+| ---------------------- | -------- | ---------------------------------------------- |
+| `/api/thinking`        | POST     | Extended thinking request with adaptive effort |
+| `/api/thinking/stream` | POST     | SSE streaming for real-time thinking deltas    |
+| `/api/fork`            | POST     | Spawn ThinkFork parallel reasoning branches    |
+| `/api/fork/steer`      | POST     | Redirect a branch mid-reasoning                |
+| `/api/verify`          | POST     | PRM step-by-step verification                  |
+| `/api/got`             | POST     | Graph of Thoughts reasoning                    |
+| `/api/insights`        | GET/POST | Metacognitive self-audit                       |
+| `/api/memory`          | GET/POST | Hierarchical memory operations                 |
 
 ### Agent Swarm
 
-| Route | Method | Purpose |
-| --- | --- | --- |
-| `/api/swarm` | POST | Initiate multi-agent swarm analysis |
-| `/api/swarm/token` | GET | Generate WebSocket auth token |
-| `/api/swarm/[sessionId]/checkpoint` | POST | Human-in-the-loop checkpoint |
+| Route                               | Method | Purpose                             |
+| ----------------------------------- | ------ | ----------------------------------- |
+| `/api/swarm`                        | POST   | Initiate multi-agent swarm analysis |
+| `/api/swarm/token`                  | GET    | Generate WebSocket auth token       |
+| `/api/swarm/[sessionId]/checkpoint` | POST   | Human-in-the-loop checkpoint        |
 
 ### Sessions and Data
 
-| Route | Method | Purpose |
-| --- | --- | --- |
-| `/api/sessions` | GET/POST | List or create sessions |
-| `/api/sessions/[sessionId]` | GET/PATCH/DELETE | Session CRUD |
-| `/api/sessions/[sessionId]/nodes` | GET | Thinking nodes for a session |
-| `/api/sessions/[sessionId]/share` | POST | Generate share link |
-| `/api/reasoning/[id]` | GET | ThinkGraph node details |
-| `/api/reasoning/[id]/checkpoint` | POST | Human-in-the-loop checkpoint |
+| Route                             | Method           | Purpose                      |
+| --------------------------------- | ---------------- | ---------------------------- |
+| `/api/sessions`                   | GET/POST         | List or create sessions      |
+| `/api/sessions/[sessionId]`       | GET/PATCH/DELETE | Session CRUD                 |
+| `/api/sessions/[sessionId]/nodes` | GET              | Thinking nodes for a session |
+| `/api/sessions/[sessionId]/share` | POST             | Generate share link          |
+| `/api/reasoning/[id]`             | GET              | ThinkGraph node details      |
+| `/api/reasoning/[id]/checkpoint`  | POST             | Human-in-the-loop checkpoint |
 
 ---
 
 ## Research Foundation
 
-| Paper | Module | Key Idea |
-| --- | --- | --- |
-| [Tree of Thoughts](https://arxiv.org/abs/2305.10601) (Yao et al., 2023) | ThinkFork | BFS/DFS search over reasoning trees with state evaluation |
-| [Let's Verify Step by Step](https://arxiv.org/abs/2305.20050) (Lightman et al., 2023) | PRM Verifier | Process supervision -- verify each reasoning step independently |
-| [Graph of Thoughts](https://arxiv.org/abs/2308.09687) (Besta et al., 2023) | GoT Engine | Arbitrary thought graph topology with aggregation and refinement |
-| [MemGPT](https://arxiv.org/abs/2310.08560) (Packer et al., 2023) | Memory Hierarchy | 3-tier memory with paging and auto-eviction |
+| Paper                                                                                 | Module           | Key Idea                                                         |
+| ------------------------------------------------------------------------------------- | ---------------- | ---------------------------------------------------------------- |
+| [Tree of Thoughts](https://arxiv.org/abs/2305.10601) (Yao et al., 2023)               | ThinkFork        | BFS/DFS search over reasoning trees with state evaluation        |
+| [Let's Verify Step by Step](https://arxiv.org/abs/2305.20050) (Lightman et al., 2023) | PRM Verifier     | Process supervision -- verify each reasoning step independently  |
+| [Graph of Thoughts](https://arxiv.org/abs/2308.09687) (Besta et al., 2023)            | GoT Engine       | Arbitrary thought graph topology with aggregation and refinement |
+| [MemGPT](https://arxiv.org/abs/2310.08560) (Packer et al., 2023)                      | Memory Hierarchy | 3-tier memory with paging and auto-eviction                      |
 
 ---
 
 ## Why Opus 4.6?
 
-| Capability | Why It Matters |
-| --- | --- |
-| **50k thinking tokens** | Metacognitive self-audit and deep multi-agent reasoning |
-| **Extended thinking streaming** | Real-time ThinkGraph construction from thinking deltas |
-| **1M context window** | Long sessions with orchestrator-managed compaction |
-| **128K output** | Long-form multi-branch analysis generation |
-| **Instruction fidelity** | Reliable execution of multi-layer meta-prompts |
+| Capability                      | Why It Matters                                          |
+| ------------------------------- | ------------------------------------------------------- |
+| **50k thinking tokens**         | Metacognitive self-audit and deep multi-agent reasoning |
+| **Extended thinking streaming** | Real-time ThinkGraph construction from thinking deltas  |
+| **1M context window**           | Long sessions with orchestrator-managed compaction      |
+| **128K output**                 | Long-form multi-branch analysis generation              |
+| **Instruction fidelity**        | Reliable execution of multi-layer meta-prompts          |
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-| --- | --- |
-| **LLM** | Claude Opus 4.6 (extended thinking, 50k tokens) |
-| **Dashboard** | Next.js 16 (App Router, Turbopack), React 19 |
-| **Agent Swarm** | Python 3.12, FastAPI, Anthropic SDK |
-| **Styling** | Tailwind CSS 4, shadcn/ui |
-| **Visualization** | @xyflow/react (react-flow) |
-| **Database** | Supabase (PostgreSQL + pgvector, HNSW indexes) |
-| **Deployment** | Vercel (dashboard) + Fly.io (agents) |
-| **Monorepo** | Turborepo + pnpm |
-| **Language** | TypeScript 5.7+ (strict mode), Python 3.12 |
-| **Testing** | Vitest, pytest |
+| Layer             | Technology                                      |
+| ----------------- | ----------------------------------------------- |
+| **LLM**           | Claude Opus 4.6 (extended thinking, 50k tokens) |
+| **Dashboard**     | Next.js 16 (App Router, Turbopack), React 19    |
+| **Agent Swarm**   | Python 3.12, FastAPI, Anthropic SDK             |
+| **Styling**       | Tailwind CSS 4, shadcn/ui                       |
+| **Visualization** | @xyflow/react (react-flow)                      |
+| **Database**      | Supabase (PostgreSQL + pgvector, HNSW indexes)  |
+| **Deployment**    | Vercel (dashboard) + Fly.io (agents)            |
+| **Monorepo**      | Turborepo + pnpm                                |
+| **Language**      | TypeScript 5.7+ (strict mode), Python 3.12      |
+| **Testing**       | Vitest, pytest                                  |
 
 ---
 

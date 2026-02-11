@@ -240,6 +240,8 @@ export const GoTResultSchema = z.object({
     maxDepthReached: z.number(),
     totalTokens: z.number(),
     totalDurationMs: z.number(),
+    generationErrors: z.number().default(0),
+    evaluationErrors: z.number().default(0),
   }),
 });
 

@@ -1,6 +1,6 @@
 /**
  * @module Memory Hierarchy
- * @scope future - Post-hackathon roadmap
+ * @scope active - Hackathon demo
  * @paper MemGPT (Packer et al., 2023)
  * @description 3-tier memory with paging and auto-eviction
  */
@@ -171,7 +171,7 @@ export class MemoryHierarchy {
 
     // Check if eviction is needed
     if (this.mainContext.tokenCount > this.mainContext.maxTokens) {
-      this.autoEvict();
+      this.autoEvict(new Set([entry.id]));
     }
 
     this.updateStats();
@@ -236,6 +236,17 @@ export class MemoryHierarchy {
     tags?: string[],
     importance?: number
   ): { success: boolean; results?: MemoryEntry[]; message: string } {
+    const existing = this.archivalStorage.find(e => e.content === content);
+    if (existing) {
+      existing.lastAccessedAt = new Date();
+      existing.accessCount++;
+      return {
+        success: true,
+        results: [existing],
+        message: `Duplicate found in archival memory, updated access time.`,
+      };
+    }
+
     const entry = this.createEntry(
       content,
       "archival_storage",
@@ -291,8 +302,9 @@ export class MemoryHierarchy {
       return { entry, score };
     });
 
+    const maxScore = Math.max(...scored.map(s => s.score), 1);
     const results = scored
-      .filter((s) => s.score > 0)
+      .filter((s) => s.score > 0 && (queryTerms.length === 0 || s.score / maxScore >= this.config.searchThreshold))
       .sort((a, b) => b.score - a.score)
       .slice(0, maxResults)
       .map((s) => {
@@ -424,7 +436,10 @@ export class MemoryHierarchy {
 
     for (const id of entryIds) {
       const wmIndex = this.mainContext.workingMemory.findIndex((m) => m.id === id);
-      if (wmIndex === -1) continue;
+      if (wmIndex === -1) {
+        logger.warn("Eviction skipped: entry not found in working memory", { entryId: id });
+        continue;
+      }
 
       const wmEntry = this.mainContext.workingMemory[wmIndex];
       this.mainContext.workingMemory.splice(wmIndex, 1);
@@ -438,7 +453,7 @@ export class MemoryHierarchy {
       );
       entry.id = id;
       this.archivalStorage.push(entry);
-      this.options.onEviction?.(entry);
+      try { this.options.onEviction?.(entry); } catch (e) { console.error('[MemoryHierarchy] onEviction callback error:', e); }
 
       evicted++;
       this.stats.totalEvictions++;
@@ -463,7 +478,10 @@ export class MemoryHierarchy {
 
     for (const id of entryIds) {
       const archIndex = this.archivalStorage.findIndex((e) => e.id === id);
-      if (archIndex === -1) continue;
+      if (archIndex === -1) {
+        logger.warn("Promotion skipped: entry not found in archival", { entryId: id });
+        continue;
+      }
 
       const entry = this.archivalStorage[archIndex];
       this.archivalStorage.splice(archIndex, 1);
@@ -479,7 +497,7 @@ export class MemoryHierarchy {
       });
 
       promoted.push(entry);
-      this.options.onPromotion?.(entry);
+      try { this.options.onPromotion?.(entry); } catch (e) { console.error('[MemoryHierarchy] onPromotion callback error:', e); }
       this.stats.totalPromotions++;
     }
 
@@ -487,7 +505,7 @@ export class MemoryHierarchy {
 
     // Check if eviction is needed after promotion
     if (this.mainContext.tokenCount > this.mainContext.maxTokens) {
-      this.autoEvict();
+      this.autoEvict(new Set(promoted.map(e => e.id)));
     }
 
     this.updateStats();
@@ -503,9 +521,10 @@ export class MemoryHierarchy {
    * Automatically evict least-important entries when context is full.
    * Implements the MemGPT "page out" mechanism.
    */
-  private autoEvict(): void {
+  private autoEvict(protectedIds?: Set<string>): void {
     // Sort working memory by importance (ascending — least important first)
     const sorted = [...this.mainContext.workingMemory]
+      .filter((e) => !protectedIds?.has(e.id))
       .sort((a, b) => a.importance - b.importance);
 
     const toEvict: string[] = [];
@@ -580,7 +599,7 @@ export class MemoryHierarchy {
       mainContextCapacity: this.config.maxMainContextTokens,
       mainContextUtilization: this.mainContext.tokenCount / this.config.maxMainContextTokens,
     };
-    this.options.onStatsUpdate?.(this.stats);
+    try { this.options.onStatsUpdate?.(this.stats); } catch (e) { console.error('[MemoryHierarchy] onStatsUpdate callback error:', e); }
   }
 
   /**
