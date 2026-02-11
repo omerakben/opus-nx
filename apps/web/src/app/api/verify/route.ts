@@ -6,7 +6,7 @@ export const maxDuration = 300;
 
 const StepSchema = z.object({
   stepNumber: z.number(),
-  content: z.string(),
+  content: z.string().min(1, "Step content cannot be empty"),
   type: z.enum(["analysis", "hypothesis", "evaluation", "conclusion", "consideration"]).optional(),
 });
 
@@ -26,7 +26,19 @@ export async function POST(request: Request) {
   const correlationId = getCorrelationId(request);
 
   try {
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return jsonError({
+        status: 400,
+        code: "INVALID_JSON",
+        message: "Invalid JSON in request body",
+        correlationId,
+        recoverable: true,
+      });
+    }
+
     const parsed = VerifyRequestSchema.safeParse(body);
     if (!parsed.success) {
       return jsonError({
@@ -63,6 +75,7 @@ export async function POST(request: Request) {
           explanation: s.explanation,
           issues: s.issues,
           suggestedCorrection: s.suggestedCorrection,
+          stepContent: s.stepContent,
         })),
         patterns: result.patterns,
         metadata: result.metadata,

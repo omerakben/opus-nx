@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { InsightCard } from "./InsightCard";
 import { Card, CardHeader, CardTitle, CardContent, Skeleton, Tabs, TabsList, TabsTrigger, TabsContent, Button } from "@/components/ui";
 import type { Insight } from "@/lib/api";
 import { runInsightsAnalysis } from "@/lib/api";
+import { appEvents } from "@/lib/events";
 import { AlertTriangle, Lightbulb, Search, Brain, Loader2, CheckCircle, BarChart3, Settings2 } from "lucide-react";
 
 interface InsightsPanelProps {
@@ -37,6 +38,19 @@ export function InsightsPanel({
     errors: string[];
     insightCount: number;
   } | null>(null);
+
+  // Reset local state when session changes
+  const prevSessionRef = useRef(sessionId);
+  useEffect(() => {
+    if (sessionId !== prevSessionRef.current) {
+      prevSessionRef.current = sessionId;
+      setSearchQuery("");
+      setMinConfidence(0);
+      setShowFocusAreas(false);
+      setAnalysisMetadata(null);
+      setAnalyzeError(null);
+    }
+  }, [sessionId]);
 
   // Apply search and confidence filters
   const filteredInsights = useMemo(() => {
@@ -81,6 +95,7 @@ export function InsightsPanel({
       } else if (response.data) {
         const result = response.data;
         onInsightsGenerated?.(result.insights);
+        appEvents.emit("insights:updated", { sessionId, count: result.insights.length });
         setAnalysisMetadata({
           nodesAnalyzed: result.nodesAnalyzed,
           summary: result.summary,
@@ -152,13 +167,25 @@ export function InsightsPanel({
                 )}
                 Re-analyze
               </Button>
-              {analyzeError && (
-                <p className="text-[10px] text-red-400 max-w-[100px] truncate">{analyzeError}</p>
-              )}
             </div>
           )}
         </div>
       </CardHeader>
+
+      {/* Dismissible error banner */}
+      {analyzeError && !isAnalyzing && (
+        <div className="mx-4 mt-2 p-2 rounded-lg bg-red-500/10 border border-red-500/20 flex items-start gap-2">
+          <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
+          <p className="text-xs text-red-400 flex-1">{analyzeError}</p>
+          <button
+            onClick={() => setAnalyzeError(null)}
+            className="text-red-400/60 hover:text-red-400 text-xs shrink-0"
+            aria-label="Dismiss error"
+          >
+            &times;
+          </button>
+        </div>
+      )}
 
       {/* Screen reader announcement */}
       <div role="status" aria-live="polite" className="sr-only">
@@ -250,6 +277,22 @@ export function InsightsPanel({
               )}
               {analyzeError && (
                 <p className="text-xs text-red-400 mt-2 max-w-[200px] mx-auto">{analyzeError}</p>
+              )}
+              {analysisMetadata && analysisMetadata.insightCount === 0 && (
+                <div className="mt-3 p-2.5 rounded-lg bg-amber-500/5 border border-amber-500/20 text-left max-w-[260px]">
+                  <div className="flex items-center gap-2 mb-1">
+                    <CheckCircle className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="text-xs font-medium text-amber-400">Analysis Complete</span>
+                  </div>
+                  <p className="text-[11px] text-[var(--muted-foreground)]">
+                    {analysisMetadata.nodesAnalyzed === 0
+                      ? "No reasoning nodes to analyze yet. Run a thinking query first."
+                      : <>Analyzed {analysisMetadata.nodesAnalyzed} nodes — no insights detected.</>}
+                  </p>
+                  {analysisMetadata.summary && (
+                    <p className="text-[11px] text-[var(--muted-foreground)] mt-1 italic">{analysisMetadata.summary}</p>
+                  )}
+                </div>
               )}
             </div>
           </div>

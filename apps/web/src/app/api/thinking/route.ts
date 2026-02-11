@@ -1,6 +1,7 @@
 import { ThinkingEngine, ThinkGraph } from "@opus-nx/core";
 import { createSession, getSession } from "@/lib/db";
 import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
+import { getOrCreateMemory } from "@/lib/memory-store";
 
 export const maxDuration = 300;
 
@@ -17,7 +18,12 @@ interface ThinkingRequest {
 export async function POST(request: Request) {
   const correlationId = getCorrelationId(request);
   try {
-    const body = (await request.json()) as ThinkingRequest;
+    let body: ThinkingRequest;
+    try {
+      body = (await request.json()) as ThinkingRequest;
+    } catch {
+      return jsonError({ status: 400, code: "INVALID_JSON", message: "Request body must be valid JSON", correlationId });
+    }
     const { query, sessionId: providedSessionId, effort = "high" } = body;
 
     if (!query?.trim()) {
@@ -100,6 +106,55 @@ export async function POST(request: Request) {
       }
     );
 
+    // Auto-populate memory hierarchy with thinking content
+    let memoryStats = null;
+    try {
+      const memory = getOrCreateMemory(sessionId);
+
+      const thinkingContentFull = result.thinkingBlocks
+        .filter((b) => b.type === "thinking")
+        .map((b) => (b as { thinking: string }).thinking)
+        .join("\n\n");
+
+      if (thinkingContentFull.length > 2000) {
+        console.warn("[Memory] Thinking content truncated for memory storage", {
+          original: thinkingContentFull.length,
+          truncated: 2000,
+          correlationId,
+        });
+      }
+      const thinkingContent = thinkingContentFull.slice(0, 2000);
+
+      if (thinkingContent) {
+        memory.addToWorkingMemory(
+          thinkingContent,
+          0.7,
+          "thinking_node",
+          graphResult.node.id
+        );
+      }
+
+      if (responseText) {
+        if (responseText.length > 1000) {
+          console.warn("[Memory] Response text truncated for memory storage", {
+            original: responseText.length,
+            truncated: 1000,
+            correlationId,
+          });
+        }
+        memory.addToWorkingMemory(
+          responseText.slice(0, 1000),
+          0.5,
+          "thinking_node",
+          graphResult.node.id
+        );
+      }
+
+      memoryStats = memory.getStats();
+    } catch (memoryError) {
+      console.warn("[API] Non-critical memory operation failed:", { correlationId, error: memoryError });
+    }
+
     return jsonSuccess(
       {
         sessionId,
@@ -114,7 +169,8 @@ export async function POST(request: Request) {
           outputTokens: result.usage.outputTokens,
           thinkingTokens: Math.round(thinkingTokens),
         },
-        degraded: graphResult.degraded,
+        memoryStats,
+        degraded: graphResult.degraded || !memoryStats,
         degradation: graphResult.degraded
           ? { persistenceIssues: graphResult.persistenceIssues }
           : undefined,

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { ThinkingEngine, ThinkGraph } from "@opus-nx/core";
 import { getSession, createSession, getLatestThinkingNode } from "@/lib/db";
 import { getCorrelationId, jsonError } from "@/lib/api-response";
+import { getOrCreateMemory } from "@/lib/memory-store";
 
 export const maxDuration = 300;
 
@@ -25,7 +26,12 @@ const StreamRequestSchema = z.object({
 export async function POST(request: Request) {
   const correlationId = getCorrelationId(request);
   try {
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return jsonError({ status: 400, code: "INVALID_JSON", message: "Request body must be valid JSON", correlationId });
+    }
     const parsed = StreamRequestSchema.safeParse(body);
     if (!parsed.success) {
       return jsonError({
@@ -221,6 +227,70 @@ export async function POST(request: Request) {
             parentLinkStatus = graphResult.linkedToParent ? "linked" : "persist_failed";
           }
 
+          // Auto-populate memory hierarchy with thinking content
+          try {
+            const memory = getOrCreateMemory(sessionId);
+
+            const thinkingContentFull = result.thinkingBlocks
+              .filter((b) => b.type === "thinking")
+              .map((b) => (b as { thinking: string }).thinking)
+              .join("\n\n");
+
+            if (thinkingContentFull.length > 2000) {
+              console.warn("[Memory] Thinking content truncated for memory storage", {
+                original: thinkingContentFull.length,
+                truncated: 2000,
+                correlationId,
+              });
+            }
+            const thinkingContent = thinkingContentFull.slice(0, 2000);
+
+            if (thinkingContent) {
+              memory.addToWorkingMemory(
+                thinkingContent,
+                0.7,
+                "thinking_node",
+                graphResult.node.id
+              );
+            }
+
+            if (responseText) {
+              if (responseText.length > 1000) {
+                console.warn("[Memory] Response text truncated for memory storage", {
+                  original: responseText.length,
+                  truncated: 1000,
+                  correlationId,
+                });
+              }
+              memory.addToWorkingMemory(
+                responseText.slice(0, 1000),
+                0.5,
+                "thinking_node",
+                graphResult.node.id
+              );
+            }
+
+            // Emit memory SSE event with current stats
+            const memoryData = JSON.stringify({
+              type: "memory",
+              stats: memory.getStats(),
+              action: "auto_populate",
+              nodeId: graphResult.node.id,
+            });
+            controller.enqueue(encoder.encode(`data: ${memoryData}\n\n`));
+          } catch (memoryError) {
+            console.warn("[API] Non-critical memory operation failed:", { correlationId, error: memoryError });
+            streamWarnings.push("Memory auto-populate failed (non-critical)");
+            const memWarningData = JSON.stringify({
+              type: "warning",
+              code: "MEMORY_POPULATE_FAILED",
+              message: "Memory auto-populate failed (non-critical)",
+              correlationId,
+              recoverable: true,
+            });
+            controller.enqueue(encoder.encode(`data: ${memWarningData}\n\n`));
+          }
+
           // If compaction occurred, persist a compaction node
           if (result.compacted && result.compactionBlocks.length > 0) {
             const compactionSummary = result.compactionBlocks
@@ -270,7 +340,7 @@ export async function POST(request: Request) {
             compacted: result.compacted,
             degraded:
               graphResult.degraded ||
-              parentLinkStatus !== "linked" && parentLinkStatus !== "not_applicable" ||
+              (parentLinkStatus !== "linked" && parentLinkStatus !== "not_applicable") ||
               compactionPersistStatus === "failed",
             degradation: {
               persistenceIssues: graphResult.persistenceIssues,

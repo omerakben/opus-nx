@@ -12,6 +12,7 @@ const GoTRequestSchema = z.object({
   maxThoughts: z.number().int().min(1).max(100).default(50),
   enableAggregation: z.boolean().default(true),
   effort: z.enum(["low", "medium", "high", "max"]).default("high"),
+  sessionId: z.string().uuid().optional(),
 });
 
 /**
@@ -22,7 +23,12 @@ export async function POST(request: Request) {
   const correlationId = getCorrelationId(request);
 
   try {
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return jsonError({ status: 400, code: "INVALID_JSON", message: "Request body must be valid JSON", correlationId });
+    }
     const parsed = GoTRequestSchema.safeParse(body);
     if (!parsed.success) {
       return jsonError({
@@ -35,7 +41,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const { problem, ...config } = parsed.data;
+    const { problem, sessionId: _sessionId, ...config } = parsed.data;
 
     const engine = new GoTEngine();
     const result = await engine.reason(problem, config);
@@ -47,9 +53,10 @@ export async function POST(request: Request) {
         reasoningSummary: result.reasoningSummary,
         stats: result.stats,
         graphState: {
-          thoughtCount: result.graphState.thoughts.length,
-          edgeCount: result.graphState.edges.length,
+          thoughts: result.graphState.thoughts,
+          edges: result.graphState.edges,
           bestThoughts: result.graphState.bestThoughts,
+          sessionId: result.graphState.sessionId,
         },
       },
       { correlationId }

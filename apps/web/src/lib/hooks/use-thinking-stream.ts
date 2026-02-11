@@ -40,6 +40,15 @@ interface ThinkingStreamState {
   degraded: boolean;
   /** Recoverable warnings emitted during the stream */
   warnings: StreamWarning[];
+  /** Memory stats from auto-population during thinking */
+  memoryStats: {
+    mainContextEntries: number;
+    recallStorageEntries: number;
+    archivalStorageEntries: number;
+    totalInserts: number;
+    totalEvictions: number;
+    totalPromotions: number;
+  } | null;
 }
 
 interface UseThinkingStreamReturn extends ThinkingStreamState {
@@ -84,6 +93,7 @@ export function useThinkingStream(): UseThinkingStreamReturn {
     nodeId: null,
     degraded: false,
     warnings: [],
+    memoryStats: null,
   });
 
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -127,6 +137,7 @@ export function useThinkingStream(): UseThinkingStreamReturn {
       nodeId: null,
       degraded: false,
       warnings: [],
+      memoryStats: null,
     });
   }, [stop]);
 
@@ -152,6 +163,7 @@ export function useThinkingStream(): UseThinkingStreamReturn {
         nodeId: null,
         degraded: false,
         warnings: [],
+        memoryStats: null,
       });
 
       // Start elapsed timer
@@ -160,7 +172,7 @@ export function useThinkingStream(): UseThinkingStreamReturn {
           ...prev,
           elapsedMs: Date.now() - startTimeRef.current,
         }));
-      }, 100);
+      }, 1000);
 
       // POST to start the thinking process
       abortControllerRef.current = new AbortController();
@@ -230,7 +242,7 @@ export function useThinkingStream(): UseThinkingStreamReturn {
                         phase: "compacting",
                         streamingNodes: isNewCompaction
                           ? [
-                              ...prev.streamingNodes,
+                              ...prev.streamingNodes.slice(-49),
                               {
                                 id: `compaction-${Date.now()}`,
                                 reasoning: compactionBufferRef.current || "Context compacted for infinite session",
@@ -246,7 +258,7 @@ export function useThinkingStream(): UseThinkingStreamReturn {
                       setState((prev) => ({
                         ...prev,
                         streamingNodes: [
-                          ...prev.streamingNodes,
+                          ...prev.streamingNodes.slice(-49),
                           {
                             id: data.nodeId ?? `node-${Date.now()}`,
                             reasoning: data.reasoning ?? prev.thinking.slice(-200),
@@ -303,6 +315,12 @@ export function useThinkingStream(): UseThinkingStreamReturn {
                             message: data.message ?? "Unknown warning",
                           },
                         ],
+                      }));
+                    } else if (data.type === "memory") {
+                      // Memory auto-population event from thinking stream
+                      setState((prev) => ({
+                        ...prev,
+                        memoryStats: data.stats,
                       }));
                     }
                   } catch (parseError) {

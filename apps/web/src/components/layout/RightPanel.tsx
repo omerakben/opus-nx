@@ -3,9 +3,10 @@
 import { InsightsPanel } from "@/components/insights";
 import { ForkPanel } from "@/components/fork";
 import { SwarmView } from "@/components/swarm";
+import { MemoryPanel } from "@/components/memory";
 import { Tabs, TabsList, TabsTrigger, TabsContent, Button, Tooltip } from "@/components/ui";
 import type { Insight } from "@/lib/api";
-import { GitFork, Lightbulb, Network, PanelRightOpen, PanelRightClose } from "lucide-react";
+import { GitFork, Lightbulb, Network, Database, PanelRightOpen, PanelRightClose } from "lucide-react";
 
 interface RightPanelProps {
   insights: Insight[];
@@ -30,7 +31,7 @@ export function RightPanel({
   onToggleCollapse,
   insightCount = 0,
 }: RightPanelProps) {
-  // Mobile: full panel, no collapse
+  // Mobile: full panel, no collapse — includes Swarm since center tabs don't exist on mobile
   if (isMobile) {
     return (
       <div className="h-full bg-[var(--background)] flex flex-col overflow-hidden">
@@ -47,6 +48,10 @@ export function RightPanel({
             <TabsTrigger value="swarm" className="text-xs">
               <Network className="w-3 h-3 mr-1" />
               Swarm
+            </TabsTrigger>
+            <TabsTrigger value="memory" className="text-xs">
+              <Database className="w-3 h-3 mr-1" />
+              Memory
             </TabsTrigger>
           </TabsList>
 
@@ -67,6 +72,12 @@ export function RightPanel({
 
             <TabsContent value="swarm" forceMount className="h-full m-0 mt-2">
               <SwarmView sessionId={sessionId} />
+            </TabsContent>
+
+            <TabsContent value="memory" className="h-full m-0 mt-2">
+              <div className="h-full overflow-y-auto">
+                <MemoryPanel sessionId={sessionId} />
+              </div>
             </TabsContent>
           </div>
         </Tabs>
@@ -118,10 +129,10 @@ export function RightPanel({
             </div>
           </Tooltip>
 
-          {/* Swarm status */}
-          <Tooltip content="Agent Swarm" side="left">
+          {/* Memory status */}
+          <Tooltip content="Memory Hierarchy" side="left">
             <div className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-[var(--muted)] transition-colors">
-              <Network className="w-4 h-4 text-cyan-400" />
+              <Database className="w-4 h-4 text-cyan-400" />
             </div>
           </Tooltip>
         </div>
@@ -134,7 +145,7 @@ export function RightPanel({
     );
   }
 
-  // Desktop: expanded panel
+  // Desktop: expanded panel — Swarm moved to center tabs; Memory added here
   return (
     <aside
       id="right-panel-content"
@@ -169,9 +180,9 @@ export function RightPanel({
               <GitFork className="w-3 h-3 mr-1" />
               Fork
             </TabsTrigger>
-            <TabsTrigger value="swarm" className="text-xs flex-1" data-tour="swarm-tab">
-              <Network className="w-3 h-3 mr-1" />
-              Swarm
+            <TabsTrigger value="memory" className="text-xs flex-1" data-tour="memory-tab">
+              <Database className="w-3 h-3 mr-1" />
+              Memory
             </TabsTrigger>
           </TabsList>
         </div>
@@ -191,8 +202,10 @@ export function RightPanel({
             <ForkPanel sessionId={sessionId} />
           </TabsContent>
 
-          <TabsContent value="swarm" forceMount className="h-full m-0 mt-2">
-            <SwarmView sessionId={sessionId} />
+          <TabsContent value="memory" className="h-full m-0 mt-2">
+            <div className="h-full overflow-y-auto">
+              <MemoryPanel sessionId={sessionId} />
+            </div>
           </TabsContent>
         </div>
       </Tabs>

@@ -47,11 +47,19 @@ export function transformNodesToGraph(
   nodes: ThinkingNode[],
   selectedNodeId?: string
 ): GraphNode[] {
+  // Deduplicate nodes by ID (guards against DB or fetch-level duplicates)
+  const seen = new Set<string>();
+  const uniqueNodes = nodes.filter((n) => {
+    if (seen.has(n.id)) return false;
+    seen.add(n.id);
+    return true;
+  });
+
   // Arrange nodes in a hierarchical layout based on parent relationships
   const nodeMap = new Map<string, ThinkingNode>();
   const childrenMap = new Map<string, string[]>();
 
-  for (const node of nodes) {
+  for (const node of uniqueNodes) {
     nodeMap.set(node.id, node);
     if (node.parentNodeId) {
       const siblings = childrenMap.get(node.parentNodeId) ?? [];
@@ -61,9 +69,9 @@ export function transformNodesToGraph(
   }
 
   // Calculate positions using BFS
-  const positions = calculateNodePositions(nodes, nodeMap, childrenMap);
+  const positions = calculateNodePositions(uniqueNodes, nodeMap, childrenMap);
 
-  return nodes.map((node) => {
+  return uniqueNodes.map((node) => {
     const position = positions.get(node.id) ?? { x: 0, y: 0 };
     const usage = parseTokenUsage(node.tokenUsage);
 
@@ -190,13 +198,24 @@ function calculateNodePositions(
 
 /**
  * Transform database reasoning edges to React Flow edges.
+ *
+ * Edge IDs are prefixed with "edge-" to prevent key collisions with node IDs,
+ * since React Flow renders nodes and edges as siblings in the DOM.
  */
 export function transformEdgesToGraph(edges: ReasoningEdge[]): GraphEdge[] {
-  return edges.map((edge) => {
+  // Deduplicate edges by ID (guards against DB-level duplicates from race conditions)
+  const seen = new Set<string>();
+  const uniqueEdges = edges.filter((e) => {
+    if (seen.has(e.id)) return false;
+    seen.add(e.id);
+    return true;
+  });
+
+  return uniqueEdges.map((edge) => {
     const edgeType = edge.edgeType as EdgeType;
     const color = EDGE_COLORS[edgeType] ?? EDGE_COLORS.influences;
     return {
-      id: edge.id,
+      id: `edge-${edge.id}`,
       source: edge.sourceId,
       target: edge.targetId,
       type: edgeType,

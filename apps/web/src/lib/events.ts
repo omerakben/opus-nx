@@ -26,8 +26,25 @@ type EventPayload = {
   "session:changed": { sessionId: string | null; previousSessionId: string | null };
   /** Fired when a swarm analysis finishes */
   "swarm:complete": { sessionId: string };
+  /** Fired when GoT reasoning starts */
+  "got:started": { sessionId: string; strategy: "bfs" | "dfs" | "best_first" };
+  /** Fired when GoT reasoning completes */
+  "got:complete": { sessionId: string; confidence: number };
+  /** Fired when memory stats are updated during thinking */
+  "memory:update": {
+    stats: {
+      mainContextEntries: number;
+      recallStorageEntries: number;
+      archivalStorageEntries: number;
+      totalInserts: number;
+      totalEvictions: number;
+      totalPromotions: number;
+    };
+  };
+  /** Fired when metacognitive insights are generated or refreshed */
+  "insights:updated": { sessionId: string; count: number };
   /** Generic "something changed, refetch if you care" signal */
-  "data:stale": { scope: "sessions" | "graph" | "insights" | "fork" | "all"; sessionId?: string };
+  "data:stale": { scope: "sessions" | "graph" | "insights" | "fork" | "got" | "all"; sessionId?: string };
 };
 
 type EventName = keyof EventPayload;

@@ -1,6 +1,6 @@
 /**
  * @module Memory Manager
- * @scope future - Post-hackathon roadmap
+ * @scope active - Hackathon demo
  * @description Voyage AI embeddings and semantic search
  */
 import Anthropic from "@anthropic-ai/sdk";
