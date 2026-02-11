@@ -154,12 +154,13 @@ export function GoTPanel({ sessionId, onSendToVerify }: GoTPanelProps) {
           tier: "archival",
           content: `GoT Answer (${strategy}, confidence: ${(result.confidence * 100).toFixed(0)}%): ${result.answer}\n\nReasoning: ${result.reasoningSummary}`,
           metadata: { source: "got", strategy, confidence: result.confidence },
+          sessionId: sessionId ?? undefined,
         }),
       });
     } catch {
       // Silently fail — memory is optional
     }
-  }, [result, strategy]);
+  }, [result, strategy, sessionId]);
 
   // Recent thoughts feed (last 8)
   const recentThoughts = useMemo(() => {

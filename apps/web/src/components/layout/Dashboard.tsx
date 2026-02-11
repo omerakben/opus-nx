@@ -430,8 +430,10 @@ export function Dashboard() {
         {/* Center: Tabbed Content Area */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Center Tab Bar */}
-          <div className="flex items-center gap-1 px-3 py-1.5 border-b border-[var(--border)] bg-[var(--card)] shrink-0">
+          <div role="tablist" className="flex items-center gap-1 px-3 py-1.5 border-b border-[var(--border)] bg-[var(--card)] shrink-0">
             <button
+              role="tab"
+              aria-selected={centerTab === "thinkgraph"}
               onClick={() => setCenterTab("thinkgraph")}
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
@@ -444,6 +446,8 @@ export function Dashboard() {
               ThinkGraph
             </button>
             <button
+              role="tab"
+              aria-selected={centerTab === "swarm"}
               onClick={() => setCenterTab("swarm")}
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
@@ -457,6 +461,8 @@ export function Dashboard() {
               Swarm
             </button>
             <button
+              role="tab"
+              aria-selected={centerTab === "got"}
               onClick={() => setCenterTab("got")}
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
@@ -470,6 +476,8 @@ export function Dashboard() {
               GoT
             </button>
             <button
+              role="tab"
+              aria-selected={centerTab === "verify"}
               onClick={() => setCenterTab("verify")}
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors",

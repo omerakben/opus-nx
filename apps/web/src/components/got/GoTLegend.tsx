@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
 const NODE_STATES = [
@@ -16,7 +16,7 @@ const EDGE_TYPES = [
   { label: "Best Path", color: "#f59e0b", dashed: false },
 ];
 
-export function GoTLegend() {
+export const GoTLegend = memo(function GoTLegend() {
   const [isCollapsed, setIsCollapsed] = useState(true);
 
   return (
@@ -75,4 +75,4 @@ export function GoTLegend() {
       </div>
     </div>
   );
-}
+});

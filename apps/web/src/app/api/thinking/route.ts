@@ -18,7 +18,12 @@ interface ThinkingRequest {
 export async function POST(request: Request) {
   const correlationId = getCorrelationId(request);
   try {
-    const body = (await request.json()) as ThinkingRequest;
+    let body: ThinkingRequest;
+    try {
+      body = (await request.json()) as ThinkingRequest;
+    } catch {
+      return jsonError({ status: 400, code: "INVALID_JSON", message: "Request body must be valid JSON", correlationId });
+    }
     const { query, sessionId: providedSessionId, effort = "high" } = body;
 
     if (!query?.trim()) {

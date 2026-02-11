@@ -220,14 +220,11 @@ export function MemoryPanel({ sessionId }: MemoryPanelProps) {
     loadEntries();
   }, [loadStats, loadEntries]);
 
-  // Poll for updates every 5s when on overview tab
+  // Load data when overview tab is active
   useEffect(() => {
     if (activeTab !== "overview") return;
-    const interval = setInterval(() => {
-      loadStats();
-      loadEntries();
-    }, 5000);
-    return () => clearInterval(interval);
+    loadStats();
+    loadEntries();
   }, [activeTab, loadStats, loadEntries]);
 
   // Listen for real-time memory update events from the thinking stream

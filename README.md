@@ -2,9 +2,14 @@
 
 ## AI reasoning you can see, steer, and verify
 
+> What if you could watch an AI think — not just read its answer, but navigate the
+> entire reasoning graph, deploy 6 competing agents, and verify every logical step?
+
 Opus Nx transforms Claude Opus 4.6's extended thinking from an invisible black box into **persistent, navigable reasoning graphs**. Deploy a swarm of 6 specialized AI agents, fork reasoning into competing perspectives, verify every step, and watch metacognitive self-audits -- all in real time.
 
 **[Live Demo](https://opus-nx.vercel.app)** | Built for the [Cerebral Valley "Built with Opus 4.6" Hackathon](https://cv.inc/e/claude-code-hackathon) (Feb 2026)
+
+**8 reasoning features** | **6 AI agents** | **4 research papers implemented** | **273 tests** | **2-service architecture**
 
 ---
 
@@ -67,6 +72,19 @@ Using Opus 4.6's full 50,000-token thinking budget, the system turns reasoning i
 ### 8. Orchestrator -- Adaptive Effort Routing
 
 Not every question deserves the same thinking budget. The orchestrator classifies tasks and routes them to the appropriate effort level (`low` / `medium` / `high` / `max`), managing token budgets and context compaction.
+
+---
+
+## Grounded in Research
+
+Every core feature implements a peer-reviewed technique — this is systems engineering on top of established reasoning frameworks.
+
+| Paper                                                                                 | Module           | Key Idea                                                         |
+| ------------------------------------------------------------------------------------- | ---------------- | ---------------------------------------------------------------- |
+| [Tree of Thoughts](https://arxiv.org/abs/2305.10601) (Yao et al., 2023)               | ThinkFork        | BFS/DFS search over reasoning trees with state evaluation        |
+| [Let's Verify Step by Step](https://arxiv.org/abs/2305.20050) (Lightman et al., 2023) | PRM Verifier     | Process supervision -- verify each reasoning step independently  |
+| [Graph of Thoughts](https://arxiv.org/abs/2308.09687) (Besta et al., 2023)            | GoT Engine       | Arbitrary thought graph topology with aggregation and refinement |
+| [MemGPT](https://arxiv.org/abs/2310.08560) (Packer et al., 2023)                      | Memory Hierarchy | 3-tier memory with paging and auto-eviction                      |
 
 ---
 
@@ -211,17 +229,6 @@ Bottom Panel: Thinking stream + query input
 | `/api/sessions/[sessionId]/share` | POST             | Generate share link          |
 | `/api/reasoning/[id]`             | GET              | ThinkGraph node details      |
 | `/api/reasoning/[id]/checkpoint`  | POST             | Human-in-the-loop checkpoint |
-
----
-
-## Research Foundation
-
-| Paper                                                                                 | Module           | Key Idea                                                         |
-| ------------------------------------------------------------------------------------- | ---------------- | ---------------------------------------------------------------- |
-| [Tree of Thoughts](https://arxiv.org/abs/2305.10601) (Yao et al., 2023)               | ThinkFork        | BFS/DFS search over reasoning trees with state evaluation        |
-| [Let's Verify Step by Step](https://arxiv.org/abs/2305.20050) (Lightman et al., 2023) | PRM Verifier     | Process supervision -- verify each reasoning step independently  |
-| [Graph of Thoughts](https://arxiv.org/abs/2308.09687) (Besta et al., 2023)            | GoT Engine       | Arbitrary thought graph topology with aggregation and refinement |
-| [MemGPT](https://arxiv.org/abs/2310.08560) (Packer et al., 2023)                      | Memory Hierarchy | 3-tier memory with paging and auto-eviction                      |
 
 ---
 

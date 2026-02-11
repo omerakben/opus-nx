@@ -172,7 +172,7 @@ export function useThinkingStream(): UseThinkingStreamReturn {
           ...prev,
           elapsedMs: Date.now() - startTimeRef.current,
         }));
-      }, 100);
+      }, 1000);
 
       // POST to start the thinking process
       abortControllerRef.current = new AbortController();
@@ -242,7 +242,7 @@ export function useThinkingStream(): UseThinkingStreamReturn {
                         phase: "compacting",
                         streamingNodes: isNewCompaction
                           ? [
-                              ...prev.streamingNodes,
+                              ...prev.streamingNodes.slice(-49),
                               {
                                 id: `compaction-${Date.now()}`,
                                 reasoning: compactionBufferRef.current || "Context compacted for infinite session",
@@ -258,7 +258,7 @@ export function useThinkingStream(): UseThinkingStreamReturn {
                       setState((prev) => ({
                         ...prev,
                         streamingNodes: [
-                          ...prev.streamingNodes,
+                          ...prev.streamingNodes.slice(-49),
                           {
                             id: data.nodeId ?? `node-${Date.now()}`,
                             reasoning: data.reasoning ?? prev.thinking.slice(-200),

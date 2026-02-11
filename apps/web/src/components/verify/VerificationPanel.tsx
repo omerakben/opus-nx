@@ -98,6 +98,16 @@ export function VerificationPanel({ sessionId, initialSteps }: VerificationPanel
   const [verifyingStep, setVerifyingStep] = useState(0);
   const stepIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Sync when initialSteps changes (e.g. GoT -> Verify cross-feature navigation)
+  useEffect(() => {
+    if (initialSteps && initialSteps.length > 0) {
+      setSteps(initialSteps);
+      setStepsInput(initialSteps.map((s) => s.content).join("\n"));
+      setResult(null);
+      setError(null);
+    }
+  }, [initialSteps]);
+
   // Cleanup interval on unmount
   useEffect(() => {
     return () => {

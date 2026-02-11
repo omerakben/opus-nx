@@ -62,7 +62,7 @@ pnpm --filter @opus-nx/web typecheck    # Type-check web only
 ```
 apps/web/           -> Next.js 16 dashboard (App Router, Turbopack)
 agents/             -> Python FastAPI swarm backend (Fly.io deployment)
-  src/agents/       -> 6 specialized agents: maestro, deep_thinker, contrarian, synthesizer, metacognition, base
+  src/agents/       -> 6 specialized agents: maestro, deep_thinker, contrarian, verifier, synthesizer, metacognition, base
   src/graph/        -> SharedReasoningGraph (NetworkX)
   src/events/       -> Event bus + WebSocket streaming
   src/persistence/  -> Neo4j + Supabase sync
@@ -129,6 +129,7 @@ Bottom Panel: Thinking stream + query input (ThinkGraph tab only)
 | `agents/maestro.py` | Swarm conductor -- decomposes queries, selects agents, assigns subtasks |
 | `agents/deep_thinker.py` | Extended reasoning with maximum thinking budget |
 | `agents/contrarian.py` | Devil's advocate -- challenges assumptions |
+| `agents/verifier.py` | Validates reasoning steps and agent outputs |
 | `agents/synthesizer.py` | Merges diverse agent outputs into coherent conclusions |
 | `agents/metacognition.py` | Audits swarm reasoning for biases and patterns |
 | `graph/reasoning_graph.py` | SharedReasoningGraph (NetworkX) for live collaboration |
@@ -162,6 +163,7 @@ Query modules: `sessions.ts`, `knowledge.ts`, `thinking-nodes.ts`, `decisions.ts
 | `/api/fork/stream` | POST | SSE streaming for fork phases |
 | `/api/verify` | POST | PRM step-by-step verification |
 | `/api/got` | POST | Graph of Thoughts reasoning |
+| `/api/got/stream` | POST | SSE streaming for GoT reasoning |
 | `/api/memory` | GET, POST | Hierarchical memory operations |
 | `/api/swarm` | POST | Initiate multi-agent swarm (proxied to Fly.io) |
 | `/api/swarm/token` | GET | Generate WebSocket auth token for swarm |
@@ -219,7 +221,7 @@ Browser -> wss://opus-nx-agents.fly.dev/ws/{sessionId}?token=HMAC
 
 Migrations must exist in BOTH locations and be identical:
 
-1. `supabase/migrations/` (canonical) -- 3 migrations (001, 002, 003)
+1. `supabase/migrations/` (canonical) -- 9 migrations (001 through 009)
 2. `packages/db/migrations/` (mirror)
 
 The `pnpm check:migrations` script enforces this.

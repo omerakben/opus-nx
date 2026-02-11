@@ -23,7 +23,12 @@ export async function POST(request: Request) {
   const correlationId = getCorrelationId(request);
 
   try {
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return jsonError({ status: 400, code: "INVALID_JSON", message: "Request body must be valid JSON", correlationId });
+    }
     const parsed = GoTRequestSchema.safeParse(body);
     if (!parsed.success) {
       return jsonError({
