@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     # Server
     host: str = "0.0.0.0"
     port: int = 8000
-    cors_origins: list[str] = ["http://localhost:3000"]
+    cors_origins: list[str] = ["http://localhost:3000", "https://opus-nx.vercel.app"]
 
     # Agent behavior
     agent_timeout_seconds: int = 120

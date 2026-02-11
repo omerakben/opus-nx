@@ -44,6 +44,30 @@ const TOUR_STEPS: TourStep[] = [
     placement: "right",
   },
   {
+    id: "swarm-panel",
+    target: "[data-tour='swarm-tab']",
+    title: "Agent Swarm \u2014 6 AI Specialists",
+    description:
+      "Deploy a swarm of 6 specialized AI agents that collaborate in real-time. Watch Deep Thinker analyze, Contrarian challenge, Verifier check, and Synthesizer merge \u2014 all streaming live via WebSocket.",
+    placement: "bottom",
+  },
+  {
+    id: "got-panel",
+    target: "[data-tour='got-tab']",
+    title: "Graph of Thoughts",
+    description:
+      "Explore problems using arbitrary reasoning graphs with BFS, DFS, or best-first search. Thoughts branch, merge, and get verified at each step.",
+    placement: "bottom",
+  },
+  {
+    id: "verify-panel",
+    target: "[data-tour='verify-tab']",
+    title: "Step-by-Step Verification",
+    description:
+      "Process Reward Model verifies each reasoning step independently. See confidence scores, detected issues, and suggested corrections for every step in the chain.",
+    placement: "bottom",
+  },
+  {
     id: "fork-panel",
     target: "[data-tour='fork-tab']",
     title: "ThinkFork \u2014 4 Perspectives",

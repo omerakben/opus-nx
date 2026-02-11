@@ -9,15 +9,20 @@ import { RightPanel } from "./RightPanel";
 import { BottomPanel } from "./BottomPanel";
 import { MobileNav, type MobileView } from "./MobileNav";
 import { ThinkingGraph } from "@/components/graph";
+import { SwarmView } from "@/components/swarm";
+import { GoTPanel } from "@/components/got";
+import { VerificationPanel } from "@/components/verify";
 import { DemoTour } from "@/components/tour/DemoTour";
 import { useSession, useThinkingStream, useGraph, useLiveGraph, useIsMobile, useTour, useSidebar, useRightSidebar } from "@/lib/hooks";
 import { getSessionInsights, type Insight } from "@/lib/api";
 import { appEvents } from "@/lib/events";
+import { cn } from "@/lib/utils";
 import type { SelectedNodeData } from "@/components/thinking";
 
 export function Dashboard() {
   const isMobile = useIsMobile();
   const [mobileView, setMobileView] = useState<MobileView>("graph");
+  const [centerTab, setCenterTab] = useState<"thinkgraph" | "swarm" | "got" | "verify">("thinkgraph");
 
   // Session management
   const {
@@ -376,58 +381,132 @@ export function Dashboard() {
           onToggleCollapse={toggleSidebar}
         />
 
-        {/* Center: Graph + Stream */}
+        {/* Center: Tabbed Content Area */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Graph with streaming pulse */}
-          <div className="flex-1 overflow-hidden relative" data-tour="reasoning-graph">
-            {/* Streaming indicator overlay */}
-            {isStreaming && (
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-[var(--card)]/90 border border-amber-500/30 backdrop-blur-sm flex items-center gap-2 animate-breathing">
-                <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                <span className="text-xs text-amber-400 font-medium">
-                  Opus is thinking...
-                </span>
-                <span className="text-[10px] text-[var(--muted-foreground)] opacity-70">
-                  Graph updates on completion
-                </span>
-              </div>
-            )}
-            <ReactFlowProvider>
-              <ThinkingGraph
-                nodes={liveNodes}
-                edges={liveEdges}
-                onNodeClick={selectNode}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                isLoading={isLoadingGraph}
-                onSeedDemo={handleSeedDemo}
-                onBranchCreated={refreshGraph}
-                selectedNodeId={selectedNode?.id}
-              />
-            </ReactFlowProvider>
+          {/* Center Tab Bar */}
+          <div className="flex items-center gap-1 px-3 py-1.5 border-b border-[var(--border)] bg-[var(--card)] shrink-0">
+            <button
+              onClick={() => setCenterTab("thinkgraph")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
+                centerTab === "thinkgraph"
+                  ? "bg-[var(--background)] text-[var(--foreground)] shadow-sm"
+                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--background)]/50"
+              )}
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="19" r="2"/><path d="M12 7v4M9 17l2-6M15 17l-2-6"/></svg>
+              ThinkGraph
+            </button>
+            <button
+              onClick={() => setCenterTab("swarm")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
+                centerTab === "swarm"
+                  ? "bg-cyan-500/15 text-cyan-400 shadow-sm"
+                  : "text-[var(--muted-foreground)] hover:text-cyan-400 hover:bg-cyan-500/10"
+              )}
+              data-tour="swarm-tab"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="2"/><circle cx="4" cy="8" r="2"/><circle cx="20" cy="8" r="2"/><circle cx="4" cy="16" r="2"/><circle cx="20" cy="16" r="2"/><path d="M6 8.5l4.5 2.5M14 10.5l4-2M6 15.5l4.5-2.5M14 13.5l4 2"/></svg>
+              Swarm
+            </button>
+            <button
+              onClick={() => setCenterTab("got")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
+                centerTab === "got"
+                  ? "bg-amber-500/15 text-amber-400 shadow-sm"
+                  : "text-[var(--muted-foreground)] hover:text-amber-400 hover:bg-amber-500/10"
+              )}
+              data-tour="got-tab"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><path d="M12 8v3M8.5 17l2-5.5M15.5 17l-2-5.5"/></svg>
+              GoT
+            </button>
+            <button
+              onClick={() => setCenterTab("verify")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
+                centerTab === "verify"
+                  ? "bg-blue-500/15 text-blue-400 shadow-sm"
+                  : "text-[var(--muted-foreground)] hover:text-blue-400 hover:bg-blue-500/10"
+              )}
+              data-tour="verify-tab"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+              Verify
+            </button>
           </div>
 
-          {/* Bottom Panel: Thinking Stream + Historical Node Reasoning */}
-          <BottomPanel
-            thinking={thinking}
-            tokenCount={tokenCount}
-            isStreaming={isStreaming}
-            error={streamError}
-            sessionId={activeSession?.id ?? null}
-            onStart={handleStartStream}
-            onStop={stopStream}
-            onClear={clearStream}
-            phase={phase}
-            compactionCount={compactionCount}
-            compactionSummary={compactionSummary}
-            elapsedMs={elapsedMs}
-            selectedNodeData={selectedNodeData}
-            onClearSelection={clearNodeSelection}
-            response={streamResponse}
-            streamNodeId={streamNodeId}
-            degraded={streamDegraded}
-            warnings={streamWarnings}
-          />
+          {/* ThinkGraph Tab — always mounted for ReactFlow state */}
+          <div className={cn("flex-1 flex flex-col overflow-hidden", centerTab !== "thinkgraph" && "hidden")}>
+            <div className="flex-1 overflow-hidden relative" data-tour="reasoning-graph">
+              {isStreaming && (
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-[var(--card)]/90 border border-amber-500/30 backdrop-blur-sm flex items-center gap-2 animate-breathing">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  <span className="text-xs text-amber-400 font-medium">
+                    Opus is thinking...
+                  </span>
+                  <span className="text-[10px] text-[var(--muted-foreground)] opacity-70">
+                    Graph updates on completion
+                  </span>
+                </div>
+              )}
+              <ReactFlowProvider>
+                <ThinkingGraph
+                  nodes={liveNodes}
+                  edges={liveEdges}
+                  onNodeClick={selectNode}
+                  onNodesChange={onNodesChange}
+                  onEdgesChange={onEdgesChange}
+                  isLoading={isLoadingGraph}
+                  onSeedDemo={handleSeedDemo}
+                  onBranchCreated={refreshGraph}
+                  selectedNodeId={selectedNode?.id}
+                />
+              </ReactFlowProvider>
+            </div>
+
+            <BottomPanel
+              thinking={thinking}
+              tokenCount={tokenCount}
+              isStreaming={isStreaming}
+              error={streamError}
+              sessionId={activeSession?.id ?? null}
+              onStart={handleStartStream}
+              onStop={stopStream}
+              onClear={clearStream}
+              phase={phase}
+              compactionCount={compactionCount}
+              compactionSummary={compactionSummary}
+              elapsedMs={elapsedMs}
+              selectedNodeData={selectedNodeData}
+              onClearSelection={clearNodeSelection}
+              response={streamResponse}
+              streamNodeId={streamNodeId}
+              degraded={streamDegraded}
+              warnings={streamWarnings}
+            />
+          </div>
+
+          {/* Swarm Tab — always mounted for WebSocket persistence */}
+          <div className={cn("flex-1 overflow-hidden", centerTab !== "swarm" && "hidden")}>
+            <SwarmView sessionId={activeSession?.id ?? null} />
+          </div>
+
+          {/* GoT Tab */}
+          {centerTab === "got" && (
+            <div className="flex-1 overflow-y-auto">
+              <GoTPanel sessionId={activeSession?.id ?? null} />
+            </div>
+          )}
+
+          {/* Verify Tab */}
+          {centerTab === "verify" && (
+            <div className="flex-1 overflow-y-auto">
+              <VerificationPanel sessionId={activeSession?.id ?? null} />
+            </div>
+          )}
         </div>
 
         {/* Right Panel: Insights & Fork */}
