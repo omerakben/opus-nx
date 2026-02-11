@@ -236,11 +236,18 @@ export class Orchestrator {
     });
 
     try {
-      // Retrieve relevant knowledge context
-      const knowledgeContext = await this.memoryManager.buildContextString(userMessage, {
-        limit: 5,
-        includeRelated: true,
-      });
+      // Retrieve relevant knowledge context (graceful degradation if VOYAGE_API_KEY is missing)
+      let knowledgeContext = "";
+      try {
+        knowledgeContext = await this.memoryManager.buildContextString(userMessage, {
+          limit: 5,
+          includeRelated: true,
+        });
+      } catch (memoryError) {
+        logger.warn("Memory context unavailable, continuing without knowledge context", {
+          error: memoryError instanceof Error ? memoryError.message : String(memoryError),
+        });
+      }
 
       // Build the routing prompt with agent context
       const routingPrompt = this.buildRoutingPrompt(userMessage, knowledgeContext);

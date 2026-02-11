@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "@/styles/globals.css";
 import { ensureServerEnv } from "@/lib/server-env";
-import { Toaster } from "@/components/ui/sonner";
+import { ClientToaster } from "@/components/ui/client-toaster";
 
 // Validate required runtime env vars as soon as the app boots.
 if (process.env.NEXT_PHASE !== "phase-production-build") {
@@ -47,7 +47,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="antialiased min-h-screen bg-[var(--background)]">
         {children}
-        <Toaster />
+        <ClientToaster />
       </body>
     </html>
   );

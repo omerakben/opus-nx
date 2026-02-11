@@ -8,6 +8,8 @@ export { useSidebar } from "./use-sidebar";
 export { useRightSidebar } from "./use-right-sidebar";
 export { useReasoningDetail } from "./use-reasoning-detail";
 export { useForkStream } from "./use-fork-stream";
+export { useSwarm } from "./use-swarm";
+export type { AgentStatus, SwarmState } from "./use-swarm";
 export type { ForkStreamPhase, StreamingBranch, ForkStreamParams, DebateStreamParams } from "./use-fork-stream";
 export type {
   ReasoningDetailData,

@@ -70,7 +70,7 @@ export function ThinkingGraph({
 }: ThinkingGraphProps) {
   // Edge filter and confidence filter state
   const [activeEdgeTypes, setActiveEdgeTypes] = useState<Set<string>>(
-    new Set(["influences", "contradicts", "supports", "supersedes", "refines"])
+    new Set(["influences", "contradicts", "supports", "supersedes", "refines", "challenges", "verifies", "merges", "observes"])
   );
   const [confidenceThreshold, setConfidenceThreshold] = useState(0);
 

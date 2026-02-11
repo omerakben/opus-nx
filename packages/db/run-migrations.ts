@@ -23,6 +23,11 @@ async function runMigrations() {
     "001_initial_schema.sql",
     "002_thinking_graph.sql",
     "003_node_type.sql",
+    "004_insights_fts_index.sql",
+    "005_fork_analyses.sql",
+    "006_thinking_nodes_response.sql",
+    "007_v2_edge_types.sql",
+    "008_v2_swarm_edge_fix.sql",
   ];
 
   const failures: string[] = [];

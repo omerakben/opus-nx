@@ -10,11 +10,20 @@ const edgeTypes: EdgeType[] = [
   "refines",
   "supersedes",
   "contradicts",
+  "challenges",
+  "verifies",
+  "merges",
+  "observes",
 ];
 
 function EdgeMiniLine({ type }: { type: EdgeType }) {
   const color = EDGE_COLORS[type];
-  const isDashed = type === "contradicts";
+  const dashArray =
+    type === "contradicts"
+      ? "4 3"
+      : type === "challenges"
+        ? "6 2"
+        : "none";
   return (
     <svg width="24" height="8" viewBox="0 0 24 8" className="shrink-0">
       <line
@@ -25,7 +34,7 @@ function EdgeMiniLine({ type }: { type: EdgeType }) {
         stroke={color}
         strokeWidth="2"
         strokeLinecap="round"
-        strokeDasharray={isDashed ? "4 3" : "none"}
+        strokeDasharray={dashArray}
       />
     </svg>
   );

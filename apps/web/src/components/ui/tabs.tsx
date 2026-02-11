@@ -99,22 +99,27 @@ interface TabsContentProps {
   value: string;
   children: ReactNode;
   className?: string;
+  /** Keep mounted when inactive (hidden via CSS instead of unmounting) */
+  forceMount?: boolean;
 }
 
-function TabsContent({ value, children, className }: TabsContentProps) {
+function TabsContent({ value, children, className, forceMount }: TabsContentProps) {
   const { value: selectedValue } = useTabs();
+  const isActive = selectedValue === value;
 
-  if (selectedValue !== value) {
+  if (!isActive && !forceMount) {
     return null;
   }
 
   return (
     <div
       role="tabpanel"
+      data-state={isActive ? "active" : "inactive"}
       className={cn(
         "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
         className
       )}
+      hidden={!isActive && forceMount ? true : undefined}
     >
       {children}
     </div>
