@@ -190,6 +190,7 @@ class ContrarianAgent(BaseOpusAgent):
             confidence=confidence,
             node_ids=self._node_ids,
             tokens_used=result["tokens_used"],
+            input_tokens_used=result.get("input_tokens_used", 0),
             duration_ms=duration_ms,
         )
 

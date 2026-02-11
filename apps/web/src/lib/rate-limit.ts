@@ -65,6 +65,54 @@ export function checkRateLimit(
   };
 }
 
+/** Pre-configured rate limits for different route categories. */
+export const RATE_LIMITS = {
+  /** Auth: strict to prevent brute-force (5 attempts per 15 min) */
+  auth: { windowMs: 15 * 60 * 1000, maxRequests: 5 } satisfies RateLimitConfig,
+  /** Expensive AI routes: moderate (10 requests per minute) */
+  ai: { windowMs: 60 * 1000, maxRequests: 10 } satisfies RateLimitConfig,
+  /** Swarm: tighter since it fans out to multiple agents (5 per minute) */
+  swarm: { windowMs: 60 * 1000, maxRequests: 5 } satisfies RateLimitConfig,
+} as const;
+
+/**
+ * Apply rate limiting to a request. Returns a 429 Response if the limit
+ * is exceeded, or null if the request is allowed.
+ */
+export function applyRateLimit(
+  request: Request,
+  routeKey: string,
+  config: RateLimitConfig
+): Response | null {
+  const ip = getClientIP(request);
+  const result = checkRateLimit(`${routeKey}:${ip}`, config);
+
+  if (!result.allowed) {
+    const retryAfter = Math.ceil((result.resetTime - Date.now()) / 1000);
+    return new Response(
+      JSON.stringify({
+        error: {
+          code: "RATE_LIMIT_EXCEEDED",
+          message: "Too many requests. Please try again later.",
+          recoverable: true,
+          correlationId: request.headers.get("x-correlation-id") ?? "unknown",
+        },
+      }),
+      {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json",
+          "Retry-After": String(retryAfter),
+          "X-RateLimit-Remaining": "0",
+          "X-RateLimit-Reset": String(result.resetTime),
+        },
+      }
+    );
+  }
+
+  return null;
+}
+
 /**
  * Extract client IP from request headers.
  * Works with Vercel, Cloudflare, and other proxies.

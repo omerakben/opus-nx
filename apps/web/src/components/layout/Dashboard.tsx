@@ -19,7 +19,11 @@ import { appEvents } from "@/lib/events";
 import { cn } from "@/lib/utils";
 import type { SelectedNodeData } from "@/components/thinking";
 
-export function Dashboard() {
+interface DashboardProps {
+  isDemoMode?: boolean;
+}
+
+export function Dashboard({ isDemoMode }: DashboardProps) {
   const isMobile = useIsMobile();
   const [mobileView, setMobileView] = useState<MobileView>("graph");
   const [centerTab, setCenterTab] = useState<"thinkgraph" | "swarm" | "got" | "verify">("thinkgraph");
@@ -149,8 +153,7 @@ export function Dashboard() {
     (steps: Array<{ content: string; type?: string }>) => {
       setVerifyInitialSteps(steps);
       if (isMobile) {
-        // On mobile there's no verify tab in the center — just set state
-        // (VerificationPanel is in the center tabs on desktop)
+        setMobileView("verify");
       }
       setCenterTab("verify");
     },
@@ -294,7 +297,7 @@ export function Dashboard() {
   if (isMobile) {
     return (
       <div className="h-[100dvh] flex flex-col overflow-hidden bg-[var(--background)]">
-        <Header isMobile onReplayTour={restartTour} />
+        <Header isMobile onReplayTour={restartTour} isDemoMode={isDemoMode} />
 
         <div className="flex-1 overflow-hidden relative">
           {/* Graph View */}
@@ -371,12 +374,29 @@ export function Dashboard() {
             </div>
           )}
 
+          {/* Swarm View */}
+          {mobileView === "swarm" && (
+            <div className="h-full overflow-hidden animate-fade-in">
+              <SwarmView sessionId={activeSession?.id ?? null} />
+            </div>
+          )}
+
           {/* GoT View */}
           {mobileView === "got" && (
             <div className="h-full overflow-y-auto animate-fade-in">
               <GoTPanel
                 sessionId={activeSession?.id ?? null}
                 onSendToVerify={handleSendToVerify}
+              />
+            </div>
+          )}
+
+          {/* Verify View */}
+          {mobileView === "verify" && (
+            <div className="h-full overflow-y-auto animate-fade-in">
+              <VerificationPanel
+                sessionId={activeSession?.id ?? null}
+                initialSteps={verifyInitialSteps}
               />
             </div>
           )}
@@ -408,7 +428,7 @@ export function Dashboard() {
   // Desktop layout
   return (
     <div className="h-screen flex flex-col overflow-hidden">
-      <Header onReplayTour={restartTour} />
+      <Header onReplayTour={restartTour} isDemoMode={isDemoMode} />
 
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel: Sessions & Stats */}
@@ -494,13 +514,13 @@ export function Dashboard() {
 
           {/* Tab panels — stacked via absolute positioning so ReactFlow keeps measurable dimensions */}
           <div className="flex-1 relative overflow-hidden">
-            {/* ThinkGraph Tab — uses invisible (not hidden/display:none) to preserve ReactFlow container dimensions.
+            {/* ThinkGraph Tab — uses opacity-0 (not hidden/display:none) to preserve ReactFlow container dimensions.
                 display:none causes getBoundingClientRect to return 0×0, which makes fitView produce NaN viewport values.
-                z-index ensures active tab paints above inactive ones so ReactFlow nodes don't bleed through.
+                opacity-0 (unlike visibility:hidden) cannot be overridden by child elements, preventing ReactFlow node bleed-through.
                 `isolate` creates a stacking context boundary so internal z-indices don't escape into sibling tabs. */}
             <div className={cn(
-              "absolute inset-0 flex flex-col overflow-hidden isolate",
-              centerTab === "thinkgraph" ? "z-20" : "invisible pointer-events-none -z-10"
+              "absolute inset-0 flex flex-col overflow-hidden isolate bg-[var(--background)]",
+              centerTab === "thinkgraph" ? "z-20" : "opacity-0 pointer-events-none -z-10"
             )}>
               <div className="flex-1 overflow-hidden relative" data-tour="reasoning-graph">
                 {isStreaming && (
@@ -556,13 +576,13 @@ export function Dashboard() {
               <SwarmView sessionId={activeSession?.id ?? null} />
             </div>
 
-            {/* GoT Tab — uses invisible for ReactFlow (GoTGraph) container dimensions.
-                z-index ensures active tab paints above inactive ones (prevents ThinkGraph bleed-through).
+            {/* GoT Tab — uses opacity-0 for ReactFlow (GoTGraph) container dimensions.
+                opacity-0 (unlike visibility:hidden) cannot be overridden by child elements, preventing ReactFlow node bleed-through.
                 `bg-[var(--background)]` makes the tab opaque so ThinkGraph doesn't bleed through.
                 `isolate` creates a stacking context boundary for ReactFlow z-index containment. */}
             <div className={cn(
               "absolute inset-0 overflow-y-auto bg-[var(--background)] isolate",
-              centerTab === "got" ? "z-20" : "invisible pointer-events-none -z-10"
+              centerTab === "got" ? "z-20" : "opacity-0 pointer-events-none -z-10"
             )}>
               <GoTPanel
                 sessionId={activeSession?.id ?? null}
@@ -570,8 +590,10 @@ export function Dashboard() {
               />
             </div>
 
-            {/* Verify Tab — always mounted to preserve state across tab switches */}
-            <div className={cn("absolute inset-0 overflow-y-auto", centerTab === "verify" ? "z-20" : "hidden")}>
+            {/* Verify Tab — always mounted to preserve state across tab switches.
+                `bg-[var(--background)]` makes the tab opaque so ThinkGraph nodes don't bleed through.
+                `isolate` creates a stacking context boundary. */}
+            <div className={cn("absolute inset-0 overflow-y-auto bg-[var(--background)] isolate", centerTab === "verify" ? "z-20" : "hidden")}>
               <VerificationPanel
                 sessionId={activeSession?.id ?? null}
                 initialSteps={verifyInitialSteps}

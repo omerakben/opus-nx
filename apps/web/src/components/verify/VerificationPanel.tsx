@@ -116,7 +116,15 @@ export function VerificationPanel({ sessionId, initialSteps }: VerificationPanel
   }, []);
 
   const handleVerify = useCallback(async (steps: Array<{ content: string; type?: string }>) => {
-    if (isVerifying || steps.length === 0) return;
+    // Filter out steps with empty content to prevent 400 errors
+    const validSteps = steps.filter((s) => s.content.trim().length > 0);
+    if (isVerifying) return;
+    if (validSteps.length === 0) {
+      setError("No valid steps to verify. Each step must have non-empty content.");
+      return;
+    }
+    // Replace steps reference with validated list
+    steps = validSteps;
     setIsVerifying(true);
     setError(null);
     setVerifyingStep(0);
@@ -162,6 +170,10 @@ export function VerificationPanel({ sessionId, initialSteps }: VerificationPanel
   }, [isVerifying]);
 
   const handleParseSteps = useCallback(() => {
+    if (!stepsInput.trim()) {
+      setError("Please enter reasoning steps first (one per line).");
+      return;
+    }
     const parsed = stepsInput
       .split("\n")
       .map((line) => line.trim())

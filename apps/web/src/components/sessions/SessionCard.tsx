@@ -41,7 +41,7 @@ export function SessionCard({
       className={cn(
         "group relative w-full text-left p-3 rounded-lg border transition-all cursor-pointer",
         isActive
-          ? "border-[var(--accent)] bg-[var(--accent)]/10"
+          ? "border-[var(--accent)] bg-[var(--accent)]/15 ring-1 ring-[var(--accent)]/30 shadow-sm shadow-[var(--accent)]/10 border-l-[3px]"
           : "border-[var(--border)] hover:border-[var(--muted-foreground)] hover:bg-[var(--muted)]",
         isDemo && !isActive && "border-violet-500/30 bg-violet-500/5"
       )}
@@ -63,7 +63,15 @@ export function SessionCard({
           ) : (
             <MessageSquare className="w-4 h-4 text-[var(--muted-foreground)] shrink-0" />
           )}
-          <span className="text-sm font-medium text-[var(--foreground)] truncate">
+          <span
+            className={cn(
+              "text-sm truncate",
+              isActive
+                ? "font-semibold text-[var(--foreground)]"
+                : "font-medium text-[var(--foreground)]"
+            )}
+            title={name}
+          >
             {truncate(name, 30)}
           </span>
         </div>

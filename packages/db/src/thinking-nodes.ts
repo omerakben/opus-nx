@@ -53,7 +53,7 @@ export interface ThinkingNode {
   signature: string | null;
   inputQuery: string | null;
   tokenUsage: Record<string, unknown>;
-  nodeType: "thinking" | "compaction" | "fork_branch" | "human_annotation";
+  nodeType: "thinking" | "compaction" | "fork_branch" | "human_annotation" | "got_result";
   createdAt: Date;
 }
 
@@ -91,7 +91,7 @@ export interface CreateThinkingNodeInput {
   signature?: string;
   inputQuery?: string;
   tokenUsage?: Record<string, unknown>;
-  nodeType?: "thinking" | "compaction" | "fork_branch" | "human_annotation";
+  nodeType?: "thinking" | "compaction" | "fork_branch" | "human_annotation" | "got_result";
 }
 
 export interface CreateReasoningEdgeInput {
@@ -218,6 +218,7 @@ export async function getSessionThinkingNodes(
     .from("thinking_nodes")
     .select("*")
     .eq("session_id", sessionId)
+    .neq("node_type", "got_result")
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -249,13 +250,28 @@ export async function getFirstNodePerSessions(
     handleSupabaseError(error, "Failed to get first nodes per session");
   }
 
-  // Group by session_id, taking the first (earliest) node per session
-  const result = new Map<string, ThinkingNode>();
+  // Group by session_id. Prefer the first node with a non-null inputQuery
+  // (the user's original question). Fall back to the earliest node if none
+  // have inputQuery (e.g. swarm-only sessions where nodes are decomposition steps).
+  const firstBySession = new Map<string, ThinkingNode>();
+  const bestBySession = new Map<string, ThinkingNode>();
+
   for (const row of data ?? []) {
     const node = mapThinkingNode(row);
-    if (!result.has(node.sessionId)) {
-      result.set(node.sessionId, node);
+    // Track the chronologically first node as fallback
+    if (!firstBySession.has(node.sessionId)) {
+      firstBySession.set(node.sessionId, node);
     }
+    // Track the first node with an actual inputQuery
+    if (!bestBySession.has(node.sessionId) && node.inputQuery) {
+      bestBySession.set(node.sessionId, node);
+    }
+  }
+
+  // Merge: prefer node with inputQuery, fall back to earliest node
+  const result = new Map<string, ThinkingNode>();
+  for (const [sessionId, fallback] of firstBySession) {
+    result.set(sessionId, bestBySession.get(sessionId) ?? fallback);
   }
 
   return result;

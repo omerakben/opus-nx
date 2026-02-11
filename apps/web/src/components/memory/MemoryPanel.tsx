@@ -543,6 +543,17 @@ export function MemoryPanel({ sessionId }: MemoryPanelProps) {
                 );
               })}
 
+              {/* Empty state hint when all tiers are empty */}
+              {stats && stats.mainContextEntries === 0 && stats.recallStorageEntries === 0 && stats.archivalStorageEntries === 0 && (
+                <div className="px-3 py-3 rounded-lg border border-dashed border-cyan-500/20 bg-cyan-500/5 text-center">
+                  <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                    Memory is empty. Start a thinking session to automatically populate working memory,
+                    or use the <strong>Insert</strong> tab to add knowledge manually.
+                    You can also <strong>Capture Thinking</strong> from completed sessions.
+                  </p>
+                </div>
+              )}
+
               {/* Operation Stats */}
               {stats && (
                 <div className="grid grid-cols-2 gap-2">

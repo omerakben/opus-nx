@@ -23,26 +23,23 @@ const SWARM_BASE_URL =
 // Auth — fetch token from server to keep AUTH_SECRET off the client
 // ---------------------------------------------------------------------------
 
-/** Token cache with timestamp for expiration checking */
-let cachedToken: { token: string; wsUrl: string; fetchedAt: number } | null =
-  null;
-
-/** Maximum token age before re-fetch (60 minutes) */
-const TOKEN_MAX_AGE_MS = 60 * 60 * 1000;
+/**
+ * Token cache. The HMAC token is deterministic (same AUTH_SECRET always
+ * produces the same token), so we cache indefinitely until explicitly
+ * cleared (e.g. on reconnect failure where the secret may have rotated).
+ */
+let cachedToken: { token: string; wsUrl: string } | null = null;
 
 async function getSwarmToken(): Promise<{ token: string; wsUrl: string }> {
-  if (cachedToken && Date.now() - cachedToken.fetchedAt < TOKEN_MAX_AGE_MS) {
+  if (cachedToken) {
     return cachedToken;
   }
-
-  // Token expired or not cached — invalidate and re-fetch
-  cachedToken = null;
 
   const res = await fetch("/api/swarm/token");
   if (!res.ok) throw new Error("Failed to get swarm token");
 
   const data: { token: string; wsUrl: string } = await res.json();
-  cachedToken = { ...data, fetchedAt: Date.now() };
+  cachedToken = data;
   return data;
 }
 
@@ -254,8 +251,9 @@ interface SubscribeOptions {
 }
 
 /** Reconnect configuration */
-const MAX_RECONNECT_ATTEMPTS = 3;
+const MAX_RECONNECT_ATTEMPTS = 10;
 const RECONNECT_BASE_DELAY_MS = 1000;
+const RECONNECT_MAX_DELAY_MS = 30_000;
 
 /**
  * Subscribe to live swarm events via WebSocket.
@@ -264,7 +262,7 @@ const RECONNECT_BASE_DELAY_MS = 1000;
  * to the Python backend. Delivers typed events to the provided listener
  * and emits to the app-wide event bus for cross-component reactivity.
  *
- * Includes auto-reconnect with exponential backoff (max 3 attempts).
+ * Includes auto-reconnect with exponential backoff (max 10 attempts, capped at 30s).
  *
  * @param sessionId - Session to subscribe to
  * @param _authSecret - Auth secret (unused; token fetched server-side)
@@ -346,7 +344,10 @@ export function subscribeSwarmEvents(
     }
 
     connState = "reconnecting";
-    const delay = RECONNECT_BASE_DELAY_MS * Math.pow(2, reconnectAttempt - 1);
+    const delay = Math.min(
+      RECONNECT_BASE_DELAY_MS * Math.pow(2, reconnectAttempt - 1),
+      RECONNECT_MAX_DELAY_MS
+    );
 
     reconnectTimer = setTimeout(() => {
       if (closed) return;
@@ -385,12 +386,16 @@ function setupWebSocket(
     try {
       const data: unknown = JSON.parse(msg.data);
 
-      // Skip heartbeat pings (not part of SwarmEventUnion)
+      // Respond to heartbeat pings with a pong to keep the connection
+      // alive through proxies that track bidirectional traffic (Fly.io).
       if (
         typeof data === "object" &&
         data !== null &&
         (data as Record<string, unknown>).event === "ping"
       ) {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ event: "pong" }));
+        }
         return;
       }
 

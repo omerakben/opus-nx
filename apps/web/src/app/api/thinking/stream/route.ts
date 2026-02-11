@@ -2,7 +2,7 @@ import { z } from "zod";
 import { ThinkingEngine, ThinkGraph } from "@opus-nx/core";
 import { getSession, createSession, getLatestThinkingNode } from "@/lib/db";
 import { getCorrelationId, jsonError } from "@/lib/api-response";
-import { getOrCreateMemory } from "@/lib/memory-store";
+import { getOrCreateMemory, persistMemoryEntries } from "@/lib/memory-store";
 
 export const maxDuration = 300;
 
@@ -157,10 +157,10 @@ export async function POST(request: Request) {
             return;
           }
 
-          // Calculate actual thinking tokens from usage
-          const actualThinkingTokens =
-            (result.usage as unknown as { thinking_tokens?: number })
-              .thinking_tokens ?? thinkingTokens;
+          // Calculate actual thinking tokens from usage (prefer API value)
+          const apiThinkingTokens = (result.usage as unknown as { thinking_tokens?: number }).thinking_tokens;
+          const thinkingTokensEstimated = !apiThinkingTokens;
+          const actualThinkingTokens = apiThinkingTokens ?? thinkingTokens;
 
           // FIX: Race condition mitigation for parent node lookup.
           //
@@ -245,13 +245,25 @@ export async function POST(request: Request) {
             }
             const thinkingContent = thinkingContentFull.slice(0, 2000);
 
+            // Collect entries for batch persistence to Supabase
+            const entriesToPersist: Parameters<typeof persistMemoryEntries>[0] = [];
+
             if (thinkingContent) {
-              memory.addToWorkingMemory(
+              const entry = memory.addToWorkingMemory(
                 thinkingContent,
                 0.7,
                 "thinking_node",
                 graphResult.node.id
               );
+              entriesToPersist.push({
+                id: entry.id,
+                sessionId,
+                tier: "main_context",
+                content: thinkingContent,
+                importance: 0.7,
+                source: "thinking_node",
+                sourceId: graphResult.node.id,
+              });
             }
 
             if (responseText) {
@@ -262,13 +274,27 @@ export async function POST(request: Request) {
                   correlationId,
                 });
               }
-              memory.addToWorkingMemory(
+              const entry = memory.addToWorkingMemory(
                 responseText.slice(0, 1000),
                 0.5,
                 "thinking_node",
                 graphResult.node.id
               );
+              entriesToPersist.push({
+                id: entry.id,
+                sessionId,
+                tier: "main_context",
+                content: responseText.slice(0, 1000),
+                importance: 0.5,
+                source: "thinking_node",
+                sourceId: graphResult.node.id,
+              });
             }
+
+            // Persist to Supabase (fire-and-forget)
+            persistMemoryEntries(entriesToPersist).catch((err) => {
+              console.warn("[API] Non-critical memory persistence failed:", { correlationId, error: err });
+            });
 
             // Emit memory SSE event with current stats
             const memoryData = JSON.stringify({
@@ -336,6 +362,7 @@ export async function POST(request: Request) {
             type: "done",
             nodeId: graphResult.node.id,
             totalTokens: actualThinkingTokens,
+            thinkingTokensEstimated,
             response: responseText,
             compacted: result.compacted,
             degraded:

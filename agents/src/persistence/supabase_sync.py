@@ -112,8 +112,8 @@ class SupabasePersistence:
             },
             "confidence_score": _clamp_confidence(node.confidence),
             "signature": f"swarm-{node.agent.value}",
-            "input_query": None,
-            "token_usage": {"source": "swarm_v2"},
+            "input_query": node.input_query,
+            "token_usage": node.token_usage if node.token_usage else {"source": "swarm_v2"},
             "node_type": "thinking",
             "agent_name": node.agent.value,
             "created_at": node.created_at.isoformat()
@@ -159,6 +159,58 @@ class SupabasePersistence:
             source=source_id,
             target=target_id,
         )
+
+    @async_retry(max_retries=3, backoff_delays=(1.0, 2.0, 4.0))
+    async def backfill_node_tokens(
+        self,
+        node_ids: list[str],
+        tokens_used: int,
+        agent_name: str,
+        input_tokens_used: int = 0,
+    ) -> None:
+        """Backfill token_usage on nodes after an agent completes.
+
+        Distributes the agent's total token count evenly across its nodes
+        using the same schema as the Node.js ThinkGraph (inputTokens,
+        outputTokens, thinkingTokens).
+        """
+        if self._client is None or not node_ids:
+            return
+
+        # Distribute tokens evenly across nodes
+        n = max(len(node_ids), 1)
+        out_per_node = tokens_used // n
+        out_remainder = tokens_used % n
+        in_per_node = input_tokens_used // n
+        in_remainder = input_tokens_used % n
+
+        for i, raw_id in enumerate(node_ids):
+            node_id = _coerce_uuid(raw_id, field="backfill.node_id")
+            if node_id is None:
+                continue
+
+            node_out_tokens = out_per_node + (1 if i < out_remainder else 0)
+            node_in_tokens = in_per_node + (1 if i < in_remainder else 0)
+            token_data = {
+                "inputTokens": node_in_tokens,
+                "outputTokens": node_out_tokens,
+                "thinkingTokens": 0,
+                "source": "swarm_v2",
+                "agent": agent_name,
+            }
+
+            try:
+                await asyncio.to_thread(
+                    lambda nid=node_id, td=token_data: (
+                        self._client.table("thinking_nodes")  # type: ignore[union-attr]
+                        .update({"token_usage": td})
+                        .eq("id", nid)
+                        .execute()
+                    )
+                )
+                log.debug("backfill_tokens_updated", node_id=node_id, output_tokens=node_out_tokens, input_tokens=node_in_tokens)
+            except Exception as e:
+                log.warning("backfill_tokens_failed", node_id=node_id, error=str(e))
 
     async def sync(self, event_type: str, data: Any) -> None:
         """Dispatch graph change events to the appropriate sync method."""

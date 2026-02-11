@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { GoTEngine } from "@opus-nx/core";
+import { GoTEngine, ThinkGraph } from "@opus-nx/core";
 import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
 
 export const maxDuration = 300;
@@ -41,10 +41,46 @@ export async function POST(request: Request) {
       });
     }
 
-    const { problem, sessionId: _sessionId, ...config } = parsed.data;
+    const { problem, sessionId, ...config } = parsed.data;
 
     const engine = new GoTEngine();
     const result = await engine.reason(problem, config);
+
+    // Persist GoT results as a thinking node if sessionId is provided
+    let nodeId: string | undefined;
+    let persistenceError: string | null = null;
+    if (sessionId) {
+      try {
+        const thinkGraph = new ThinkGraph();
+        // Build a synthetic thinking block from the GoT reasoning summary
+        const thinkingBlocks = [
+          {
+            type: "thinking" as const,
+            thinking: `[Graph of Thoughts - ${config.strategy.toUpperCase()}]\n\n${result.reasoningSummary}\n\nBest thought IDs: ${result.graphState.bestThoughts.join(", ") || "none"}`,
+            signature: "synthetic-got",
+          },
+        ];
+        const graphResult = await thinkGraph.persistThinkingNode(thinkingBlocks, {
+          sessionId,
+          inputQuery: problem,
+          response: result.answer,
+          nodeType: "got_result",
+          tokenUsage: {
+            inputTokens: result.stats.totalTokens ?? 0,
+            outputTokens: 0,
+            thinkingTokens: 0,
+          },
+        });
+        nodeId = graphResult.node.id;
+      } catch (err) {
+        console.warn("[API] Failed to persist GoT results:", {
+          correlationId,
+          sessionId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        persistenceError = "GoT results could not be saved to this session.";
+      }
+    }
 
     return jsonSuccess(
       {
@@ -52,12 +88,15 @@ export async function POST(request: Request) {
         confidence: result.confidence,
         reasoningSummary: result.reasoningSummary,
         stats: result.stats,
+        nodeId,
         graphState: {
           thoughts: result.graphState.thoughts,
           edges: result.graphState.edges,
           bestThoughts: result.graphState.bestThoughts,
           sessionId: result.graphState.sessionId,
         },
+        degraded: !!persistenceError,
+        persistenceError,
       },
       { correlationId }
     );

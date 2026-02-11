@@ -2,8 +2,9 @@ import { z } from "zod";
 import { ThinkForkEngine } from "@opus-nx/core";
 import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
 import { createForkAnalysis, getSessionForkAnalysesDb } from "@/lib/db";
+import { applyRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
-export const maxDuration = 800;
+export const maxDuration = 300;
 
 const ForkStyleSchema = z.enum(["conservative", "aggressive", "balanced", "contrarian"]);
 
@@ -61,6 +62,9 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   const correlationId = getCorrelationId(request);
+
+  const rateLimited = applyRateLimit(request, "fork", RATE_LIMITS.ai);
+  if (rateLimited) return rateLimited;
 
   try {
     const body = await request.json();

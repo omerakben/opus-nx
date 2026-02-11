@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
-import { getOrCreateMemory } from "@/lib/memory-store";
+import { getOrCreateMemoryAsync, persistFullSnapshot } from "@/lib/memory-store";
 
 const MemoryOperationSchema = z.discriminatedUnion("operation", [
   z.object({
@@ -33,9 +33,18 @@ const MemoryOperationSchema = z.discriminatedUnion("operation", [
   }),
 ]);
 
+// Operations that mutate memory state and need to be persisted
+const MUTATION_OPS = new Set([
+  "archival_insert",
+  "core_memory_append",
+  "evict_to_archival",
+  "promote_to_working",
+]);
+
 /**
  * POST /api/memory
- * Execute memory operations against the hierarchical memory system
+ * Execute memory operations against the hierarchical memory system.
+ * Uses async hydration to ensure memory state is loaded from DB on cold start.
  */
 export async function POST(request: Request) {
   const correlationId = getCorrelationId(request);
@@ -47,10 +56,16 @@ export async function POST(request: Request) {
     } catch {
       return jsonError({ status: 400, code: "INVALID_JSON", message: "Request body must be valid JSON", correlationId });
     }
-    const sessionId = typeof body.sessionId === "string" ? body.sessionId : "default";
+    const sessionId = typeof body.sessionId === "string" && body.sessionId.trim() ? body.sessionId.trim() : null;
 
-    if (sessionId === "default") {
-      console.warn("[API] Memory operation using default session ID — potential collision across users", { correlationId });
+    if (!sessionId) {
+      return jsonError({
+        status: 400,
+        code: "SESSION_ID_REQUIRED",
+        message: "sessionId is required for memory operations",
+        correlationId,
+        recoverable: true,
+      });
     }
 
     const parsed = MemoryOperationSchema.safeParse(body);
@@ -65,7 +80,8 @@ export async function POST(request: Request) {
       });
     }
 
-    const memory = getOrCreateMemory(sessionId);
+    // Use async version to guarantee hydration from DB on cold start
+    const memory = await getOrCreateMemoryAsync(sessionId);
     const op = parsed.data;
 
     if (op.operation === "stats") {
@@ -96,6 +112,13 @@ export async function POST(request: Request) {
     }
 
     const result = await memory.executeOperation(op);
+
+    // Persist to Supabase after mutations (fire-and-forget to keep response fast)
+    if (MUTATION_OPS.has(op.operation)) {
+      persistFullSnapshot(sessionId, memory).catch((err) => {
+        console.warn("[API] Memory persistence failed:", { correlationId, error: err });
+      });
+    }
 
     return jsonSuccess(
       {

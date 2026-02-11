@@ -16,6 +16,10 @@ export function SessionStats({ nodes, isCompact = false }: SessionStatsProps) {
   const confidenceGroups = groupNodesByConfidence(nodes);
   const tokenTotals = calculateTotalTokens(nodes);
 
+  // Detect swarm nodes with missing token data (nodes exist but all tokens are 0)
+  const hasNodes = nodes.length > 0;
+  const tokensPending = hasNodes && tokenTotals.total === 0;
+
   const stats = [
     {
       label: "Thinking Nodes",
@@ -25,7 +29,7 @@ export function SessionStats({ nodes, isCompact = false }: SessionStatsProps) {
     },
     {
       label: "Total Tokens",
-      value: formatNumber(tokenTotals.total),
+      value: tokensPending ? "--" : formatNumber(tokenTotals.total),
       icon: Zap,
       color: "text-yellow-500",
     },
@@ -123,6 +127,15 @@ export function SessionStats({ nodes, isCompact = false }: SessionStatsProps) {
                 color="bg-purple-500"
               />
             </div>
+          </div>
+        )}
+
+        {/* Pending token data indicator for swarm-originated nodes */}
+        {tokensPending && (
+          <div className="mt-3 pt-3 border-t border-[var(--border)]">
+            <p className="text-[10px] text-[var(--muted-foreground)] leading-relaxed">
+              Token usage not yet available. Swarm agent metrics are populated after each phase completes.
+            </p>
           </div>
         )}
       </CardContent>

@@ -79,6 +79,8 @@ interface UseGoTStreamReturn extends GoTStreamState {
   start: (params: GoTStreamParams) => void;
   stop: () => void;
   clear: () => void;
+  /** Restore a previously completed result (e.g. from sessionStorage cache) */
+  restore: (result: GoTStreamResult, elapsedMs?: number) => void;
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -127,6 +129,29 @@ export function useGoTStream(): UseGoTStreamReturn {
     stop();
     setState(INITIAL_STATE);
   }, [stop]);
+
+  const restore = useCallback((cachedResult: GoTStreamResult, cachedElapsedMs = 0) => {
+    // Rebuild thoughts Map from the result's graphState
+    const thoughtsMap = new Map<string, StreamingThought>();
+    const order: string[] = [];
+    for (const t of cachedResult.graphState.thoughts as StreamingThought[]) {
+      thoughtsMap.set(t.id, t);
+      order.push(t.id);
+    }
+    setState({
+      phase: "done",
+      thoughts: thoughtsMap,
+      thoughtOrder: order,
+      currentDepth: cachedResult.stats.maxDepthReached,
+      maxDepth: cachedResult.stats.maxDepthReached,
+      frontierSize: 0,
+      stats: cachedResult.stats,
+      errors: [],
+      result: cachedResult,
+      isStreaming: false,
+      elapsedMs: cachedElapsedMs,
+    });
+  }, []);
 
   const start = useCallback(
     (params: GoTStreamParams) => {
@@ -234,7 +259,7 @@ export function useGoTStream(): UseGoTStreamReturn {
     [cleanup],
   );
 
-  return { ...state, start, stop, clear };
+  return { ...state, start, stop, clear, restore };
 }
 
 // ────────────────────────────────────────────────────────────────

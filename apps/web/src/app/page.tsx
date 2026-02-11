@@ -1,5 +1,6 @@
 import { Dashboard } from "@/components/layout";
 
 export default function HomePage() {
-  return <Dashboard />;
+  const isDemoMode = process.env.DEMO_MODE === "true";
+  return <Dashboard isDemoMode={isDemoMode} />;
 }

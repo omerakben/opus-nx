@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 
     // Batch-fetch the first (earliest) node per session in a single query.
     const sessionIds = sessions.map((s) => s.id);
-    let firstNodeMap = new Map<string, { inputQuery: string | null }>();
+    let firstNodeMap: Awaited<ReturnType<typeof getFirstNodePerSessions>> = new Map();
     let displayNameStatus: "ok" | "degraded" = "ok";
 
     try {
@@ -29,7 +29,15 @@ export async function GET(request: Request) {
 
     const sessionsWithNames = sessions.map((session) => {
       const firstNode = firstNodeMap.get(session.id);
-      const displayName = firstNode?.inputQuery ?? null;
+      // Prefer inputQuery (set by Node.js thinking engine).
+      // Fall back to response text (swarm nodes have query text there).
+      // Truncate long content to a reasonable display name length.
+      const rawName =
+        firstNode?.inputQuery ??
+        firstNode?.response ??
+        firstNode?.reasoning ??
+        null;
+      const displayName = rawName ? rawName.slice(0, 120) : null;
       const plan = session.currentPlan as Record<string, unknown> | undefined;
 
       return {

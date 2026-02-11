@@ -38,6 +38,9 @@ export function useGraph(sessionId: string | null): UseGraphReturn {
   const selectedNodeIdRef = useRef(selectedNodeId);
   selectedNodeIdRef.current = selectedNodeId;
 
+  // AbortController ref to cancel in-flight fetches on session switch or unmount
+  const abortRef = useRef<AbortController | null>(null);
+
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null;
 
   const refreshGraph = useCallback(async () => {
@@ -47,10 +50,18 @@ export function useGraph(sessionId: string | null): UseGraphReturn {
       return;
     }
 
+    // Cancel any in-flight request to prevent duplicate calls
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setIsLoading(true);
     setError(null);
 
-    const response = await getSessionNodes(sessionId);
+    const response = await getSessionNodes(sessionId, { signal: controller.signal });
+
+    // If this request was aborted (session changed), discard results
+    if (controller.signal.aborted) return;
 
     if (response.error) {
       setError(response.error.message);
@@ -107,7 +118,11 @@ export function useGraph(sessionId: string | null): UseGraphReturn {
   useEffect(() => {
     setSelectedNodeId(null);
     refreshGraph();
-  }, [sessionId]);
+    return () => {
+      // Cancel in-flight fetch on cleanup (StrictMode remount / session switch)
+      abortRef.current?.abort();
+    };
+  }, [sessionId, refreshGraph]);
 
   // Subscribe to data:stale events targeting graph scope
   useEffect(() => {

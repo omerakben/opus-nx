@@ -248,6 +248,7 @@ class DeepThinkerAgent(BaseOpusAgent):
     async def run(self, query: str, context: dict | None = None) -> AgentResult:
         """Execute deep analysis of the query."""
         start = time.monotonic()
+        self._original_query = query
         await self.emit_started()
 
         messages = [{"role": "user", "content": query}]
@@ -274,6 +275,7 @@ class DeepThinkerAgent(BaseOpusAgent):
             confidence=confidence,
             node_ids=self._node_ids,
             tokens_used=result["tokens_used"],
+            input_tokens_used=result.get("input_tokens_used", 0),
             duration_ms=duration_ms,
         )
 
@@ -297,6 +299,7 @@ class DeepThinkerAgent(BaseOpusAgent):
             reasoning=reasoning_type,
             confidence=confidence,
             decision_points=decision_points,
+            input_query=self._original_query if len(self._node_ids) == 0 else None,
         )
 
         node_id = await self.graph.add_node(node)

@@ -1,9 +1,9 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Network, Brain, MessageSquare, Lightbulb, Sparkles } from "lucide-react";
+import { Network, Brain, MessageSquare, Lightbulb, Sparkles, CheckCircle, Users } from "lucide-react";
 
-export type MobileView = "graph" | "think" | "sessions" | "insights" | "got";
+export type MobileView = "graph" | "think" | "sessions" | "insights" | "got" | "verify" | "swarm";
 
 interface MobileNavProps {
   activeView: MobileView;
@@ -14,7 +14,9 @@ interface MobileNavProps {
 const NAV_ITEMS: { view: MobileView; icon: typeof Brain; label: string }[] = [
   { view: "graph", icon: Network, label: "Graph" },
   { view: "think", icon: Brain, label: "Think" },
+  { view: "swarm", icon: Users, label: "Swarm" },
   { view: "got", icon: Sparkles, label: "GoT" },
+  { view: "verify", icon: CheckCircle, label: "Verify" },
   { view: "sessions", icon: MessageSquare, label: "Sessions" },
   { view: "insights", icon: Lightbulb, label: "Insights" },
 ];
@@ -22,7 +24,7 @@ const NAV_ITEMS: { view: MobileView; icon: typeof Brain; label: string }[] = [
 export function MobileNav({ activeView, onViewChange, isStreaming }: MobileNavProps) {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[var(--card)] border-t border-[var(--border)] safe-area-bottom">
-      <div className="flex items-center justify-around h-14 px-2">
+      <div className="flex items-center justify-around h-14 px-1 overflow-x-auto scrollbar-hide">
         {NAV_ITEMS.map(({ view, icon: Icon, label }) => {
           const isActive = activeView === view;
           return (

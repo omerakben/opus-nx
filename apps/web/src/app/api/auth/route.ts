@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "crypto";
 import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
 import { generateAuthSignature } from "@/lib/auth";
+import { applyRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 /**
  * POST /api/auth
@@ -8,6 +9,9 @@ import { generateAuthSignature } from "@/lib/auth";
  */
 export async function POST(request: Request) {
   const correlationId = getCorrelationId(request);
+
+  const rateLimited = applyRateLimit(request, "auth", RATE_LIMITS.auth);
+  if (rateLimited) return rateLimited;
 
   try {
     const { password } = await request.json();

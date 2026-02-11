@@ -49,7 +49,45 @@ export function GoTPanel({ sessionId, onSendToVerify }: GoTPanelProps) {
     start,
     stop,
     clear,
+    restore,
   } = useGoTStream();
+
+  // ── SessionStorage cache key for GoT results ────────────────
+  const cacheKey = sessionId ? `opus-nx:got:${sessionId}` : null;
+
+  // Restore cached result on mount / session change
+  useEffect(() => {
+    if (!cacheKey || phase !== "idle") return;
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const { result: cachedResult, query: cachedQuery, strategy: cachedStrategy, elapsedMs: cachedMs } = JSON.parse(cached);
+        if (cachedResult) {
+          restore(cachedResult, cachedMs ?? 0);
+          setQuery(cachedQuery ?? "");
+          setStrategy(cachedStrategy ?? "bfs");
+        }
+      }
+    } catch {
+      // Corrupted cache — ignore
+    }
+  }, [cacheKey, phase, restore]);
+
+  // Cache result to sessionStorage on completion
+  useEffect(() => {
+    if (phase === "done" && result && cacheKey) {
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify({
+          result,
+          query,
+          strategy,
+          elapsedMs,
+        }));
+      } catch {
+        // Storage full — non-critical
+      }
+    }
+  }, [phase, result, cacheKey, query, strategy, elapsedMs]);
 
   // Reset when session changes
   useEffect(() => {
@@ -131,10 +169,10 @@ export function GoTPanel({ sessionId, onSendToVerify }: GoTPanelProps) {
     if (!result || !onSendToVerify) return;
     const bestThoughtIds = result.graphState.bestThoughts;
     const allThoughts = result.graphState.thoughts as StreamingThought[];
-    const steps = bestThoughtIds
+    const steps: Array<{ content: string; type?: string }> = bestThoughtIds
       .map(id => allThoughts.find(t => t.id === id))
       .filter(Boolean)
-      .map(t => ({ content: t!.content, type: "reasoning" }));
+      .map(t => ({ content: t!.content, type: "analysis" }));
 
     if (steps.length === 0) {
       steps.push({ content: result.answer, type: "conclusion" });

@@ -40,6 +40,7 @@ from .events.bus import EventBus
 from .events.types import SwarmStarted
 from .graph.models import AgentResult, SwarmResult
 from .graph.reasoning_graph import SharedReasoningGraph
+from .persistence.supabase_sync import SupabasePersistence
 
 log = structlog.get_logger(__name__)
 
@@ -102,10 +103,12 @@ class SwarmManager:
         settings: Settings,
         graph: SharedReasoningGraph,
         bus: EventBus,
+        persistence: SupabasePersistence | None = None,
     ) -> None:
         self.settings = settings
         self.graph = graph
         self.bus = bus
+        self.persistence = persistence
 
     async def run(self, query: str, session_id: str) -> dict:
         """Full swarm execution pipeline with partial result support.
@@ -226,6 +229,9 @@ class SwarmManager:
             else:
                 agent_results.append(result)
 
+        # Backfill token_usage on persisted nodes for Phase 1 agents
+        await self._backfill_tokens(agent_results)
+
         # ---------------------------------------------------------------
         # Phase 2: Synthesizer merges all results (sequential)
         # ---------------------------------------------------------------
@@ -236,6 +242,9 @@ class SwarmManager:
             synthesizer, query, session_id
         )
         agent_results.append(synthesis_result)
+
+        # Backfill tokens for synthesizer
+        await self._backfill_tokens([synthesis_result])
 
         # ---------------------------------------------------------------
         # Phase 3: Metacognition analyzes the swarm (sequential)
@@ -248,6 +257,9 @@ class SwarmManager:
             metacog, query, session_id
         )
         agent_results.append(metacog_result)
+
+        # Backfill tokens for metacognition
+        await self._backfill_tokens([metacog_result])
 
         # ---------------------------------------------------------------
         # Build final result
@@ -378,6 +390,26 @@ class SwarmManager:
                 tokens_used=0,
                 duration_ms=0,
             )
+
+    async def _backfill_tokens(self, results: list[AgentResult]) -> None:
+        """Backfill token_usage on persisted nodes after agents complete."""
+        if self.persistence is None:
+            return
+        for result in results:
+            if (result.tokens_used > 0 or result.input_tokens_used > 0) and result.node_ids:
+                try:
+                    await self.persistence.backfill_node_tokens(
+                        node_ids=result.node_ids,
+                        tokens_used=result.tokens_used,
+                        input_tokens_used=result.input_tokens_used,
+                        agent_name=result.agent.value,
+                    )
+                except Exception as e:
+                    log.warning(
+                        "token_backfill_failed",
+                        agent=result.agent.value,
+                        error=str(e),
+                    )
 
     async def rerun_with_correction(
         self, session_id: str, node_id: str, correction: str

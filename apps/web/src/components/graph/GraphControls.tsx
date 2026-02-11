@@ -85,8 +85,13 @@ export function GraphControls({
           </div>
 
           {/* Confidence slider */}
-          <div className="text-[10px] font-medium text-[var(--muted-foreground)] mb-1.5">
-            Min Confidence: {confidenceThreshold}%
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] font-medium text-[var(--muted-foreground)]">
+              Min Confidence
+            </span>
+            <span className="text-[11px] font-semibold text-violet-400 tabular-nums">
+              {confidenceThreshold}%
+            </span>
           </div>
           <input
             type="range"

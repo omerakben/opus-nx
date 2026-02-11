@@ -1,5 +1,6 @@
 import { createHmac } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { applyRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 const SWARM_BACKEND_URL =
   process.env.NEXT_PUBLIC_SWARM_URL ?? "http://localhost:8000";
@@ -23,6 +24,9 @@ function generateToken(): string {
  * Attaches HMAC auth token server-side so AUTH_SECRET stays off the client.
  */
 export async function POST(request: NextRequest) {
+  const rateLimited = applyRateLimit(request, "swarm", RATE_LIMITS.swarm);
+  if (rateLimited) return rateLimited;
+
   try {
     const body = await request.json();
     const token = generateToken();

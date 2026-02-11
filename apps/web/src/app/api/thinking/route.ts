@@ -1,7 +1,8 @@
 import { ThinkingEngine, ThinkGraph } from "@opus-nx/core";
 import { createSession, getSession } from "@/lib/db";
 import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
-import { getOrCreateMemory } from "@/lib/memory-store";
+import { getOrCreateMemory, persistMemoryEntries } from "@/lib/memory-store";
+import { applyRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export const maxDuration = 300;
 
@@ -17,6 +18,10 @@ interface ThinkingRequest {
  */
 export async function POST(request: Request) {
   const correlationId = getCorrelationId(request);
+
+  const rateLimited = applyRateLimit(request, "thinking", RATE_LIMITS.ai);
+  if (rateLimited) return rateLimited;
+
   try {
     let body: ThinkingRequest;
     try {
@@ -80,9 +85,10 @@ export async function POST(request: Request) {
       [{ role: "user", content: query }]
     );
 
-    // Calculate thinking tokens
-    const thinkingTokens =
-      (result.usage as unknown as { thinking_tokens?: number }).thinking_tokens ??
+    // Calculate thinking tokens (prefer API value, fall back to char/4 estimate)
+    const apiThinkingTokens = (result.usage as unknown as { thinking_tokens?: number }).thinking_tokens;
+    const thinkingTokensEstimated = !apiThinkingTokens;
+    const thinkingTokens = apiThinkingTokens ??
       result.thinkingBlocks.reduce(
         (acc, b) => acc + (b.type === "thinking" ? b.thinking.length / 4 : 0),
         0
@@ -108,6 +114,7 @@ export async function POST(request: Request) {
 
     // Auto-populate memory hierarchy with thinking content
     let memoryStats = null;
+    const memoryTruncation: { thinking?: { original: number; stored: number }; response?: { original: number; stored: number } } = {};
     try {
       const memory = getOrCreateMemory(sessionId);
 
@@ -116,39 +123,60 @@ export async function POST(request: Request) {
         .map((b) => (b as { thinking: string }).thinking)
         .join("\n\n");
 
-      if (thinkingContentFull.length > 2000) {
-        console.warn("[Memory] Thinking content truncated for memory storage", {
-          original: thinkingContentFull.length,
-          truncated: 2000,
-          correlationId,
-        });
+      const THINKING_LIMIT = 2000;
+      const RESPONSE_LIMIT = 1000;
+
+      if (thinkingContentFull.length > THINKING_LIMIT) {
+        memoryTruncation.thinking = { original: thinkingContentFull.length, stored: THINKING_LIMIT };
       }
-      const thinkingContent = thinkingContentFull.slice(0, 2000);
+      const thinkingContent = thinkingContentFull.slice(0, THINKING_LIMIT);
+
+      // Collect entries for batch persistence to Supabase
+      const entriesToPersist: Parameters<typeof persistMemoryEntries>[0] = [];
 
       if (thinkingContent) {
-        memory.addToWorkingMemory(
+        const entry = memory.addToWorkingMemory(
           thinkingContent,
           0.7,
           "thinking_node",
           graphResult.node.id
         );
+        entriesToPersist.push({
+          id: entry.id,
+          sessionId,
+          tier: "main_context",
+          content: thinkingContent,
+          importance: 0.7,
+          source: "thinking_node",
+          sourceId: graphResult.node.id,
+        });
       }
 
       if (responseText) {
-        if (responseText.length > 1000) {
-          console.warn("[Memory] Response text truncated for memory storage", {
-            original: responseText.length,
-            truncated: 1000,
-            correlationId,
-          });
+        if (responseText.length > RESPONSE_LIMIT) {
+          memoryTruncation.response = { original: responseText.length, stored: RESPONSE_LIMIT };
         }
-        memory.addToWorkingMemory(
-          responseText.slice(0, 1000),
+        const entry = memory.addToWorkingMemory(
+          responseText.slice(0, RESPONSE_LIMIT),
           0.5,
           "thinking_node",
           graphResult.node.id
         );
+        entriesToPersist.push({
+          id: entry.id,
+          sessionId,
+          tier: "main_context",
+          content: responseText.slice(0, RESPONSE_LIMIT),
+          importance: 0.5,
+          source: "thinking_node",
+          sourceId: graphResult.node.id,
+        });
       }
+
+      // Persist to Supabase (fire-and-forget, non-blocking)
+      persistMemoryEntries(entriesToPersist).catch((err) => {
+        console.warn("[API] Non-critical memory persistence failed:", { correlationId, error: err });
+      });
 
       memoryStats = memory.getStats();
     } catch (memoryError) {
@@ -168,8 +196,10 @@ export async function POST(request: Request) {
           inputTokens: result.usage.inputTokens,
           outputTokens: result.usage.outputTokens,
           thinkingTokens: Math.round(thinkingTokens),
+          thinkingTokensEstimated: thinkingTokensEstimated,
         },
         memoryStats,
+        memoryTruncation: Object.keys(memoryTruncation).length > 0 ? memoryTruncation : undefined,
         degraded: graphResult.degraded || !memoryStats,
         degradation: graphResult.degraded
           ? { persistenceIssues: graphResult.persistenceIssues }

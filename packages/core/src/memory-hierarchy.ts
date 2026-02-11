@@ -645,6 +645,69 @@ export class MemoryHierarchy {
     this.updateStats();
     logger.info("Memory hierarchy cleared");
   }
+
+  /**
+   * Snapshot the current memory state for persistence.
+   * Returns all entries across all tiers plus core memory facts.
+   */
+  snapshot(): MemorySnapshot {
+    return {
+      coreMemory: {
+        humanFacts: [...this.mainContext.coreMemory.humanFacts],
+        agentFacts: [...this.mainContext.coreMemory.agentFacts],
+      },
+      workingMemory: this.mainContext.workingMemory.map((wm) => ({ ...wm })),
+      recallStorage: this.recallStorage.map((e) => ({ ...e })),
+      archivalStorage: this.archivalStorage.map((e) => ({ ...e })),
+    };
+  }
+
+  /**
+   * Hydrate memory state from a persisted snapshot.
+   * Used to restore state after a serverless cold start.
+   */
+  hydrate(snapshot: MemorySnapshot): void {
+    this.mainContext.coreMemory = {
+      humanFacts: [...(snapshot.coreMemory?.humanFacts ?? [])],
+      agentFacts: [...(snapshot.coreMemory?.agentFacts ?? [])],
+    };
+    this.mainContext.workingMemory = (snapshot.workingMemory ?? []).map((wm) => ({
+      id: wm.id,
+      content: wm.content,
+      importance: wm.importance,
+    }));
+    this.recallStorage = (snapshot.recallStorage ?? []).map((e) => ({
+      ...e,
+      lastAccessedAt: new Date(e.lastAccessedAt),
+      createdAt: new Date(e.createdAt),
+    }));
+    this.archivalStorage = (snapshot.archivalStorage ?? []).map((e) => ({
+      ...e,
+      lastAccessedAt: new Date(e.lastAccessedAt),
+      createdAt: new Date(e.createdAt),
+    }));
+    this.mainContext.tokenCount = this.estimateContextTokens();
+    this.updateStats();
+    logger.info("Memory hierarchy hydrated from snapshot", {
+      working: this.mainContext.workingMemory.length,
+      recall: this.recallStorage.length,
+      archival: this.archivalStorage.length,
+    });
+  }
+}
+
+// ============================================================
+// Snapshot Types
+// ============================================================
+
+export interface MemorySnapshot {
+  coreMemory: {
+    humanFacts: string[];
+    agentFacts: string[];
+  };
+  workingMemory: Array<{ id: string; content: string; importance: number }>;
+  recallStorage: MemoryEntry[];
+  archivalStorage: MemoryEntry[];
 }
 
 // ============================================================

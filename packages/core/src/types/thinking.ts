@@ -69,12 +69,13 @@ export const TokenUsageSchema = z.object({
   thinkingTokens: z.number().optional(),
 });
 
-/** Node type distinguishes between regular thinking, compaction, and fork branch nodes */
+/** Node type distinguishes between regular thinking, compaction, fork branch, and GoT result nodes */
 export const NodeTypeSchema = z.enum([
   "thinking",          // Regular reasoning node
   "compaction",        // Memory consolidation from context compaction
   "fork_branch",       // Result from a ThinkFork branch
   "human_annotation",  // Human-added note or guidance
+  "got_result",        // Graph of Thoughts reasoning result
 ]);
 
 export type NodeType = z.infer<typeof NodeTypeSchema>;

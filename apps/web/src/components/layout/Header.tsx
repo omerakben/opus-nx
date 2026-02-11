@@ -6,9 +6,10 @@ import { useRouter } from "next/navigation";
 interface HeaderProps {
   isMobile?: boolean;
   onReplayTour?: () => void;
+  isDemoMode?: boolean;
 }
 
-export function Header({ isMobile, onReplayTour }: HeaderProps) {
+export function Header({ isMobile, onReplayTour, isDemoMode }: HeaderProps) {
   const router = useRouter();
 
   async function handleLogout() {
@@ -55,13 +56,15 @@ export function Header({ isMobile, onReplayTour }: HeaderProps) {
           >
             <GithubIcon className="w-4 h-4" />
           </a>
-          <button
-            onClick={handleLogout}
-            className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-[var(--muted)] transition-colors"
-            title="Log out"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
+          {!isDemoMode && (
+            <button
+              onClick={handleLogout}
+              className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-[var(--muted)] transition-colors"
+              title="Log out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </header>
     );
@@ -109,13 +112,15 @@ export function Header({ isMobile, onReplayTour }: HeaderProps) {
         >
           <GithubIcon className="w-4 h-4" />
         </a>
-        <button
-          onClick={handleLogout}
-          className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-[var(--muted)] transition-colors"
-          title="Log out"
-        >
-          <LogOut className="w-4 h-4" />
-        </button>
+        {!isDemoMode && (
+          <button
+            onClick={handleLogout}
+            className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-[var(--muted)] transition-colors"
+            title="Log out"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        )}
       </div>
     </header>
   );

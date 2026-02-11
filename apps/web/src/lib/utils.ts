@@ -98,13 +98,16 @@ export function sleep(ms: number): Promise<void> {
 /**
  * Parse token usage from structured data.
  */
-export function parseTokenUsage(usage: Record<string, unknown>): {
+export function parseTokenUsage(usage: Record<string, unknown> | null | undefined): {
   inputTokens: number;
   outputTokens: number;
   thinkingTokens: number;
   cacheRead: number;
   cacheCreation: number;
 } {
+  if (!usage || typeof usage !== "object") {
+    return { inputTokens: 0, outputTokens: 0, thinkingTokens: 0, cacheRead: 0, cacheCreation: 0 };
+  }
   return {
     inputTokens: (usage.inputTokens as number) ?? 0,
     outputTokens: (usage.outputTokens as number) ?? 0,

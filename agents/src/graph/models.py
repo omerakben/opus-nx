@@ -38,6 +38,8 @@ class ReasoningNode(BaseModel):
     reasoning: str | None = None
     confidence: float = 0.0
     decision_points: list[dict] = []
+    token_usage: dict = {}
+    input_query: str | None = None
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
@@ -59,6 +61,7 @@ class AgentResult(BaseModel):
     confidence: float
     node_ids: list[str] = []
     tokens_used: int = 0
+    input_tokens_used: int = 0
     duration_ms: int = 0
 
 

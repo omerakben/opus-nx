@@ -449,10 +449,12 @@ export interface ReasoningEdge {
 }
 
 export async function getSessionNodes(
-  sessionId: string
+  sessionId: string,
+  options?: { signal?: AbortSignal }
 ): Promise<ApiResponse<{ nodes: ThinkingNode[]; edges: ReasoningEdge[] }>> {
   return fetchApi<{ nodes: ThinkingNode[]; edges: ReasoningEdge[] }>(
-    `/api/sessions/${sessionId}/nodes`
+    `/api/sessions/${sessionId}/nodes`,
+    options?.signal ? { signal: options.signal } : undefined
   );
 }
 

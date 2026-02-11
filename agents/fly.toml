@@ -31,6 +31,13 @@ primary_region = 'iad'
     method = 'GET'
     path = '/api/health'
 
+  # WebSocket-aware proxy timeout — prevents Fly.io from closing idle WS
+  # connections before the application heartbeat can keep them alive.
+  # Default is 60s which races with the heartbeat; 300s matches
+  # the server-side 5-minute idle timeout for queue.get().
+  [http_service.http_options]
+    idle_timeout = 300
+
 [[vm]]
   size = 'shared-cpu-1x'
   memory = '1gb'

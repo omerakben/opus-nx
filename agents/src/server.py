@@ -18,7 +18,7 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 import structlog
-from fastapi import FastAPI, Query, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 
@@ -30,12 +30,13 @@ from .persistence import Neo4jPersistence, SupabasePersistence
 
 log = structlog.get_logger(__name__)
 
-HEARTBEAT_INTERVAL = 30  # seconds
+HEARTBEAT_INTERVAL = 15  # seconds (reduced from 30 to prevent Fly.io proxy timeout at ~60s)
 
 # Singletons — initialized in lifespan
 settings: Settings = None  # type: ignore[assignment]
 graph: SharedReasoningGraph = None  # type: ignore[assignment]
 bus: EventBus = None  # type: ignore[assignment]
+supabase_persistence: SupabasePersistence | None = None
 
 
 STALE_SESSION_CHECK_INTERVAL = 300  # 5 minutes
@@ -45,7 +46,7 @@ STALE_SESSION_MAX_AGE = 1800  # 30 minutes
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Initialize shared state on startup, clean up on shutdown."""
-    global settings, graph, bus
+    global settings, graph, bus, supabase_persistence
 
     # Configure structlog with contextvars for trace_id propagation
     structlog.configure(
@@ -67,7 +68,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # -- Persistence (optional, graceful degradation) --
     neo4j_persistence = None
-    supabase_persistence = None
 
     if settings.neo4j_uri:
         try:
@@ -137,8 +137,8 @@ def _setup_cors() -> None:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-Correlation-ID"],
     )
 
 
@@ -189,6 +189,24 @@ def verify_token(token: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Auth dependency for protected endpoints
+# ---------------------------------------------------------------------------
+
+
+async def require_auth(authorization: str = Header(default="")) -> None:
+    """Validate Bearer token from the Authorization header.
+
+    The Next.js proxy injects `Authorization: Bearer <HMAC>` server-side.
+    Direct requests without a valid token are rejected with 401.
+    """
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
+    token = authorization.removeprefix("Bearer ").strip()
+    if not verify_token(token):
+        raise HTTPException(status_code=401, detail="Invalid auth token")
+
+
+# ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
@@ -197,7 +215,7 @@ async def health() -> dict:
     return {"status": "ok", "version": "2.0.0"}
 
 
-@app.post("/api/swarm")
+@app.post("/api/swarm", dependencies=[Depends(require_auth)])
 async def start_swarm(request: SwarmRequest) -> dict:
     """Start a swarm run. Events stream via WebSocket.
 
@@ -208,8 +226,29 @@ async def start_swarm(request: SwarmRequest) -> dict:
     # agent modules that may not be ready yet during foundation phase.
     from .swarm import SwarmManager
 
-    swarm = SwarmManager(settings, graph, bus)
-    asyncio.create_task(swarm.run(request.query, request.session_id))
+    swarm = SwarmManager(settings, graph, bus, persistence=supabase_persistence)
+
+    async def _run_swarm() -> None:
+        try:
+            await swarm.run(request.query, request.session_id)
+        except Exception as exc:
+            log.error(
+                "swarm_run_failed",
+                session_id=request.session_id,
+                error=str(exc),
+                exc_info=True,
+            )
+            # Notify connected clients that the swarm failed
+            await bus.publish(
+                request.session_id,
+                {
+                    "event": "swarm_error",
+                    "session_id": request.session_id,
+                    "error": str(exc),
+                },
+            )
+
+    asyncio.create_task(_run_swarm())
     return {"status": "started", "session_id": request.session_id}
 
 
@@ -229,7 +268,7 @@ async def swarm_websocket(
     """Stream live swarm events to the dashboard.
 
     Auth: validates HMAC token BEFORE accepting the connection.
-    Heartbeat: sends {"event": "ping"} every 30s to prevent idle disconnect.
+    Heartbeat: sends {"event": "ping"} every 15s to prevent idle disconnect.
     """
     # Validate token before accepting the WebSocket connection
     if not verify_token(token):
@@ -248,7 +287,21 @@ async def swarm_websocket(
             except Exception:
                 break
 
+    async def drain_client_messages() -> None:
+        """Read and discard client messages (pong responses).
+
+        Without this, client-sent pongs accumulate in the WebSocket
+        receive buffer. Reading them also ensures the proxy sees
+        bidirectional traffic at the application layer.
+        """
+        try:
+            while True:
+                await websocket.receive_text()
+        except (WebSocketDisconnect, Exception):
+            pass
+
     heartbeat_task = asyncio.create_task(send_heartbeat())
+    drain_task = asyncio.create_task(drain_client_messages())
 
     try:
         while True:
@@ -261,6 +314,7 @@ async def swarm_websocket(
         pass
     finally:
         heartbeat_task.cancel()
+        drain_task.cancel()
         bus.unsubscribe(session_id, queue)
 
 
@@ -282,7 +336,7 @@ class CheckpointRequest(BaseModel):
         return v
 
 
-@app.post("/api/swarm/{session_id}/checkpoint")
+@app.post("/api/swarm/{session_id}/checkpoint", dependencies=[Depends(require_auth)])
 async def checkpoint_node(session_id: str, request: CheckpointRequest) -> dict:
     """Annotate a reasoning node with a human verdict and optionally trigger a re-run."""
     from .events.types import HumanCheckpoint
@@ -323,10 +377,16 @@ async def checkpoint_node(session_id: str, request: CheckpointRequest) -> dict:
     # If disagree with correction, trigger targeted re-run
     result = {"status": "annotated", "annotation_node_id": node_id}
     if request.verdict == "disagree" and request.correction:
-        swarm = SwarmManager(settings, graph, bus)
-        asyncio.create_task(
-            swarm.rerun_with_correction(session_id, request.node_id, request.correction)
-        )
+        swarm = SwarmManager(settings, graph, bus, persistence=supabase_persistence)
+
+        async def _rerun() -> None:
+            try:
+                await swarm.rerun_with_correction(session_id, request.node_id, request.correction)
+            except Exception as exc:
+                log.error("swarm_rerun_failed", session_id=session_id, error=str(exc), exc_info=True)
+                await bus.publish(session_id, {"event": "swarm_error", "session_id": session_id, "error": str(exc)})
+
+        asyncio.create_task(_rerun())
         result["status"] = "rerun_started"
 
     return result

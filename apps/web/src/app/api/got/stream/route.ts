@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { GoTEngine } from "@opus-nx/core";
+import { GoTEngine, ThinkGraph } from "@opus-nx/core";
 import { getCorrelationId, jsonError } from "@/lib/api-response";
 
 export const maxDuration = 300;
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const { problem, sessionId: _sessionId, ...config } = parsed.data;
+    const { problem, sessionId, ...config } = parsed.data;
     const encoder = new TextEncoder();
     const abortSignal = request.signal;
 
@@ -164,6 +164,41 @@ export async function POST(request: Request) {
 
           if (isAborted) { controller.close(); clearInterval(heartbeat); return; }
 
+          // Persist GoT results as a thinking node if sessionId is provided
+          let nodeId: string | undefined;
+          let persistenceError: string | null = null;
+          if (sessionId) {
+            try {
+              const thinkGraph = new ThinkGraph();
+              const thinkingBlocks = [
+                {
+                  type: "thinking" as const,
+                  thinking: `[Graph of Thoughts - ${config.strategy.toUpperCase()}]\n\n${result.reasoningSummary}\n\nBest thought IDs: ${result.graphState.bestThoughts.join(", ") || "none"}`,
+                  signature: "synthetic-got",
+                },
+              ];
+              const graphResult = await thinkGraph.persistThinkingNode(thinkingBlocks, {
+                sessionId,
+                inputQuery: problem,
+                response: result.answer,
+                nodeType: "got_result",
+                tokenUsage: {
+                  inputTokens: result.stats.totalTokens ?? 0,
+                  outputTokens: 0,
+                  thinkingTokens: 0,
+                },
+              });
+              nodeId = graphResult.node.id;
+            } catch (err) {
+              console.warn("[API] Failed to persist GoT stream results:", {
+                correlationId,
+                sessionId,
+                error: err instanceof Error ? err.message : String(err),
+              });
+              persistenceError = "GoT results could not be saved to this session.";
+            }
+          }
+
           emit({
             type: "done",
             result: {
@@ -171,6 +206,7 @@ export async function POST(request: Request) {
               confidence: result.confidence,
               reasoningSummary: result.reasoningSummary,
               stats: result.stats,
+              nodeId,
               graphState: {
                 thoughts: result.graphState.thoughts,
                 edges: result.graphState.edges,
@@ -179,6 +215,8 @@ export async function POST(request: Request) {
               },
             },
             correlationId,
+            degraded: !!persistenceError,
+            persistenceError,
           });
 
           clearInterval(heartbeat);

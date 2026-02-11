@@ -52,6 +52,7 @@ class BaseOpusAgent(ABC):
         self.graph = graph
         self.bus = bus
         self.session_id = session_id
+        self._original_query: str | None = None
 
     @abstractmethod
     async def run(self, query: str, context: dict | None = None) -> AgentResult:
@@ -207,12 +208,14 @@ class BaseOpusAgent(ABC):
         all_thinking = ""
         final_text = ""
         total_tokens = 0
+        total_input_tokens = 0
         total_duration = 0
 
         for _ in range(max_iterations):
             result = await self.call_claude(messages, tools)
             all_thinking += result["thinking"]
             total_tokens += result["usage"]["output_tokens"]
+            total_input_tokens += result["usage"]["input_tokens"]
             total_duration += result["duration_ms"]
 
             if result["stop_reason"] == "end_turn" or not result["tool_uses"]:
@@ -242,6 +245,7 @@ class BaseOpusAgent(ABC):
             "thinking": all_thinking,
             "text": final_text,
             "tokens_used": total_tokens,
+            "input_tokens_used": total_input_tokens,
             "duration_ms": total_duration,
         }
 

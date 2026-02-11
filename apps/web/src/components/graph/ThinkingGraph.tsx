@@ -229,7 +229,7 @@ export function ThinkingGraph({
       onNodeClick={handleNodeClick}
       defaultViewport={defaultViewport}
       fitView
-      fitViewOptions={{ padding: isMobile ? 0.3 : 0.2 }}
+      fitViewOptions={{ padding: isMobile ? 0.3 : 0.4, maxZoom: 1.2 }}
       minZoom={0.1}
       maxZoom={2}
       proOptions={{ hideAttribution: true }}

@@ -34,6 +34,7 @@ export interface SelectedNodeData {
     inputTokens: number;
     outputTokens: number;
     thinkingTokens: number;
+    thinkingTokensEstimated?: boolean;
   };
   inputQuery: string | null;
   createdAt: Date;
@@ -389,7 +390,7 @@ export function ThinkingStream({
           <div className="px-4 py-1.5 border-t border-[var(--border)] flex items-center gap-3 text-[10px] text-[var(--muted-foreground)] bg-[var(--card)]">
             <span className="flex items-center gap-1">
               <Gauge className="w-3 h-3" />
-              {formatNumber(selectedNodeData.tokenUsage.thinkingTokens)} thinking tokens
+              {formatNumber(selectedNodeData.tokenUsage.thinkingTokens)} thinking tokens{selectedNodeData.tokenUsage.thinkingTokensEstimated ? " (est.)" : ""}
             </span>
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" />
