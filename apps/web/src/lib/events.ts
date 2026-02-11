@@ -24,6 +24,8 @@ type EventPayload = {
   "fork:complete": { sessionId: string; analysisId?: string };
   /** Fired when the active session changes */
   "session:changed": { sessionId: string | null; previousSessionId: string | null };
+  /** Fired when a swarm analysis finishes */
+  "swarm:complete": { sessionId: string };
   /** Generic "something changed, refetch if you care" signal */
   "data:stale": { scope: "sessions" | "graph" | "insights" | "fork" | "all"; sessionId?: string };
 };

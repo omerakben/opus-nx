@@ -25,6 +25,8 @@ import {
   Sparkles,
   Zap,
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 import { AgentCard } from "./AgentCard";
 import { SwarmControls } from "./SwarmControls";
@@ -48,7 +50,7 @@ const EXAMPLE_QUERIES = [
 ];
 
 export function SwarmView({ sessionId }: SwarmViewProps) {
-  const { state, start, stop } = useSwarm("");
+  const { state, start, stop } = useSwarm("", sessionId);
   const [query, setQuery] = useState("");
   const [copied, setCopied] = useState(false);
   const [viewMode, setViewMode] = useState<"cards" | "graph">("graph");
@@ -207,10 +209,10 @@ export function SwarmView({ sessionId }: SwarmViewProps) {
                 />
               )}
 
-              {/* Agent grid (U3: responsive, U4: aria-live) */}
+              {/* Agent cards (U3: responsive, U4: aria-live) */}
               {viewMode === "cards" && agents.length > 0 && (
                 <div
-                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2"
+                  className="space-y-2"
                   aria-live="polite"
                 >
                   {agents.map((agent) => (
@@ -292,21 +294,27 @@ export function SwarmView({ sessionId }: SwarmViewProps) {
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-[var(--foreground)] leading-relaxed whitespace-pre-line">
-                      {state.synthesis}
-                    </p>
+                    <div className="max-w-none [&_h1]:text-base [&_h1]:font-bold [&_h1]:text-[var(--foreground)] [&_h1]:mt-3 [&_h1]:mb-1.5 [&_h2]:text-sm [&_h2]:font-bold [&_h2]:text-[var(--foreground)] [&_h2]:mt-2.5 [&_h2]:mb-1 [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:text-[var(--foreground)] [&_h3]:mt-2 [&_h3]:mb-1 [&_p]:text-xs [&_p]:leading-relaxed [&_p]:text-[var(--foreground)] [&_p]:my-1.5 [&_ul]:text-xs [&_ul]:text-[var(--foreground)] [&_ul]:my-1.5 [&_ul]:pl-4 [&_ul]:list-disc [&_ol]:text-xs [&_ol]:text-[var(--foreground)] [&_ol]:my-1.5 [&_ol]:pl-4 [&_ol]:list-decimal [&_li]:my-0.5 [&_li]:text-[var(--foreground)] [&_strong]:text-[var(--foreground)] [&_strong]:font-bold [&_em]:text-[var(--muted-foreground)] [&_em]:italic [&_code]:text-[11px] [&_code]:text-green-300 [&_code]:bg-green-500/10 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_pre]:bg-[var(--card)] [&_pre]:border [&_pre]:border-[var(--border)] [&_pre]:rounded-md [&_pre]:p-3 [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre_code]:text-[var(--foreground)] [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_hr]:my-3 [&_hr]:border-[var(--border)] [&_blockquote]:border-l-2 [&_blockquote]:border-green-500/30 [&_blockquote]:pl-3 [&_blockquote]:my-2 [&_blockquote]:italic [&_blockquote_p]:text-[var(--muted-foreground)] [&_a]:text-green-400 [&_a]:underline [&_table]:w-full [&_table]:text-xs [&_table]:my-2 [&_table]:border-collapse [&_thead]:border-b [&_thead]:border-[var(--border)] [&_th]:text-left [&_th]:text-[10px] [&_th]:font-semibold [&_th]:text-[var(--muted-foreground)] [&_th]:uppercase [&_th]:tracking-wider [&_th]:px-2 [&_th]:py-1 [&_th]:bg-[var(--card)] [&_td]:text-xs [&_td]:text-[var(--foreground)] [&_td]:px-2 [&_td]:py-1 [&_td]:border-b [&_td]:border-[var(--border)] [&_tr:hover]:bg-[var(--muted)]/30">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{state.synthesis}</ReactMarkdown>
+                    </div>
                   </CardContent>
                 </Card>
               )}
 
-              {/* Agent results grid (U3: responsive, U4: aria-live) */}
+              {/* Agent results (U3: responsive, U4: aria-live) */}
               {agents.length > 0 && (
                 <div>
-                  <div className="text-[11px] font-medium text-[var(--muted-foreground)] mb-2">
-                    Agent Results
+                  <div className="flex items-center gap-2 mb-3">
+                    <Brain className="w-3.5 h-3.5 text-cyan-400" />
+                    <span className="text-xs font-medium text-[var(--foreground)]">
+                      Agent Results
+                    </span>
+                    <span className="text-[10px] text-[var(--muted-foreground)]">
+                      ({agents.length} agents)
+                    </span>
                   </div>
                   <div
-                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2"
+                    className="space-y-2"
                     aria-live="polite"
                   >
                     {agents.map((agent) => (

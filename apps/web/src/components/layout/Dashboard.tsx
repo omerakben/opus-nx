@@ -95,23 +95,34 @@ export function Dashboard() {
   const [isLoadingInsights, setIsLoadingInsights] = useState(false);
 
   // Load insights when session changes
-  useEffect(() => {
-    async function loadInsights() {
-      if (!activeSession?.id) {
-        setInsights([]);
-        return;
-      }
-
-      setIsLoadingInsights(true);
-      const response = await getSessionInsights(activeSession.id);
-      if (response.data) {
-        setInsights(response.data);
-      }
-      setIsLoadingInsights(false);
+  const loadInsights = useCallback(async () => {
+    if (!activeSession?.id) {
+      setInsights([]);
+      return;
     }
 
-    loadInsights();
+    setIsLoadingInsights(true);
+    const response = await getSessionInsights(activeSession.id);
+    if (response.data) {
+      setInsights(response.data);
+    }
+    setIsLoadingInsights(false);
   }, [activeSession?.id]);
+
+  useEffect(() => {
+    loadInsights();
+  }, [loadInsights]);
+
+  // Reload insights when swarm completes (insights bridged to metacognitive_insights table)
+  useEffect(() => {
+    const unsub = appEvents.on("swarm:complete", (payload) => {
+      if (payload.sessionId === activeSession?.id) {
+        // Small delay to let the bridging POST settle
+        setTimeout(() => loadInsights(), 500);
+      }
+    });
+    return unsub;
+  }, [activeSession?.id, loadInsights]);
 
   // Handle starting a new thinking stream
   const handleStartStream = useCallback(

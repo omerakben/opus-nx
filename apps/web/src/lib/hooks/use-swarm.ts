@@ -19,6 +19,8 @@ import {
   type SwarmEventUnion,
   type SwarmSubscription,
 } from "../swarm-client";
+import { getSessionNodes } from "../api";
+import { appEvents } from "../events";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -103,14 +105,23 @@ const INITIAL_STATE: SwarmState = {
 /** Polling interval for connection state (ms) */
 const CONNECTION_POLL_INTERVAL_MS = 2000;
 
+/** Map swarm insight type strings to valid InsightType enum values */
+function mapSwarmInsightType(swarmType: string): "bias_detection" | "pattern" | "improvement_hypothesis" {
+  if (swarmType.includes("bias")) return "bias_detection";
+  if (swarmType.includes("improvement") || swarmType.includes("hypothesis")) return "improvement_hypothesis";
+  return "pattern";
+}
+
 // ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
 
-export function useSwarm(authSecret: string) {
+export function useSwarm(authSecret: string, sessionId: string | null) {
   const [state, setState] = useState<SwarmState>(INITIAL_STATE);
   const subscriptionRef = useRef<SwarmSubscription | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const prevSessionIdRef = useRef<string | null>(sessionId);
+  const activeSessionIdRef = useRef<string | null>(null);
 
   // Poll connection state from the subscription
   const startPolling = useCallback(() => {
@@ -143,6 +154,119 @@ export function useSwarm(authSecret: string) {
       stopPolling();
     };
   }, [stopPolling]);
+
+  // Restore swarm state from DB when sessionId changes
+  useEffect(() => {
+    const sessionChanged = prevSessionIdRef.current !== sessionId;
+    prevSessionIdRef.current = sessionId;
+
+    if (sessionChanged) {
+      setState(INITIAL_STATE);
+    }
+
+    if (!sessionId) return;
+
+    let cancelled = false;
+
+    async function restoreSwarmState() {
+      try {
+        const response = await getSessionNodes(sessionId!);
+        if (cancelled || response.error || !response.data) return;
+
+        const { nodes, edges } = response.data;
+
+        // Filter swarm nodes by structuredReasoning.swarm flag
+        const swarmNodes = nodes.filter(
+          (n) => (n.structuredReasoning as Record<string, unknown>)?.swarm === true
+        );
+        if (swarmNodes.length === 0) return;
+
+        // Build agent map
+        const agents: Record<string, AgentStatus> = {};
+        for (const node of swarmNodes) {
+          const sr = node.structuredReasoning as Record<string, unknown>;
+          const name = (sr?.agent as string) ?? "unknown";
+          if (name === "synthesizer") continue; // handled separately
+          agents[name] = {
+            name,
+            status: "completed",
+            effort: "",
+            thinkingPreview: node.reasoning?.slice(0, 200) ?? "",
+            conclusion: node.response ?? "",
+            confidence: node.confidenceScore ?? 0,
+            tokensUsed: 0,
+          };
+        }
+
+        // Extract synthesis from synthesizer node
+        const synthNode = swarmNodes.find((n) => {
+          const sr = n.structuredReasoning as Record<string, unknown>;
+          return sr?.agent === "synthesizer";
+        });
+
+        // Build graph nodes/edges
+        const swarmNodeIds = new Set(swarmNodes.map((n) => n.id));
+        const graphNodes: SwarmGraphNode[] = swarmNodes.map((n) => {
+          const sr = n.structuredReasoning as Record<string, unknown>;
+          return {
+            id: n.id,
+            agent: (sr?.agent as string) ?? "unknown",
+            content: (n.response ?? n.reasoning ?? "").slice(0, 150),
+            confidence: n.confidenceScore ?? undefined,
+          };
+        });
+
+        const graphEdges: SwarmGraphEdge[] = edges
+          .filter((e) => swarmNodeIds.has(e.sourceId) || swarmNodeIds.has(e.targetId))
+          .map((e) => ({
+            id: e.id,
+            source: e.sourceId,
+            target: e.targetId,
+            type: e.edgeType,
+          }));
+
+        // Extract metacognition insights from swarm nodes
+        const metacogNodes = swarmNodes.filter((n) => {
+          const sr = n.structuredReasoning as Record<string, unknown>;
+          return sr?.agent === "metacognition";
+        });
+        const insights = metacogNodes
+          .map((n) => {
+            const sr = n.structuredReasoning as Record<string, unknown>;
+            return {
+              type: (sr?.insight_type as string) ?? "pattern",
+              description: n.response ?? n.reasoning ?? "",
+              agents: (sr?.affected_agents as string[]) ?? [],
+            };
+          })
+          .filter((i) => i.description);
+
+        if (!cancelled) {
+          setState({
+            phase: "complete",
+            agents,
+            events: [],
+            synthesis: synthNode?.response ?? null,
+            synthesisConfidence: synthNode?.confidenceScore ?? null,
+            insights,
+            error: null,
+            totalTokens: 0,
+            totalDuration: null,
+            startTimestamp: null,
+            connectionState: "disconnected",
+            graphNodes,
+            graphEdges,
+            maestroDecomposition: null,
+          });
+        }
+      } catch {
+        // Silent — restoration is best-effort
+      }
+    }
+
+    restoreSwarmState();
+    return () => { cancelled = true; };
+  }, [sessionId]);
 
   const handleEvent = useCallback((event: SwarmEventUnion) => {
     setState((prev) => {
@@ -312,11 +436,48 @@ export function useSwarm(authSecret: string) {
     });
   }, []);
 
+  // Wrapper that fires side effects for certain events (outside the reducer)
+  const handleEventWithSideEffects = useCallback(
+    (event: SwarmEventUnion) => {
+      handleEvent(event);
+
+      // Bridge metacognition insights to the insights table
+      if (event.event === "metacognition_insight") {
+        const sid = activeSessionIdRef.current;
+        if (sid) {
+          fetch("/api/insights/swarm", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sessionId: sid,
+              insightType: mapSwarmInsightType(event.insight_type),
+              insight: event.description,
+              confidence: 0.75,
+              agents: event.affected_agents,
+            }),
+          }).catch(() => { /* best-effort bridging */ });
+        }
+      }
+
+      // Emit swarm:complete so Dashboard can reload insights
+      if (event.event === "synthesis_ready") {
+        const sid = activeSessionIdRef.current;
+        if (sid) {
+          appEvents.emit("swarm:complete", { sessionId: sid });
+        }
+      }
+    },
+    [handleEvent]
+  );
+
   const start = useCallback(
-    async (query: string, sessionId: string) => {
+    async (query: string, startSessionId: string) => {
       // Clean up previous subscription
       subscriptionRef.current?.close();
       stopPolling();
+
+      // Track active session for side effects
+      activeSessionIdRef.current = startSessionId;
 
       // Reset state
       setState({ ...INITIAL_STATE, phase: "running" });
@@ -324,9 +485,9 @@ export function useSwarm(authSecret: string) {
       try {
         // Subscribe to WebSocket events first
         subscriptionRef.current = subscribeSwarmEvents(
-          sessionId,
+          startSessionId,
           authSecret,
-          handleEvent,
+          handleEventWithSideEffects,
           () => {
             setState((prev) => ({
               ...prev,
@@ -349,7 +510,7 @@ export function useSwarm(authSecret: string) {
         startPolling();
 
         // Start the swarm (fire-and-forget on the backend)
-        await apiStartSwarm(query, sessionId);
+        await apiStartSwarm(query, startSessionId);
       } catch (err) {
         setState((prev) => ({
           ...prev,
@@ -358,7 +519,7 @@ export function useSwarm(authSecret: string) {
         }));
       }
     },
-    [authSecret, handleEvent, startPolling, stopPolling]
+    [authSecret, handleEventWithSideEffects, startPolling, stopPolling]
   );
 
   const stop = useCallback(() => {

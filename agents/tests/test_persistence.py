@@ -27,7 +27,12 @@ from src.graph.reasoning_graph import SharedReasoningGraph
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_node(session_id: str = "test-session") -> ReasoningNode:
+_TEST_SESSION_ID = "550e8400-e29b-41d4-a716-446655440000"
+_TEST_SOURCE_ID = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11"
+_TEST_TARGET_ID = "b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22"
+
+
+def _make_node(session_id: str = _TEST_SESSION_ID) -> ReasoningNode:
     return ReasoningNode(
         agent=AgentName.DEEP_THINKER,
         session_id=session_id,
@@ -38,8 +43,8 @@ def _make_node(session_id: str = "test-session") -> ReasoningNode:
 
 def _make_edge() -> ReasoningEdge:
     return ReasoningEdge(
-        source_id="src-001",
-        target_id="tgt-002",
+        source_id=_TEST_SOURCE_ID,
+        target_id=_TEST_TARGET_ID,
         relation=EdgeRelation.LEADS_TO,
         weight=0.9,
     )
@@ -178,7 +183,7 @@ class TestNeo4jSaveNode:
         kwargs = mock_session.run.call_args[1]
         assert kwargs["id"] == node.id
         assert kwargs["agent"] == "deep_thinker"
-        assert kwargs["session_id"] == "test-session"
+        assert kwargs["session_id"] == _TEST_SESSION_ID
         assert kwargs["confidence"] == 0.85
 
 
@@ -217,8 +222,8 @@ class TestNeo4jSaveEdge:
         await persistence.save_edge(edge)
 
         kwargs = mock_session.run.call_args[1]
-        assert kwargs["source_id"] == "src-001"
-        assert kwargs["target_id"] == "tgt-002"
+        assert kwargs["source_id"] == _TEST_SOURCE_ID
+        assert kwargs["target_id"] == _TEST_TARGET_ID
         assert kwargs["relation"] == "LEADS_TO"
         assert kwargs["weight"] == 0.9
 
@@ -293,7 +298,7 @@ class TestSupabaseSyncNode:
         upsert_args = mock_upsert.call_args
         row = upsert_args[0][0]
         assert row["id"] == node.id
-        assert row["session_id"] == "test-session"
+        assert row["session_id"] == _TEST_SESSION_ID
         assert row["agent_name"] == "deep_thinker"
         assert row["confidence_score"] == 0.85
         assert row["reasoning"] == "Test reasoning content"
@@ -319,9 +324,9 @@ class TestSupabaseSyncEdge:
         mock_table_fn.assert_called_with("reasoning_edges")
         upsert_args = mock_upsert.call_args
         row = upsert_args[0][0]
-        assert row["source_id"] == "src-001"
-        assert row["target_id"] == "tgt-002"
-        assert row["edge_type"] == "leads_to"
+        assert row["source_id"] == _TEST_SOURCE_ID
+        assert row["target_id"] == _TEST_TARGET_ID
+        assert row["edge_type"] == "influences"  # LEADS_TO normalizes to "influences"
         assert row["weight"] == 0.9
 
 
