@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Opus Nx makes AI reasoning visible, steerable, and persistent. It transforms Claude Opus 4.6's extended thinking into navigable reasoning graphs and deploys a swarm of 6 specialized AI agents for multi-perspective analysis. Built for the Cerebral Valley Hackathon (Feb 2026).
+Opus Nx is a research system for persistent reasoning artifacts and hypothesis lifecycle management. It transforms Claude Opus 4.6's extended thinking into navigable reasoning graphs and deploys a swarm of 6 specialized AI agents for multi-perspective analysis. Reasoning steps, hypotheses, and decisions are persisted as reusable artifacts that can be retrieved, tested, compared, and promoted into better future reasoning policies.
 
 **Key Innovation**: Extended thinking becomes persistent "ThinkGraph" nodes you can see, steer, verify, and build upon. A swarm of 6 AI agents (Maestro, DeepThinker, Contrarian, Verifier, Synthesizer, Metacognition) collaborate in real-time via WebSocket streaming.
 

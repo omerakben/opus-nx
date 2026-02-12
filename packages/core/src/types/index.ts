@@ -1,5 +1,5 @@
 // ============================================================
-// Hackathon Core - Cerebral Valley Feb 2026
+// Core Reasoning Types
 // ============================================================
 export * from "./orchestrator.js";
 export * from "./thinking.js";
@@ -8,7 +8,7 @@ export * from "./thinkfork.js";
 export * from "./prm.js";
 
 // ============================================================
-// Future Scope - Post-Hackathon Roadmap
+// Extended Reasoning Types
 // ============================================================
 export * from "./got.js";
 export * from "./memory.js";

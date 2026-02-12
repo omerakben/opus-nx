@@ -1,5 +1,5 @@
 /**
- * @scope active - Hackathon demo
+ * @scope active
  */
 import { z } from "zod";
 

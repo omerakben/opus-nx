@@ -12,7 +12,7 @@ import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
 /**
  * POST /api/seed
  * Seed a flagship demo session with rich, interconnected graph data.
- * This creates the "wow" moment for hackathon judges.
+ * This creates a rich interconnected reasoning graph for demonstration.
  */
 export async function POST(request: Request) {
   const correlationId = getCorrelationId(request);

@@ -7,7 +7,7 @@
 
 Opus Nx transforms Claude Opus 4.6's extended thinking from an invisible black box into **persistent, navigable reasoning graphs**. Deploy a swarm of 6 specialized AI agents, fork reasoning into competing perspectives, verify every step, and watch metacognitive self-audits -- all in real time.
 
-**[Live Demo](https://opus-nx.vercel.app)** | Built for the [Cerebral Valley "Built with Opus 4.6" Hackathon](https://cv.inc/e/claude-code-hackathon) (Feb 2026)
+**[Live Demo](https://opus-nx.vercel.app)** | Research System for Persistent Reasoning Artifacts
 
 **8 reasoning features** | **6 AI agents** | **4 research papers implemented** | **273 tests** | **2-service architecture**
 
@@ -280,9 +280,9 @@ pnpm check:migrations # Verify migration sync
 
 **Ozzy** -- AI Engineer & Full-Stack Developer
 
-Built with Claude Code for the Cerebral Valley "Built with Opus 4.6" Hackathon
+Built with Claude Code
 
-**Category**: Most Creative Opus 4.6 Exploration
+**Research Focus**: Persistent reasoning artifacts, hypothesis lifecycle management, and multi-perspective convergent debate
 
 ---
 

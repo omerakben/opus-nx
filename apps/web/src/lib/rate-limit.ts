@@ -1,5 +1,5 @@
 /**
- * Simple in-memory rate limiter for hackathon demo.
+ * Simple in-memory rate limiter.
  * For production, use Redis-backed limiter or Vercel's built-in rate limiting.
  */
 
