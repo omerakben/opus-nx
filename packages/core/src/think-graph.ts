@@ -3,8 +3,10 @@ import { z } from "zod";
 import {
   createThinkingNode,
   createReasoningEdge,
-  createDecisionPoint,
   createDecisionPoints,
+  createStructuredReasoningSteps,
+  createStructuredReasoningHypotheses,
+  createReasoningArtifact,
   getThinkingNode,
   getSessionThinkingNodes,
   getLatestThinkingNode,
@@ -16,6 +18,8 @@ import {
   type CreateThinkingNodeInput,
   type CreateDecisionPointInput,
   type CreateReasoningEdgeInput,
+  type CreateStructuredReasoningStepInput,
+  type CreateStructuredReasoningHypothesisInput,
 } from "@opus-nx/db";
 import type {
   ThinkingBlock,
@@ -139,7 +143,7 @@ export interface ThinkGraphResult {
   linkedToParent: boolean;
   degraded: boolean;
   persistenceIssues: Array<{
-    stage: "decision_point" | "reasoning_edge";
+    stage: "structured_reasoning" | "reasoning_artifact" | "decision_point" | "reasoning_edge";
     message: string;
     stepNumber?: number;
   }>;
@@ -674,6 +678,77 @@ export class ThinkGraph {
     const dbNode = await createThinkingNode(nodeInput);
     logger.info("Persisted thinking node", { nodeId: dbNode.id });
 
+    // Persist normalized structured reasoning artifacts (best-effort, non-blocking).
+    // This powers step/hypothesis-level retrieval without breaking legacy JSONB consumers.
+    if (parsed.structuredReasoning.steps.length > 0) {
+      try {
+        const stepInputs: CreateStructuredReasoningStepInput[] = parsed.structuredReasoning.steps.map((step) => ({
+          thinkingNodeId: dbNode.id,
+          stepNumber: step.stepNumber,
+          stepType: step.type ?? "consideration",
+          content: step.content,
+          confidence: parsed.confidenceScore ?? undefined,
+          metadata: {},
+        }));
+
+        const createdSteps = await createStructuredReasoningSteps(stepInputs);
+
+        const hypothesisInputs: CreateStructuredReasoningHypothesisInput[] = createdSteps
+          .filter((step) => step.stepType === "hypothesis")
+          .map((step) => ({
+            stepId: step.id,
+            thinkingNodeId: dbNode.id,
+            hypothesisText: step.content,
+            status: "proposed",
+            confidence: step.confidence ?? undefined,
+            evidence: [],
+            metadata: {},
+          }));
+
+        if (hypothesisInputs.length > 0) {
+          await createStructuredReasoningHypotheses(hypothesisInputs);
+        }
+      } catch (error) {
+        persistenceIssues.push({
+          stage: "structured_reasoning",
+          message: error instanceof Error ? error.message : String(error),
+        });
+        logger.warn("Failed to persist normalized structured reasoning", {
+          nodeId: dbNode.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    // Persist a reasoning artifact row for semantic rehydration (embedding can be backfilled later).
+    try {
+      const tags = this.buildArtifactTags(parsed.structuredReasoning.steps.map((step) => step.type));
+      await createReasoningArtifact({
+        sessionId: validatedOptions.sessionId,
+        thinkingNodeId: dbNode.id,
+        artifactType: "node",
+        title: validatedOptions.inputQuery?.slice(0, 140),
+        content: parsed.reasoning,
+        snapshot: {
+          structuredReasoning: parsed.structuredReasoning,
+          decisionPointCount: parsed.decisionPoints.length,
+          mainConclusion: parsed.structuredReasoning.mainConclusion,
+        },
+        topicTags: tags,
+        importanceScore: parsed.confidenceScore ?? 0.5,
+        sourceConfidence: parsed.confidenceScore ?? undefined,
+      });
+    } catch (error) {
+      persistenceIssues.push({
+        stage: "reasoning_artifact",
+        message: error instanceof Error ? error.message : String(error),
+      });
+      logger.warn("Failed to persist reasoning artifact", {
+        nodeId: dbNode.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
     // Create decision points in a single batch insert
     const dbDecisionPoints: DecisionPoint[] = [];
     if (parsed.decisionPoints.length > 0) {
@@ -745,6 +820,20 @@ export class ThinkGraph {
       degraded: persistenceIssues.length > 0,
       persistenceIssues,
     };
+  }
+
+  /**
+   * Build lightweight artifact tags from structured step types.
+   */
+  private buildArtifactTags(
+    types: Array<ReasoningStep["type"] | undefined>
+  ): string[] {
+    const uniqueTypes = new Set(
+      types
+        .filter((type): type is NonNullable<ReasoningStep["type"]> => Boolean(type))
+        .map((type) => `step:${type}`)
+    );
+    return Array.from(uniqueTypes);
   }
 
   /**
