@@ -233,6 +233,21 @@ _setup_cors()
 
 
 # ---------------------------------------------------------------------------
+# Correlation ID middleware — propagates X-Correlation-ID into structlog
+# ---------------------------------------------------------------------------
+
+@app.middleware("http")
+async def correlation_id_middleware(request, call_next):
+    """Extract or generate a correlation ID and bind it to structlog context."""
+    correlation_id = request.headers.get("x-correlation-id") or str(uuid4())
+    structlog.contextvars.clear_contextvars()
+    structlog.contextvars.bind_contextvars(correlation_id=correlation_id)
+    response = await call_next(request)
+    response.headers["X-Correlation-ID"] = correlation_id
+    return response
+
+
+# ---------------------------------------------------------------------------
 # Request / response models
 # ---------------------------------------------------------------------------
 
