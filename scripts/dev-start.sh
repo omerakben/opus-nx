@@ -186,8 +186,15 @@ run_inline() {
   echo -e ""
   info "Press ${BOLD}Ctrl+C${NC} to stop all services"
 
-  # Wait for either process to exit
-  wait -n $PID_TURBO $PID_AGENTS 2>/dev/null || true
+  # Wait for either process to exit.
+  # macOS ships with Bash 3.2, which does not support `wait -n`.
+  if wait -n "$PID_TURBO" "$PID_AGENTS" 2>/dev/null; then
+    :
+  else
+    while kill -0 "$PID_TURBO" 2>/dev/null && kill -0 "$PID_AGENTS" 2>/dev/null; do
+      sleep 1
+    done
+  fi
 }
 
 # ── Tab mode: open new terminal tabs ───────────────────────
