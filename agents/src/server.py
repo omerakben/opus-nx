@@ -44,6 +44,40 @@ supabase_persistence: SupabasePersistence | None = None
 STALE_SESSION_CHECK_INTERVAL = 300  # 5 minutes
 STALE_SESSION_MAX_AGE = 1800  # 30 minutes
 
+# ---------------------------------------------------------------------------
+# Sliding-window rate limiter (per session_id)
+# ---------------------------------------------------------------------------
+
+_rate_limit_lock = asyncio.Lock()
+_rate_limit_log: dict[str, list[float]] = {}
+
+
+async def _check_rate_limit(session_id: str) -> bool:
+    """Return True if the request is within rate limits, False if exceeded.
+
+    Uses a sliding window: keeps timestamps of recent requests and prunes
+    entries older than the configured window.
+    """
+    import time
+
+    now = time.monotonic()
+    window = settings.rate_limit_window_seconds if settings else 60
+    max_requests = settings.rate_limit_requests if settings else 20
+
+    async with _rate_limit_lock:
+        timestamps = _rate_limit_log.get(session_id, [])
+        # Prune old entries
+        cutoff = now - window
+        timestamps = [t for t in timestamps if t > cutoff]
+
+        if len(timestamps) >= max_requests:
+            _rate_limit_log[session_id] = timestamps
+            return False
+
+        timestamps.append(now)
+        _rate_limit_log[session_id] = timestamps
+        return True
+
 LIFECYCLE_STATES = {
     "promoted",
     "checkpointed",
@@ -113,6 +147,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     )
 
     settings = Settings()
+    settings.validate_at_startup()
     graph = SharedReasoningGraph()
     bus = EventBus()
 
@@ -458,6 +493,12 @@ async def start_swarm(request: SwarmRequest) -> dict:
     Fire-and-forget: the swarm runs as a background task so the
     HTTP response returns immediately.
     """
+    if not await _check_rate_limit(request.session_id):
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit exceeded: max {settings.rate_limit_requests} requests per {settings.rate_limit_window_seconds}s",
+        )
+
     # Import here to avoid circular imports — SwarmManager depends on
     # agent modules that may not be ready yet during foundation phase.
     from .swarm import SwarmManager
@@ -508,7 +549,8 @@ async def swarm_websocket(
     """
     # Validate token before accepting the WebSocket connection
     if not verify_token(token):
-        await websocket.close(code=4001)
+        log.warning("ws_auth_rejected", session_id=session_id)
+        await websocket.close(code=4001, reason="unauthorized")
         return
 
     await websocket.accept()
@@ -546,8 +588,26 @@ async def swarm_websocket(
             await websocket.send_json(
                 event if isinstance(event, dict) else json.loads(event)
             )
-    except (WebSocketDisconnect, asyncio.TimeoutError):
-        pass
+    except WebSocketDisconnect:
+        log.info("ws_client_disconnected", session_id=session_id)
+    except asyncio.TimeoutError:
+        log.info("ws_idle_timeout", session_id=session_id)
+        try:
+            await websocket.send_json(
+                {"event": "error", "code": 4002, "reason": "idle_timeout"}
+            )
+            await websocket.close(code=4002)
+        except Exception:
+            pass
+    except Exception as exc:
+        log.error("ws_unexpected_error", session_id=session_id, error=str(exc))
+        try:
+            await websocket.send_json(
+                {"event": "error", "code": 4003, "reason": "internal_error"}
+            )
+            await websocket.close(code=4003)
+        except Exception:
+            pass
     finally:
         heartbeat_task.cancel()
         drain_task.cancel()
