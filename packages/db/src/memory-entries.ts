@@ -1,4 +1,5 @@
 import { getSupabase } from "./client.js";
+import { throwSupabaseError } from "./supabase-error.js";
 
 // ============================================================
 // Types
@@ -43,8 +44,7 @@ export interface CreateMemoryEntryInput {
 // ============================================================
 
 function handleSupabaseError(error: unknown, context: string): never {
-  const message = error instanceof Error ? error.message : String(error);
-  throw new Error(`${context}: ${message}`);
+  throwSupabaseError(error, context);
 }
 
 // ============================================================

@@ -1,105 +1,81 @@
-import { readFileSync } from "fs";
-import { createClient } from "@supabase/supabase-js";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
+import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+type MigrationMode = "local" | "linked";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const repoRoot = resolve(__dirname, "..", "..");
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
-  process.exit(1);
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: { persistSession: false },
-});
-
-async function runMigrations() {
-  const migrations = [
-    "001_initial_schema.sql",
-    "002_thinking_graph.sql",
-    "003_node_type.sql",
-    "004_insights_fts_index.sql",
-    "005_fork_analyses.sql",
-    "006_thinking_nodes_response.sql",
-    "007_v2_edge_types.sql",
-    "008_v2_swarm_edge_fix.sql",
-  ];
-
-  const failures: string[] = [];
-
-  for (const migration of migrations) {
-    const filePath = join(__dirname, "migrations", migration);
-    console.log(`\nRunning migration: ${migration}`);
-
-    try {
-      const sql = readFileSync(filePath, "utf-8");
-      const statements = splitSqlStatements(sql);
-
-      let executed = 0;
-      for (let i = 0; i < statements.length; i++) {
-        const stmt = statements[i].trim();
-        if (!stmt || stmt.startsWith("--")) continue;
-
-        const { error } = await supabase.rpc("exec_sql", { sql_string: stmt });
-
-        if (error) {
-          throw new Error(`Statement ${i + 1} failed in ${migration}: ${error.message}`);
-        }
-
-        executed++;
-        process.stdout.write(".");
-      }
-
-      console.log(`\n   OK ${migration} (${executed} statements)`);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.error(`\n   FAILED ${migration}: ${message}`);
-      failures.push(`${migration}: ${message}`);
+function detectMigrationMode(): MigrationMode {
+  const argMode = process.argv.find((arg) => arg.startsWith("--mode="));
+  if (argMode) {
+    const value = argMode.split("=")[1]?.trim().toLowerCase();
+    if (value === "local" || value === "linked") {
+      return value;
     }
   }
 
-  if (failures.length > 0) {
-    throw new Error(`Migration run failed with ${failures.length} failure(s):\n- ${failures.join("\n- ")}`);
+  const envMode = process.env.SUPABASE_MIGRATION_MODE?.trim().toLowerCase();
+  if (envMode === "local" || envMode === "linked") {
+    return envMode;
   }
 
-  console.log("\nAll migrations completed successfully.");
+  const supabaseUrl = process.env.SUPABASE_URL ?? "";
+  if (
+    supabaseUrl.includes("localhost") ||
+    supabaseUrl.includes("127.0.0.1") ||
+    supabaseUrl.includes("host.docker.internal")
+  ) {
+    return "local";
+  }
+
+  return "linked";
 }
 
-function splitSqlStatements(sql: string): string[] {
-  const statements: string[] = [];
-  let current = "";
-  let inFunction = false;
+function run(command: string, args: string[]): void {
+  const result = spawnSync(command, args, {
+    cwd: repoRoot,
+    env: process.env,
+    stdio: "inherit",
+  });
 
-  const lines = sql.split("\n");
-
-  for (const line of lines) {
-    if (line.includes("$$") && !inFunction) {
-      inFunction = true;
-    } else if (line.includes("$$") && inFunction) {
-      inFunction = false;
-    }
-
-    current += line + "\n";
-
-    if (line.trim().endsWith(";") && !inFunction) {
-      statements.push(current);
-      current = "";
-    }
+  if (result.error) {
+    throw result.error;
   }
-
-  if (current.trim()) {
-    statements.push(current);
+  if (result.status !== 0) {
+    throw new Error(
+      `Command failed with exit code ${result.status}: ${command} ${args.join(" ")}`
+    );
   }
-
-  return statements;
 }
 
-runMigrations().catch((error) => {
+function runMigrations(): void {
+  const supabaseDir = resolve(repoRoot, "supabase");
+  if (!existsSync(supabaseDir)) {
+    throw new Error(`Supabase directory not found at ${supabaseDir}`);
+  }
+
+  const mode = detectMigrationMode();
+  console.log(`[db:migrate] mode=${mode}`);
+
+  if (mode === "local") {
+    // Local/dev workflow: rebuild local DB from canonical migrations.
+    run("pnpm", ["--filter", "@opus-nx/db", "exec", "supabase", "db", "reset", "--local"]);
+    console.log("[db:migrate] local reset complete");
+    return;
+  }
+
+  // Linked env workflow: push pending migrations to linked project.
+  run("pnpm", ["--filter", "@opus-nx/db", "exec", "supabase", "db", "push"]);
+  console.log("[db:migrate] linked push complete");
+}
+
+try {
+  runMigrations();
+} catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);
-});
+}
