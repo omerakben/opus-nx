@@ -15,6 +15,7 @@
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "test": "vitest run",
     "migrate": "tsx run-migrations.ts",
     "migrate:local": "SUPABASE_MIGRATION_MODE=local tsx run-migrations.ts",
     "migrate:linked": "SUPABASE_MIGRATION_MODE=linked tsx run-migrations.ts",
@@ -27,6 +28,7 @@
   "devDependencies": {
     "supabase": "^2.76.8",
     "tsx": "4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   }
 }

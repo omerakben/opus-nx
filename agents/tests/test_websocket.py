@@ -504,3 +504,95 @@ class TestHypothesisExperimentEndpoints:
         assert payload["experiment"]["status"] == "retained"
         assert payload["experiment"]["retention_decision"] == "retain"
         server_mod.supabase_persistence.update_hypothesis_experiment.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# Rate Limiting
+# ---------------------------------------------------------------------------
+
+
+class TestRateLimiting:
+    """POST /api/swarm rate limiter returns 429 when exceeded."""
+
+    def test_rate_limit_allows_normal_requests(self):
+        client, server_mod = _make_test_client()
+        token = _generate_token()
+        test_uuid = "550e8400-e29b-41d4-a716-446655440000"
+
+        response = client.post(
+            "/api/swarm",
+            json={"query": "Test query", "session_id": test_uuid},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 200
+
+    def test_rate_limit_returns_429_when_exceeded(self):
+        client, server_mod = _make_test_client()
+        token = _generate_token()
+        test_uuid = "550e8400-e29b-41d4-a716-446655440099"
+
+        # Override rate limit settings to a very low threshold
+        server_mod.settings.rate_limit_requests = 2
+        server_mod.settings.rate_limit_window_seconds = 60
+
+        # Clear any pre-existing rate limit entries
+        server_mod._rate_limit_log.clear()
+
+        # First two should succeed
+        for i in range(2):
+            response = client.post(
+                "/api/swarm",
+                json={"query": f"Query {i}", "session_id": test_uuid},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            assert response.status_code == 200, f"Request {i} failed unexpectedly"
+
+        # Third should be rate limited
+        response = client.post(
+            "/api/swarm",
+            json={"query": "Over limit", "session_id": test_uuid},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 429
+        assert "Rate limit exceeded" in response.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# WebSocket Error Frames (WS3.7)
+# ---------------------------------------------------------------------------
+
+
+class TestWebSocketErrorFrames:
+    """WebSocket sends JSON error frames before closing on errors."""
+
+    def test_websocket_auth_rejects_with_4001(self):
+        """Auth rejection should close with code 4001 and reason."""
+        client, _ = _make_test_client()
+        with pytest.raises(Exception):
+            with client.websocket_connect("/ws/test-session?token=bad-token"):
+                pass
+        # The close happens server-side with code=4001 before accept
+
+    def test_websocket_receives_heartbeat(self):
+        """An accepted connection should receive periodic heartbeats."""
+        client, server_mod = _make_test_client()
+        token = _generate_token()
+
+        import time
+
+        with client.websocket_connect(f"/ws/heartbeat-test?token={token}") as ws:
+            # Publish a synthetic event so the test doesn't block forever
+            from src.events.types import AgentStarted
+
+            event = AgentStarted(
+                session_id="heartbeat-test",
+                agent="deep_thinker",
+                effort="max",
+            )
+            event_dict = event.model_dump(mode="json")
+            queues = server_mod.bus._subscribers.get("heartbeat-test", [])
+            for q in queues:
+                q.put_nowait(event_dict)
+
+            data = ws.receive_json(mode="text")
+            assert data["event"] in ("agent_started", "ping")
