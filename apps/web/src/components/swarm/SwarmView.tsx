@@ -30,6 +30,7 @@ import {
 import { cn } from "@/lib/utils";
 import { AgentCard } from "./AgentCard";
 import { SwarmControls } from "./SwarmControls";
+import { SwarmHypothesisPanel } from "./SwarmHypothesisPanel";
 import { SwarmGraph } from "./SwarmGraph";
 import { SwarmTimeline } from "./SwarmTimeline";
 
@@ -50,7 +51,14 @@ const EXAMPLE_QUERIES = [
 ];
 
 export function SwarmView({ sessionId }: SwarmViewProps) {
-  const { state, start, stop } = useSwarm("", sessionId);
+  const {
+    state,
+    start,
+    stop,
+    refreshExperiments,
+    retainExperiment,
+    compareExperiment,
+  } = useSwarm("", sessionId);
   const [query, setQuery] = useState("");
   const [copied, setCopied] = useState(false);
   const [viewMode, setViewMode] = useState<"cards" | "graph">("graph");
@@ -365,6 +373,16 @@ export function SwarmView({ sessionId }: SwarmViewProps) {
                 </div>
               )}
 
+              {/* Hypothesis lifecycle */}
+              <SwarmHypothesisPanel
+                experiments={state.experiments}
+                loading={state.experimentsLoading}
+                lifecycle={state.lifecycle}
+                onRefresh={refreshExperiments}
+                onCompareExperiment={compareExperiment}
+                onRetainDecision={retainExperiment}
+              />
+
               {/* Timeline */}
               {state.events.length > 0 && (
                 <div>
@@ -380,9 +398,7 @@ export function SwarmView({ sessionId }: SwarmViewProps) {
                 <SwarmControls
                   graphNodes={state.graphNodes}
                   sessionId={sessionId}
-                  onRerunStarted={() => {
-                    start(query.trim(), sessionId);
-                  }}
+                  onCheckpointSubmitted={refreshExperiments}
                 />
               )}
             </div>

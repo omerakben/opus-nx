@@ -61,39 +61,69 @@ export async function POST(request: Request) {
 
     const stream = new ReadableStream({
       async start(controller) {
-        if (abortSignal.aborted) {
-          controller.close();
-          return;
-        }
+        let isAborted = abortSignal.aborted;
+        let isClosed = false;
+        let heartbeat: ReturnType<typeof setInterval> | null = null;
+        let abortHandler: (() => void) | null = null;
 
-        let isAborted = false;
-        const abortHandler = () => {
+        const safeClose = () => {
+          if (isClosed) return;
+          isClosed = true;
+          try {
+            controller.close();
+          } catch {
+            // Stream may already be closed by runtime.
+          }
+        };
+
+        const cleanup = () => {
+          if (heartbeat !== null) {
+            clearInterval(heartbeat);
+            heartbeat = null;
+          }
+          if (abortHandler) {
+            abortSignal.removeEventListener("abort", abortHandler);
+          }
+        };
+
+        const enqueue = (chunk: Uint8Array): boolean => {
+          if (isAborted || isClosed) return false;
+          try {
+            controller.enqueue(chunk);
+            return true;
+          } catch (e) {
+            console.warn("[GoT Stream] Enqueue failed, closing stream:", e);
+            isAborted = true;
+            cleanup();
+            safeClose();
+            return false;
+          }
+        };
+
+        const emit = (event: Record<string, unknown>) => {
+          enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+        };
+
+        abortHandler = () => {
           isAborted = true;
-          clearInterval(heartbeat);
+          cleanup();
+          safeClose();
         };
         abortSignal.addEventListener("abort", abortHandler, { once: true });
 
-        const emit = (event: Record<string, unknown>) => {
-          if (isAborted) return;
-          try {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
-          } catch (e) {
-            console.warn("[GoT Stream] Emit failed, aborting stream:", e);
-            isAborted = true;
-          }
-        };
+        if (isAborted) {
+          cleanup();
+          safeClose();
+          return;
+        }
 
-        // Heartbeat every 15s to prevent idle-disconnect
-        const heartbeat = setInterval(() => {
-          if (!isAborted) {
-            try {
-              controller.enqueue(encoder.encode(`: heartbeat\n\n`));
-            } catch (e) {
-              console.warn("[GoT Stream] Heartbeat failed, stopping:", e);
-              isAborted = true;
-              clearInterval(heartbeat);
-            }
+        // Heartbeat every 15s to prevent idle-disconnect.
+        heartbeat = setInterval(() => {
+          if (isAborted || isClosed) {
+            cleanup();
+            return;
           }
+          enqueue(encoder.encode(`: heartbeat\n\n`));
         }, 15_000);
 
         try {
@@ -163,7 +193,11 @@ export async function POST(request: Request) {
 
           const result = await engine.reason(problem, config);
 
-          if (isAborted) { controller.close(); clearInterval(heartbeat); return; }
+          if (isAborted || isClosed) {
+            cleanup();
+            safeClose();
+            return;
+          }
 
           // Persist GoT results with full graph state if sessionId is provided
           let nodeId: string | undefined;
@@ -228,12 +262,10 @@ export async function POST(request: Request) {
             persistenceError,
           });
 
-          clearInterval(heartbeat);
-          abortSignal.removeEventListener("abort", abortHandler);
-          controller.close();
+          cleanup();
+          safeClose();
         } catch (error) {
-          clearInterval(heartbeat);
-          abortSignal.removeEventListener("abort", abortHandler);
+          cleanup();
           console.error("[API] GoT stream error:", { correlationId, error });
 
           const rawMsg = error instanceof Error ? error.message : String(error);
@@ -253,7 +285,7 @@ export async function POST(request: Request) {
             recoverable: false,
             correlationId,
           });
-          controller.close();
+          safeClose();
         }
       },
     });

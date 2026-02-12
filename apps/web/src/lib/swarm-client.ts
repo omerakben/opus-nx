@@ -132,10 +132,20 @@ export interface HumanCheckpointEvent extends SwarmEvent {
   correction: string | null;
 }
 
+export interface HypothesisExperimentUpdatedEvent extends SwarmEvent {
+  event: "hypothesis_experiment_updated";
+  experiment_id: string;
+  status: string;
+  comparison_result?: Record<string, unknown> | null;
+  retention_decision?: string | null;
+  metadata?: Record<string, unknown>;
+}
+
 export interface SwarmRerunStartedEvent extends SwarmEvent {
   event: "swarm_rerun_started";
   agents: string[];
   correction_preview: string;
+  experiment_id?: string | null;
 }
 
 export type SwarmEventUnion =
@@ -150,13 +160,14 @@ export type SwarmEventUnion =
   | MetacognitionInsightEvent
   | MaestroDecompositionEvent
   | HumanCheckpointEvent
+  | HypothesisExperimentUpdatedEvent
   | SwarmRerunStartedEvent;
 
 // ---------------------------------------------------------------------------
 // Event validation (W3)
 // ---------------------------------------------------------------------------
 
-/** The 12 known swarm event types */
+/** The 13 known swarm event types */
 export const VALID_EVENT_TYPES = new Set([
   "swarm_started",
   "agent_started",
@@ -169,6 +180,7 @@ export const VALID_EVENT_TYPES = new Set([
   "metacognition_insight",
   "maestro_decomposition",
   "human_checkpoint",
+  "hypothesis_experiment_updated",
   "swarm_rerun_started",
 ] as const);
 
@@ -446,6 +458,17 @@ function bridgeToAppEvents(event: SwarmEventUnion, sessionId: string): void {
     case "metacognition_insight":
       // New insight — refetch insights panel
       appEvents.emit("data:stale", { scope: "insights", sessionId });
+      break;
+
+    case "hypothesis_experiment_updated":
+      appEvents.emit("hypothesis:experiment_updated", {
+        sessionId,
+        experimentId: event.experiment_id,
+        status: event.status,
+        comparisonResult: event.comparison_result,
+        retentionDecision: event.retention_decision,
+        metadata: event.metadata,
+      });
       break;
 
     case "agent_completed":
