@@ -21,9 +21,11 @@ from __future__ import annotations
 
 import asyncio
 import json
+import hashlib
 import re
 import time
 import uuid
+from datetime import datetime, timezone
 
 import structlog
 import structlog.contextvars
@@ -109,6 +111,307 @@ class SwarmManager:
         self.graph = graph
         self.bus = bus
         self.persistence = persistence
+        self._rehydration_total = 0
+        self._rehydration_hits = 0
+        self._rehydration_selected_total = 0
+
+    def _parse_timestamp(self, value: object) -> datetime | None:
+        if not isinstance(value, str):
+            return None
+        raw = value.strip()
+        if not raw:
+            return None
+        normalized = raw.replace("Z", "+00:00")
+        try:
+            return datetime.fromisoformat(normalized)
+        except ValueError:
+            return None
+
+    def _recency_score(self, timestamp: datetime | None) -> float:
+        if timestamp is None:
+            return 0.5
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.replace(tzinfo=timezone.utc)
+        age_seconds = max(0.0, (datetime.now(timezone.utc) - timestamp).total_seconds())
+        age_days = age_seconds / 86400.0
+        return max(0.0, min(1.0, 1.0 - (age_days / 30.0)))
+
+    def _compute_candidate_score(
+        self,
+        *,
+        similarity: float,
+        importance: float,
+        recency: float,
+        retained_policy_bonus: float,
+    ) -> float:
+        return (
+            0.60 * similarity
+            + 0.25 * importance
+            + 0.10 * recency
+            + 0.05 * retained_policy_bonus
+        )
+
+    async def _build_reasoning_rehydration_context(
+        self,
+        query: str,
+        session_id: str,
+    ) -> str:
+        """Retrieve semantically similar reasoning artifacts for query rehydration."""
+        if self.persistence is None:
+            return ""
+
+        embed_started = time.monotonic()
+        query_embedding = await self.persistence.generate_reasoning_embedding(query)
+        log.info(
+            "rehydration_phase",
+            phase="embed_generation",
+            session_id=session_id,
+            duration_ms=int((time.monotonic() - embed_started) * 1000),
+            success=bool(query_embedding),
+        )
+        if not query_embedding:
+            return ""
+
+        semantic_started = time.monotonic()
+        try:
+            artifact_task = self.persistence.search_reasoning_artifacts(
+                query_embedding,
+                match_threshold=0.68,
+                match_count=12,
+                filter_artifact_type=None,
+            )
+            search_hypotheses = getattr(
+                self.persistence,
+                "search_structured_reasoning_hypotheses_semantic",
+                None,
+            )
+            if callable(search_hypotheses):
+                maybe_task = search_hypotheses(
+                    query_embedding,
+                    match_threshold=0.68,
+                    match_count=12,
+                )
+                if asyncio.iscoroutine(maybe_task):
+                    hypothesis_task = maybe_task
+                else:
+                    hypothesis_task = asyncio.sleep(0, result=[])
+            else:
+                hypothesis_task = asyncio.sleep(0, result=[])
+            artifact_matches, hypothesis_matches = await asyncio.gather(
+                artifact_task,
+                hypothesis_task,
+            )
+        except Exception as exc:
+            log.warning(
+                "reasoning_rehydration_search_failed",
+                session_id=session_id,
+                error=str(exc),
+            )
+            return ""
+        log.info(
+            "rehydration_phase",
+            phase="semantic_search",
+            session_id=session_id,
+            duration_ms=int((time.monotonic() - semantic_started) * 1000),
+            artifact_candidates=len(artifact_matches),
+            hypothesis_candidates=len(hypothesis_matches),
+        )
+
+        if not artifact_matches and not hypothesis_matches:
+            return ""
+
+        selection_started = time.monotonic()
+        candidates: list[dict[str, object]] = []
+
+        for row in artifact_matches:
+            content = str(row.get("content") or "").strip()
+            if not content:
+                continue
+            similarity = float(row.get("similarity") or 0.0)
+            importance = float(row.get("importance_score") or 0.0)
+            source_session = str(row.get("session_id") or "unknown")
+            retained_bonus = 0.0
+            snapshot = row.get("snapshot")
+            if isinstance(snapshot, dict):
+                if str(snapshot.get("retention_decision") or "") == "retain":
+                    retained_bonus = 1.0
+            recency = self._recency_score(
+                self._parse_timestamp(row.get("updated_at"))
+                or self._parse_timestamp(row.get("created_at"))
+                or self._parse_timestamp(row.get("last_used_at"))
+            )
+            score = self._compute_candidate_score(
+                similarity=similarity,
+                importance=importance,
+                recency=recency,
+                retained_policy_bonus=retained_bonus,
+            )
+            text_hash = hashlib.md5(content.lower().encode("utf-8")).hexdigest()
+            candidates.append(
+                {
+                    "source": "artifact",
+                    "id": str(row.get("id") or ""),
+                    "session_id": source_session,
+                    "text": content,
+                    "text_hash": text_hash,
+                    "similarity": similarity,
+                    "importance": importance,
+                    "recency": recency,
+                    "retained_policy_bonus": retained_bonus,
+                    "score": score,
+                }
+            )
+
+        for row in hypothesis_matches:
+            hypothesis_text = str(row.get("hypothesis_text") or "").strip()
+            if not hypothesis_text:
+                continue
+            source_session = str(row.get("session_id") or "unknown")
+            similarity = float(row.get("similarity") or 0.0)
+            importance = float(
+                row.get("importance_score")
+                or row.get("confidence")
+                or 0.5
+            )
+            retained_bonus = float(row.get("retained_policy_bonus") or 0.0)
+            recency = self._recency_score(self._parse_timestamp(row.get("created_at")))
+            score = self._compute_candidate_score(
+                similarity=similarity,
+                importance=importance,
+                recency=recency,
+                retained_policy_bonus=retained_bonus,
+            )
+            text_hash = str(row.get("hypothesis_text_hash") or "").strip() or hashlib.md5(
+                hypothesis_text.lower().encode("utf-8")
+            ).hexdigest()
+            candidates.append(
+                {
+                    "source": "hypothesis",
+                    "id": str(row.get("hypothesis_id") or ""),
+                    "session_id": source_session,
+                    "text": hypothesis_text,
+                    "text_hash": text_hash,
+                    "similarity": similarity,
+                    "importance": importance,
+                    "recency": recency,
+                    "retained_policy_bonus": retained_bonus,
+                    "score": score,
+                }
+            )
+
+        deduped: dict[str, dict[str, object]] = {}
+        for candidate in candidates:
+            key = f"{candidate['session_id']}:{candidate['text_hash']}"
+            existing = deduped.get(key)
+            if existing is None or float(candidate["score"]) > float(existing["score"]):
+                deduped[key] = candidate
+
+        ranked = sorted(
+            deduped.values(),
+            key=lambda item: float(item["score"]),
+            reverse=True,
+        )
+
+        cross_session_ranked = [
+            item
+            for item in ranked
+            if str(item.get("session_id") or "") != session_id
+        ]
+        selected_rows = (cross_session_ranked or ranked)[:4]
+
+        lines: list[str] = []
+        selected_artifact_ids: list[str] = []
+        for idx, row in enumerate(selected_rows, start=1):
+            content = str(row.get("text") or "").strip()
+            if not content:
+                continue
+            source = str(row.get("source") or "artifact")
+            source_session = str(row.get("session_id") or "unknown")
+            similarity = float(row.get("similarity") or 0.0)
+            importance = float(row.get("importance") or 0.0)
+            recency = float(row.get("recency") or 0.0)
+            retained_bonus = float(row.get("retained_policy_bonus") or 0.0)
+            score = float(row.get("score") or 0.0)
+            row_id = str(row.get("id") or "")
+            if source == "artifact" and row_id:
+                selected_artifact_ids.append(row_id)
+            excerpt = content[:420] + ("..." if len(content) > 420 else "")
+            lines.append(
+                f"{idx}. source={source} session={source_session} score={score:.3f} "
+                f"(sim={similarity:.2f} imp={importance:.2f} recency={recency:.2f} retain={retained_bonus:.2f})\n{excerpt}"
+            )
+
+        log.info(
+            "rehydration_phase",
+            phase="candidate_selection",
+            session_id=session_id,
+            duration_ms=int((time.monotonic() - selection_started) * 1000),
+            total_candidates=len(candidates),
+            deduped_candidates=len(ranked),
+            selected_candidates=len(lines),
+        )
+
+        if not lines:
+            return ""
+
+        audit_started = time.monotonic()
+        try:
+            await asyncio.gather(
+                *[
+                    self.persistence.mark_reasoning_artifact_used(artifact_id)
+                    for artifact_id in selected_artifact_ids
+                ],
+                return_exceptions=True,
+            )
+            await self.persistence.create_session_rehydration_run(
+                session_id=session_id,
+                query_text=query,
+                query_embedding=query_embedding,
+                selected_artifact_ids=selected_artifact_ids,
+                candidate_count=len(candidates),
+                metadata={
+                    "source": "swarm_v2",
+                    "selected_count": len(lines),
+                    "selected_artifact_count": len(selected_artifact_ids),
+                    "artifact_candidates": len(artifact_matches),
+                    "hypothesis_candidates": len(hypothesis_matches),
+                    "deduped_candidate_count": len(ranked),
+                },
+            )
+        except Exception as exc:
+            log.warning(
+                "reasoning_rehydration_audit_failed",
+                session_id=session_id,
+                error=str(exc),
+            )
+        else:
+            log.info(
+                "rehydration_phase",
+                phase="rehydration_audit_write",
+                session_id=session_id,
+                duration_ms=int((time.monotonic() - audit_started) * 1000),
+                selected_artifacts=len(selected_artifact_ids),
+            )
+
+        self._rehydration_total += 1
+        self._rehydration_selected_total += len(lines)
+        if lines:
+            self._rehydration_hits += 1
+        hit_rate = self._rehydration_hits / max(1, self._rehydration_total)
+        avg_selected = self._rehydration_selected_total / max(1, self._rehydration_total)
+        log.info(
+            "rehydration_metrics",
+            session_id=session_id,
+            hit_rate=round(hit_rate, 4),
+            avg_selected_candidates=round(avg_selected, 4),
+            total_runs=self._rehydration_total,
+        )
+
+        return (
+            "Prior reasoning artifacts and hypotheses (semantic matches). "
+            "Use as hypotheses/evidence, and verify before adopting:\n"
+            + "\n\n".join(lines)
+        )
 
     async def run(self, query: str, session_id: str) -> dict:
         """Full swarm execution pipeline with partial result support.
@@ -130,12 +433,27 @@ class SwarmManager:
         overall_start = time.monotonic()
 
         api_key = self.settings.anthropic_api_key
+        rehydration_context = await self._build_reasoning_rehydration_context(
+            query,
+            session_id,
+        )
+        swarm_query = query
+        if rehydration_context:
+            swarm_query = (
+                f"{query}\n\n{rehydration_context}\n\n"
+                "Treat retrieved artifacts as prior hypotheses. Verify, refine, or reject."
+            )
+            log.info(
+                "reasoning_rehydration_applied",
+                session_id=session_id,
+                context_length=len(rehydration_context),
+            )
 
         # ---------------------------------------------------------------
         # Phase 0: Maestro — fast query decomposition & agent routing
         # Falls back to regex classification if Maestro times out/errors
         # ---------------------------------------------------------------
-        deployment_plan = await self._run_maestro(query, session_id, api_key)
+        deployment_plan = await self._run_maestro(swarm_query, session_id, api_key)
 
         # Extract selected agents and effort assignments from the plan
         selected_agent_names = deployment_plan.get("agents", [])
@@ -194,7 +512,7 @@ class SwarmManager:
             """Launch an agent after a delay for rate limit management."""
             if delay > 0:
                 await asyncio.sleep(delay)
-            return await self._run_with_timeout(agent, query, session_id)
+            return await self._run_with_timeout(agent, swarm_query, session_id)
 
         # asyncio.gather with return_exceptions=True for partial results
         # If one agent fails, others still return their results
@@ -239,7 +557,7 @@ class SwarmManager:
         synthesizer = SynthesizerAgent(self.graph, self.bus, session_id, api_key=api_key)
         synthesizer.effort = fallback_effort
         synthesis_result = await self._run_with_timeout(
-            synthesizer, query, session_id
+            synthesizer, swarm_query, session_id
         )
         agent_results.append(synthesis_result)
 
@@ -254,7 +572,7 @@ class SwarmManager:
         # Metacognition always uses max effort
         metacog.effort = "max"
         metacog_result = await self._run_with_timeout(
-            metacog, query, session_id
+            metacog, swarm_query, session_id
         )
         agent_results.append(metacog_result)
 
@@ -412,7 +730,12 @@ class SwarmManager:
                     )
 
     async def rerun_with_correction(
-        self, session_id: str, node_id: str, correction: str
+        self,
+        session_id: str,
+        node_id: str,
+        correction: str,
+        *,
+        experiment_id: str | None = None,
     ) -> dict:
         """Re-run specific agents with a human correction.
 
@@ -425,6 +748,7 @@ class SwarmManager:
             "rerun_starting",
             session_id=session_id,
             node_id=node_id,
+            experiment_id=experiment_id,
             correction_preview=correction,
         )
 
@@ -435,6 +759,7 @@ class SwarmManager:
                 session_id=session_id,
                 agents=rerun_agents,
                 correction_preview=correction,
+                experiment_id=experiment_id,
             ),
         )
 
@@ -443,6 +768,16 @@ class SwarmManager:
             f"Previous analysis was checkpointed with human correction: "
             f"'{correction}'. Please re-analyze taking this feedback into account."
         )
+        rehydration_context = await self._build_reasoning_rehydration_context(
+            corrected_query,
+            session_id,
+        )
+        rerun_query = corrected_query
+        if rehydration_context:
+            rerun_query = (
+                f"{corrected_query}\n\n{rehydration_context}\n\n"
+                "Treat retrieved artifacts as prior hypotheses. Verify, refine, or reject."
+            )
 
         agents: list[BaseOpusAgent] = [
             DeepThinkerAgent(self.graph, self.bus, session_id, api_key=api_key),
@@ -452,7 +787,7 @@ class SwarmManager:
         stagger = self.settings.agent_stagger_seconds
         results = await asyncio.gather(
             *[
-                self._run_staggered_agent(agent, corrected_query, session_id, i * stagger)
+                self._run_staggered_agent(agent, rerun_query, session_id, i * stagger)
                 for i, agent in enumerate(agents)
             ],
             return_exceptions=True,
@@ -466,8 +801,25 @@ class SwarmManager:
                     error=str(result),
                 )
 
-        log.info("rerun_complete", session_id=session_id, agents=rerun_agents)
-        return {"status": "rerun_complete", "agents": rerun_agents}
+        successful_results = [r for r in results if isinstance(r, AgentResult)]
+        total_tokens = sum(r.tokens_used for r in successful_results)
+        total_duration_ms = sum(r.duration_ms for r in successful_results)
+
+        log.info(
+            "rerun_complete",
+            session_id=session_id,
+            experiment_id=experiment_id,
+            agents=rerun_agents,
+            total_tokens=total_tokens,
+            total_duration_ms=total_duration_ms,
+        )
+        return {
+            "status": "rerun_complete",
+            "agents": rerun_agents,
+            "experiment_id": experiment_id,
+            "total_tokens": total_tokens,
+            "total_duration_ms": total_duration_ms,
+        }
 
     async def _run_staggered_agent(
         self,

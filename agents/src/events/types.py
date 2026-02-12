@@ -9,6 +9,16 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+HypothesisExperimentStatus = Literal[
+    "promoted",
+    "checkpointed",
+    "rerunning",
+    "comparing",
+    "retained",
+    "deferred",
+    "archived",
+]
+
 
 class SwarmEvent(BaseModel):
     """Base event — all swarm events inherit from this."""
@@ -90,7 +100,7 @@ class MaestroDecomposition(SwarmEvent):
 class HumanCheckpoint(SwarmEvent):
     event: Literal["human_checkpoint"] = "human_checkpoint"
     node_id: str
-    verdict: str  # verified | questionable | disagree
+    verdict: str  # verified | questionable | disagree | agree | explore | note
     correction: str | None = None
 
 
@@ -98,3 +108,13 @@ class SwarmRerunStarted(SwarmEvent):
     event: Literal["swarm_rerun_started"] = "swarm_rerun_started"
     agents: list[str]
     correction_preview: str
+    experiment_id: str | None = None
+
+
+class HypothesisExperimentUpdated(SwarmEvent):
+    event: Literal["hypothesis_experiment_updated"] = "hypothesis_experiment_updated"
+    experiment_id: str
+    status: HypothesisExperimentStatus
+    comparison_result: dict[str, object] | None = None
+    retention_decision: str | None = None
+    metadata: dict[str, object] = Field(default_factory=dict)
