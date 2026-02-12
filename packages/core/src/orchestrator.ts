@@ -80,7 +80,7 @@ export interface OrchestratorResult {
   graphPersistence?: {
     degraded: boolean;
     issues: Array<{
-      stage: "node" | "decision_point" | "reasoning_edge";
+      stage: "node" | "structured_reasoning" | "reasoning_artifact" | "decision_point" | "reasoning_edge";
       message: string;
       stepNumber?: number;
     }>;

@@ -461,6 +461,133 @@ export async function getSessionNodes(
 }
 
 // ============================================================
+// Swarm Hypothesis Experiments API
+// ============================================================
+
+export type SwarmHypothesisExperimentStatus =
+  | "promoted"
+  | "checkpointed"
+  | "rerunning"
+  | "comparing"
+  | "retained"
+  | "deferred"
+  | "archived"
+  | (string & {});
+
+export type SwarmHypothesisRetentionDecision =
+  | "retain"
+  | "defer"
+  | "archive"
+  | (string & {});
+
+export interface SwarmHypothesisExperiment {
+  id: string;
+  sessionId: string;
+  hypothesisNodeId: string;
+  promotedBy: string;
+  alternativeSummary: string;
+  status: SwarmHypothesisExperimentStatus;
+  preferredRunId: string | null;
+  rerunRunId: string | null;
+  comparisonResult: Record<string, unknown> | null;
+  retentionDecision: SwarmHypothesisRetentionDecision | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  lastUpdated: string;
+}
+
+export interface PersistenceCapabilities {
+  configured: boolean;
+  tables: Record<string, boolean>;
+  rpc: Record<string, boolean>;
+  lifecycleReady: boolean;
+  rehydrationReady: boolean;
+  probedAt?: string;
+}
+
+export interface RehydrationTelemetryDto {
+  phase:
+    | "embed_generation"
+    | "semantic_search"
+    | "candidate_selection"
+    | "rehydration_audit_write";
+  durationMs: number;
+  success?: boolean;
+  artifactCandidates?: number;
+  hypothesisCandidates?: number;
+  selectedCandidates?: number;
+}
+
+export interface SwarmHypothesisLifecycleInfo {
+  degradedMode: boolean;
+  degradedReason: string | null;
+  capabilities?: PersistenceCapabilities | null;
+  compareCompletionRate: number;
+  retentionRatio: {
+    retain: number;
+    defer: number;
+    archive: number;
+  };
+  compareRequests: number;
+  compareCompleted: number;
+}
+
+export async function getSwarmHypothesisExperiments(
+  sessionId: string
+): Promise<ApiResponse<{ experiments: SwarmHypothesisExperiment[]; lifecycle: SwarmHypothesisLifecycleInfo | null }>> {
+  return fetchApi<{ experiments: SwarmHypothesisExperiment[]; lifecycle: SwarmHypothesisLifecycleInfo | null }>(
+    `/api/swarm/${encodeURIComponent(sessionId)}/experiments`
+  );
+}
+
+export interface RetainSwarmHypothesisRequest {
+  decision: SwarmHypothesisRetentionDecision;
+  performedBy?: string;
+}
+
+export async function retainSwarmHypothesis(
+  experimentId: string,
+  request: RetainSwarmHypothesisRequest
+): Promise<ApiResponse<{ experiment: SwarmHypothesisExperiment }>> {
+  return fetchApi<{ experiment: SwarmHypothesisExperiment }>(
+    `/api/swarm/experiments/${encodeURIComponent(experimentId)}/retain`,
+    {
+      method: "POST",
+      body: JSON.stringify(request),
+    }
+  );
+}
+
+export interface CompareSwarmHypothesisRequest {
+  performedBy?: string;
+  rerunIfMissing?: boolean;
+  forceRerun?: boolean;
+  nodeId?: string;
+  correction?: string;
+}
+
+export interface CompareSwarmHypothesisResponse {
+  status: "comparison_ready" | "compare_started";
+  experimentId: string;
+  comparisonResult?: Record<string, unknown>;
+  nodeId?: string;
+  mode?: string;
+}
+
+export async function compareSwarmHypothesis(
+  experimentId: string,
+  request: CompareSwarmHypothesisRequest
+): Promise<ApiResponse<CompareSwarmHypothesisResponse>> {
+  return fetchApi<CompareSwarmHypothesisResponse>(
+    `/api/swarm/experiments/${encodeURIComponent(experimentId)}/compare`,
+    {
+      method: "POST",
+      body: JSON.stringify(request),
+    }
+  );
+}
+
+// ============================================================
 // Checkpoint API (Human-in-the-Loop Reasoning Correction)
 // ============================================================
 

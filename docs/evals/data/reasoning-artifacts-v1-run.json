@@ -1,0 +1,80 @@
+{
+  "generated_at": "2026-02-12T20:58:29.017995+00:00",
+  "seed": 42,
+  "benchmark": "configs/evals/reasoning-artifacts-benchmark.v1.json",
+  "variants": [
+    "baseline_autonomous",
+    "rehydration_only",
+    "rehydration_plus_fixed_checkpoint",
+    "rehydration_plus_adaptive_checkpoint"
+  ],
+  "tasks": 12,
+  "summary": [
+    {
+      "variant": "baseline_autonomous",
+      "verifier_score": 0.5983937500000001,
+      "contradiction_rate": 0.41398616666666666,
+      "synthesis_confidence": 0.66150325,
+      "time_to_retained_policy": 150.88596483333333,
+      "reruns_to_retained_policy": 2.8689769166666665,
+      "token_cost_per_retained_policy": 3910.6787840833335,
+      "checkpoint_acceptance_rate": 0.5884311666666666,
+      "correction_uptake_rate": 0.4344728333333333,
+      "checkpoint_to_improvement_lift": -0.0027712500000000003,
+      "checkpoint_attribution_index": -0.0012194999999999999,
+      "verifier_score_delta": 0.0,
+      "contradiction_rate_delta": 0.0,
+      "synthesis_confidence_delta": 0.0
+    },
+    {
+      "variant": "rehydration_only",
+      "verifier_score": 0.6566271666666667,
+      "contradiction_rate": 0.37096866666666667,
+      "synthesis_confidence": 0.7084119166666667,
+      "time_to_retained_policy": 134.98388741666668,
+      "reruns_to_retained_policy": 2.38627225,
+      "token_cost_per_retained_policy": 3575.037698,
+      "checkpoint_acceptance_rate": 0.6657817500000001,
+      "correction_uptake_rate": 0.5318234166666667,
+      "checkpoint_to_improvement_lift": 0.06529591666666666,
+      "checkpoint_attribution_index": 0.03962175,
+      "verifier_score_delta": 0.05823341666666659,
+      "contradiction_rate_delta": -0.043017499999999986,
+      "synthesis_confidence_delta": 0.04690866666666671
+    },
+    {
+      "variant": "rehydration_plus_fixed_checkpoint",
+      "verifier_score": 0.7102131666666667,
+      "contradiction_rate": 0.33488075,
+      "synthesis_confidence": 0.7646873333333333,
+      "time_to_retained_policy": 118.94916491666666,
+      "reruns_to_retained_policy": 2.0144190833333333,
+      "token_cost_per_retained_policy": 3285.897952,
+      "checkpoint_acceptance_rate": 0.8211604166666666,
+      "correction_uptake_rate": 0.7072020833333333,
+      "checkpoint_to_improvement_lift": 0.14441675,
+      "checkpoint_attribution_index": 0.11085883333333334,
+      "verifier_score_delta": 0.11181941666666662,
+      "contradiction_rate_delta": -0.07910541666666665,
+      "synthesis_confidence_delta": 0.10318408333333329
+    },
+    {
+      "variant": "rehydration_plus_adaptive_checkpoint",
+      "verifier_score": 0.7645105,
+      "contradiction_rate": 0.303302,
+      "synthesis_confidence": 0.8222075,
+      "time_to_retained_policy": 105.83090258333334,
+      "reruns_to_retained_policy": 1.6969921666666667,
+      "token_cost_per_retained_policy": 3001.6565593333335,
+      "checkpoint_acceptance_rate": 0.9176065,
+      "correction_uptake_rate": 0.8136481666666666,
+      "checkpoint_to_improvement_lift": 0.23192058333333335,
+      "checkpoint_attribution_index": 0.20133733333333334,
+      "verifier_score_delta": 0.16611674999999992,
+      "contradiction_rate_delta": -0.11068416666666664,
+      "synthesis_confidence_delta": 0.16070425
+    }
+  ],
+  "task_metrics_csv": "docs/evals/data/reasoning-artifacts-v1-task-metrics.csv",
+  "summary_csv": "docs/evals/data/reasoning-artifacts-v1-summary.csv"
+}

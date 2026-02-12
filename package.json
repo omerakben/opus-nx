@@ -11,7 +11,10 @@
     "clean": "turbo clean && node -e \"require('node:fs').rmSync('node_modules',{recursive:true,force:true})\"",
     "check:migrations": "tsx scripts/check-migration-drift.ts",
     "db:migrate": "pnpm --filter @opus-nx/db migrate",
+    "db:migrate:local": "pnpm --filter @opus-nx/db migrate:local",
+    "db:migrate:linked": "pnpm --filter @opus-nx/db migrate:linked",
     "db:generate": "pnpm --filter @opus-nx/db generate",
+    "eval:reasoning": "python3 agents/scripts/run_reasoning_eval.py",
     "test": "pnpm check:migrations && turbo test"
   },
   "devDependencies": {

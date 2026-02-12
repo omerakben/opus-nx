@@ -7,3 +7,7 @@ export * from "./thinking-nodes.js";
 export * from "./metacognition.js";
 export * from "./fork-analyses.js";
 export * from "./memory-entries.js";
+export * from "./structured-reasoning.js";
+export * from "./reasoning-artifacts.js";
+export * from "./hypothesis-experiments.js";
+export * from "./supabase-error.js";

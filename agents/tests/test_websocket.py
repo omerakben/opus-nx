@@ -10,7 +10,7 @@ import hashlib
 import hmac
 import os
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -173,3 +173,334 @@ class TestSwarmEndpoint:
         data = response.json()
         assert data["status"] == "started"
         assert data["session_id"] == test_uuid
+
+
+class TestHypothesisExperimentEndpoints:
+    """Experiment listing and retention endpoints."""
+
+    def test_list_hypothesis_experiments_returns_rows(self):
+        client, server_mod = _make_test_client()
+        token = _generate_token()
+        session_id = "550e8400-e29b-41d4-a716-446655440000"
+
+        server_mod.supabase_persistence = AsyncMock()
+        server_mod.supabase_persistence.list_session_hypothesis_experiments = AsyncMock(
+            return_value=[
+                {
+                    "id": "660e8400-e29b-41d4-a716-446655440000",
+                    "session_id": session_id,
+                    "status": "comparing",
+                }
+            ]
+        )
+
+        response = client.get(
+            f"/api/swarm/{session_id}/experiments",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert len(payload["experiments"]) == 1
+        assert payload["experiments"][0]["status"] == "comparing"
+        server_mod.supabase_persistence.list_session_hypothesis_experiments.assert_awaited_once_with(
+            session_id,
+            status=None,
+            limit=100,
+        )
+
+    def test_retain_hypothesis_experiment_emits_update_event(self):
+        client, server_mod = _make_test_client()
+        token = _generate_token()
+        session_id = "550e8400-e29b-41d4-a716-446655440000"
+        experiment_id = "660e8400-e29b-41d4-a716-446655440000"
+
+        queue = server_mod.bus.subscribe(session_id)
+        existing = {
+            "id": experiment_id,
+            "session_id": session_id,
+            "status": "comparing",
+            "metadata": {"source": "test"},
+            "comparison_result": {"rerun": {"total_tokens": 321}},
+        }
+        updated = {
+            **existing,
+            "status": "retained",
+            "retention_decision": "retain",
+        }
+
+        server_mod.supabase_persistence = AsyncMock()
+        server_mod.supabase_persistence.get_hypothesis_experiment = AsyncMock(
+            side_effect=[existing, updated]
+        )
+        server_mod.supabase_persistence.update_hypothesis_experiment = AsyncMock()
+        server_mod.supabase_persistence.create_hypothesis_experiment_action = AsyncMock(
+            return_value="770e8400-e29b-41d4-a716-446655440000"
+        )
+
+        response = client.post(
+            f"/api/swarm/experiments/{experiment_id}/retain",
+            json={"decision": "retain"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["experiment"]["status"] == "retained"
+        assert payload["experiment"]["retention_decision"] == "retain"
+
+        server_mod.supabase_persistence.update_hypothesis_experiment.assert_awaited_once()
+        call = server_mod.supabase_persistence.update_hypothesis_experiment.await_args
+        assert call.args[0] == experiment_id
+        assert call.kwargs["status"] == "retained"
+        assert call.kwargs["retention_decision"] == "retain"
+        assert "retention_updated_at" in call.kwargs["metadata"]
+
+        event = queue.get_nowait()
+        assert event["event"] == "hypothesis_experiment_updated"
+        assert event["experiment_id"] == experiment_id
+        assert event["status"] == "retained"
+        assert event["retention_decision"] == "retain"
+
+    def test_retain_hypothesis_experiment_defer_maps_to_deferred_status(self):
+        client, server_mod = _make_test_client()
+        token = _generate_token()
+        session_id = "550e8400-e29b-41d4-a716-446655440000"
+        experiment_id = "660e8400-e29b-41d4-a716-446655440000"
+
+        queue = server_mod.bus.subscribe(session_id)
+        existing = {
+            "id": experiment_id,
+            "session_id": session_id,
+            "status": "comparing",
+            "metadata": {"source": "test"},
+            "comparison_result": {"rerun": {"total_tokens": 321}},
+        }
+        updated = {
+            **existing,
+            "status": "deferred",
+            "retention_decision": "defer",
+        }
+
+        server_mod.supabase_persistence = AsyncMock()
+        server_mod.supabase_persistence.get_hypothesis_experiment = AsyncMock(
+            side_effect=[existing, updated]
+        )
+        server_mod.supabase_persistence.update_hypothesis_experiment = AsyncMock()
+        server_mod.supabase_persistence.create_hypothesis_experiment_action = AsyncMock(
+            return_value="770e8400-e29b-41d4-a716-446655440000"
+        )
+
+        response = client.post(
+            f"/api/swarm/experiments/{experiment_id}/retain",
+            json={"decision": "defer"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["experiment"]["status"] == "deferred"
+        assert payload["experiment"]["retention_decision"] == "defer"
+
+        server_mod.supabase_persistence.update_hypothesis_experiment.assert_awaited_once()
+        call = server_mod.supabase_persistence.update_hypothesis_experiment.await_args
+        assert call.args[0] == experiment_id
+        assert call.kwargs["status"] == "deferred"
+        assert call.kwargs["retention_decision"] == "defer"
+
+        event = queue.get_nowait()
+        assert event["event"] == "hypothesis_experiment_updated"
+        assert event["experiment_id"] == experiment_id
+        assert event["status"] == "deferred"
+        assert event["retention_decision"] == "defer"
+
+    def test_compare_hypothesis_experiment_uses_existing_result(self):
+        client, server_mod = _make_test_client()
+        token = _generate_token()
+        session_id = "550e8400-e29b-41d4-a716-446655440000"
+        experiment_id = "660e8400-e29b-41d4-a716-446655440000"
+
+        queue = server_mod.bus.subscribe(session_id)
+        existing = {
+            "id": experiment_id,
+            "session_id": session_id,
+            "status": "checkpointed",
+            "metadata": {"source": "test"},
+            "comparison_result": {"summary": "candidate improved"},
+            "retention_decision": None,
+        }
+
+        server_mod.supabase_persistence = AsyncMock()
+        server_mod.supabase_persistence.get_hypothesis_experiment = AsyncMock(
+            return_value=existing
+        )
+        server_mod.supabase_persistence.update_hypothesis_experiment = AsyncMock()
+        server_mod.supabase_persistence.create_hypothesis_experiment_action = AsyncMock(
+            return_value="770e8400-e29b-41d4-a716-446655440000"
+        )
+
+        response = client.post(
+            f"/api/swarm/experiments/{experiment_id}/compare",
+            json={"rerunIfMissing": False},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["status"] == "comparison_ready"
+        assert payload["experiment_id"] == experiment_id
+        assert payload["comparison_result"]["summary"] == "candidate improved"
+
+        server_mod.supabase_persistence.update_hypothesis_experiment.assert_awaited_once_with(
+            experiment_id,
+            status="comparing",
+        )
+        event = queue.get_nowait()
+        assert event["event"] == "hypothesis_experiment_updated"
+        assert event["status"] == "comparing"
+        assert event["comparison_result"]["summary"] == "candidate improved"
+
+    def test_compare_hypothesis_experiment_missing_result_without_rerun(self):
+        client, server_mod = _make_test_client()
+        token = _generate_token()
+        session_id = "550e8400-e29b-41d4-a716-446655440000"
+        experiment_id = "660e8400-e29b-41d4-a716-446655440000"
+
+        server_mod.supabase_persistence = AsyncMock()
+        server_mod.supabase_persistence.get_hypothesis_experiment = AsyncMock(
+            return_value={
+                "id": experiment_id,
+                "session_id": session_id,
+                "status": "promoted",
+                "metadata": {},
+                "comparison_result": None,
+            }
+        )
+
+        response = client.post(
+            f"/api/swarm/experiments/{experiment_id}/compare",
+            json={"rerunIfMissing": False},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 409
+        data = response.json()
+        assert "comparison_result missing" in data["detail"]
+
+    def test_compare_hypothesis_experiment_is_idempotent_while_rerunning(self):
+        client, server_mod = _make_test_client()
+        token = _generate_token()
+        session_id = "550e8400-e29b-41d4-a716-446655440000"
+        experiment_id = "660e8400-e29b-41d4-a716-446655440000"
+
+        server_mod.supabase_persistence = AsyncMock()
+        server_mod.supabase_persistence.get_hypothesis_experiment = AsyncMock(
+            return_value={
+                "id": experiment_id,
+                "session_id": session_id,
+                "status": "rerunning",
+                "metadata": {},
+                "comparison_result": None,
+            }
+        )
+        server_mod.supabase_persistence.update_hypothesis_experiment = AsyncMock()
+
+        response = client.post(
+            f"/api/swarm/experiments/{experiment_id}/compare",
+            json={"rerunIfMissing": True},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["status"] == "compare_started"
+        assert payload["mode"] == "already_rerunning"
+        server_mod.supabase_persistence.update_hypothesis_experiment.assert_not_awaited()
+
+    def test_list_hypothesis_experiments_uses_inmemory_fallback(self):
+        client, server_mod = _make_test_client()
+        token = _generate_token()
+        session_id = "550e8400-e29b-41d4-a716-446655440000"
+        experiment_id = "660e8400-e29b-41d4-a716-446655440000"
+
+        server_mod.supabase_persistence = None
+        server_mod._inmemory_experiments_by_id[experiment_id] = {
+            "id": experiment_id,
+            "session_id": session_id,
+            "status": "promoted",
+            "alternative_summary": "Fallback experiment",
+            "metadata": {"source": "test"},
+            "created_at": "2026-02-12T00:00:00+00:00",
+            "last_updated": "2026-02-12T00:00:00+00:00",
+        }
+        server_mod._inmemory_experiment_ids_by_session[session_id] = {experiment_id}
+
+        response = client.get(
+            f"/api/swarm/{session_id}/experiments",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert len(payload["experiments"]) == 1
+        assert payload["experiments"][0]["id"] == experiment_id
+        assert payload["experiments"][0]["status"] == "promoted"
+
+    def test_retain_hypothesis_experiment_without_supabase(self):
+        client, server_mod = _make_test_client()
+        token = _generate_token()
+        session_id = "550e8400-e29b-41d4-a716-446655440000"
+        experiment_id = "660e8400-e29b-41d4-a716-446655440000"
+
+        queue = server_mod.bus.subscribe(session_id)
+        server_mod.supabase_persistence = None
+        server_mod._inmemory_experiments_by_id[experiment_id] = {
+            "id": experiment_id,
+            "session_id": session_id,
+            "status": "comparing",
+            "metadata": {"source": "test"},
+            "created_at": "2026-02-12T00:00:00+00:00",
+            "last_updated": "2026-02-12T00:00:00+00:00",
+        }
+        server_mod._inmemory_experiment_ids_by_session[session_id] = {experiment_id}
+
+        response = client.post(
+            f"/api/swarm/experiments/{experiment_id}/retain",
+            json={"decision": "retain"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["experiment"]["status"] == "retained"
+        assert payload["experiment"]["retention_decision"] == "retain"
+
+        event = queue.get_nowait()
+        assert event["event"] == "hypothesis_experiment_updated"
+        assert event["experiment_id"] == experiment_id
+        assert event["status"] == "retained"
+
+    def test_retain_hypothesis_experiment_is_idempotent_for_same_final_decision(self):
+        client, server_mod = _make_test_client()
+        token = _generate_token()
+        session_id = "550e8400-e29b-41d4-a716-446655440000"
+        experiment_id = "660e8400-e29b-41d4-a716-446655440000"
+
+        existing = {
+            "id": experiment_id,
+            "session_id": session_id,
+            "status": "retained",
+            "retention_decision": "retain",
+            "metadata": {"source": "test"},
+            "created_at": "2026-02-12T00:00:00+00:00",
+            "last_updated": "2026-02-12T00:00:00+00:00",
+        }
+        server_mod.supabase_persistence = AsyncMock()
+        server_mod.supabase_persistence.get_hypothesis_experiment = AsyncMock(
+            return_value=existing
+        )
+        server_mod.supabase_persistence.update_hypothesis_experiment = AsyncMock()
+        server_mod.supabase_persistence.create_hypothesis_experiment_action = AsyncMock()
+
+        response = client.post(
+            f"/api/swarm/experiments/{experiment_id}/retain",
+            json={"decision": "retain"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["experiment"]["status"] == "retained"
+        assert payload["experiment"]["retention_decision"] == "retain"
+        server_mod.supabase_persistence.update_hypothesis_experiment.assert_not_awaited()

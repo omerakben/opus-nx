@@ -56,6 +56,7 @@ def _settings_with_neo4j():
         supabase_url="http://localhost:54321",
         supabase_service_role_key="test-key",
         auth_secret="test-secret",
+        voyage_api_key=None,
         neo4j_uri="bolt://localhost:7687",
         neo4j_password="test-pw",
     )
@@ -67,6 +68,7 @@ def _settings_base():
         supabase_url="http://localhost:54321",
         supabase_service_role_key="test-key",
         auth_secret="test-secret",
+        voyage_api_key=None,
     )
 
 
@@ -100,6 +102,33 @@ def _mock_supabase_client():
     mock_client.table = mock_table_fn
 
     return mock_client, mock_table_fn, mock_upsert, mock_execute
+
+
+def _mock_supabase_client_with_mutations():
+    """Build a mock Supabase client with insert/update/upsert mutation chains."""
+    mock_execute = MagicMock(return_value=MagicMock(data=[]))
+    mock_upsert = MagicMock(return_value=MagicMock(execute=mock_execute))
+    mock_insert = MagicMock(return_value=MagicMock(execute=mock_execute))
+    mock_eq = MagicMock(return_value=MagicMock(execute=mock_execute))
+    mock_update = MagicMock(return_value=MagicMock(eq=mock_eq))
+    mock_query = MagicMock()
+    mock_query.eq.return_value = mock_query
+    mock_query.limit.return_value = mock_query
+    mock_query.order.return_value = mock_query
+    mock_query.execute = mock_execute
+    mock_select = MagicMock(return_value=mock_query)
+    mock_table_obj = MagicMock(
+        upsert=mock_upsert,
+        insert=mock_insert,
+        update=mock_update,
+        select=mock_select,
+    )
+    mock_table_fn = MagicMock(return_value=mock_table_obj)
+
+    mock_client = MagicMock()
+    mock_client.table = mock_table_fn
+
+    return mock_client, mock_table_fn, mock_insert, mock_update, mock_eq
 
 
 # ---------------------------------------------------------------------------
@@ -292,9 +321,14 @@ class TestSupabaseSyncNode:
         node = _make_node()
         await persistence.sync_node(node)
 
-        mock_table_fn.assert_called_with("thinking_nodes")
-        upsert_args = mock_upsert.call_args
-        row = upsert_args[0][0]
+        mock_table_fn.assert_any_call("thinking_nodes")
+        row = None
+        for call in mock_upsert.call_args_list:
+            candidate = call.args[0]
+            if isinstance(candidate, dict) and candidate.get("id") == node.id:
+                row = candidate
+                break
+        assert row is not None
         assert row["id"] == node.id
         assert row["session_id"] == _TEST_SESSION_ID
         assert row["agent_name"] == "deep_thinker"
@@ -327,6 +361,35 @@ class TestSupabaseSyncEdge:
         assert row["edge_type"] == "influences"  # LEADS_TO normalizes to "influences"
         assert row["weight"] == 0.9
 
+    async def test_sync_edge_queues_fk_violation_and_retries_on_flush(self):
+        """FK failures should queue edges by missing node ID and retry on flush."""
+        mock_client = MagicMock()
+        edge_execute = MagicMock(
+            side_effect=[
+                Exception(
+                    "{'message': 'insert or update on table \"reasoning_edges\" violates foreign key constraint \"reasoning_edges_source_id_fkey\"'}"
+                ),
+                MagicMock(data=[]),
+            ]
+        )
+        edge_upsert = MagicMock(return_value=MagicMock(execute=edge_execute))
+        edge_table = MagicMock(upsert=edge_upsert)
+        mock_client.table = MagicMock(return_value=edge_table)
+
+        SupabasePersistence = _import_supabase_persistence()
+        supabase_mod = sys.modules["supabase"]
+        supabase_mod.create_client.return_value = mock_client
+
+        persistence = SupabasePersistence(_settings_base())
+        edge = _make_edge()
+
+        await persistence.sync_edge(edge)
+        assert _TEST_SOURCE_ID in persistence._pending_edges_by_node
+
+        await persistence._flush_pending_edges_for_node(_TEST_SOURCE_ID)
+        assert _TEST_SOURCE_ID not in persistence._pending_edges_by_node
+        assert edge_upsert.call_count == 2
+
 
 # ===========================================================================
 # T1.6 -- SupabasePersistence.sync() dispatch
@@ -344,7 +407,7 @@ class TestSupabaseSyncDispatch:
         persistence = SupabasePersistence(_settings_base())
         await persistence.sync("node_added", _make_node())
 
-        mock_table_fn.assert_called_with("thinking_nodes")
+        mock_table_fn.assert_any_call("thinking_nodes")
 
     async def test_dispatch_edge_added_routes_to_sync_edge(self):
         """sync() with 'edge_added' should call sync_edge."""
@@ -372,6 +435,223 @@ class TestSupabaseSyncDispatch:
         await persistence.sync("something_else", {"data": 123})
 
         mock_table_fn.assert_not_called()
+
+
+# ===========================================================================
+# T1.6b -- SupabasePersistence hypothesis lifecycle helpers
+# ===========================================================================
+
+class TestSupabaseHypothesisLifecycle:
+    async def test_create_hypothesis_experiment_inserts_expected_row(self):
+        """create_hypothesis_experiment should insert a valid experiment row."""
+        (
+            mock_client,
+            mock_table_fn,
+            mock_insert,
+            _mock_update,
+            _mock_eq,
+        ) = _mock_supabase_client_with_mutations()
+
+        SupabasePersistence = _import_supabase_persistence()
+        supabase_mod = sys.modules["supabase"]
+        supabase_mod.create_client.return_value = mock_client
+
+        persistence = SupabasePersistence(_settings_base())
+        experiment_id = await persistence.create_hypothesis_experiment(
+            session_id=_TEST_SESSION_ID,
+            hypothesis_node_id=_TEST_SOURCE_ID,
+            alternative_summary="Use a cache-aware strategy",
+            promoted_by="human",
+            status="promoted",
+            metadata={"source": "test"},
+        )
+
+        assert experiment_id is not None
+        mock_table_fn.assert_called_with("hypothesis_experiments")
+        row = mock_insert.call_args[0][0]
+        assert row["session_id"] == _TEST_SESSION_ID
+        assert row["hypothesis_node_id"] == _TEST_SOURCE_ID
+        assert row["alternative_summary"] == "Use a cache-aware strategy"
+        assert row["status"] == "promoted"
+
+    async def test_update_hypothesis_experiment_updates_by_id(self):
+        """update_hypothesis_experiment should issue update().eq(id).execute()."""
+        (
+            mock_client,
+            mock_table_fn,
+            _mock_insert,
+            mock_update,
+            mock_eq,
+        ) = _mock_supabase_client_with_mutations()
+
+        SupabasePersistence = _import_supabase_persistence()
+        supabase_mod = sys.modules["supabase"]
+        supabase_mod.create_client.return_value = mock_client
+
+        persistence = SupabasePersistence(_settings_base())
+        await persistence.update_hypothesis_experiment(
+            _TEST_SOURCE_ID,
+            status="comparing",
+            comparison_result={"verdict": "improved"},
+        )
+
+        mock_table_fn.assert_called_with("hypothesis_experiments")
+        update_payload = mock_update.call_args[0][0]
+        assert update_payload["status"] == "comparing"
+        assert update_payload["comparison_result"]["verdict"] == "improved"
+        mock_eq.assert_called_once_with("id", _TEST_SOURCE_ID)
+
+    async def test_create_hypothesis_experiment_action_inserts_expected_row(self):
+        """create_hypothesis_experiment_action should insert an action row."""
+        (
+            mock_client,
+            mock_table_fn,
+            mock_insert,
+            _mock_update,
+            _mock_eq,
+        ) = _mock_supabase_client_with_mutations()
+
+        SupabasePersistence = _import_supabase_persistence()
+        supabase_mod = sys.modules["supabase"]
+        supabase_mod.create_client.return_value = mock_client
+
+        persistence = SupabasePersistence(_settings_base())
+        action_id = await persistence.create_hypothesis_experiment_action(
+            experiment_id=_TEST_SOURCE_ID,
+            session_id=_TEST_SESSION_ID,
+            action="checkpoint",
+            performed_by="human",
+            details={"verdict": "questionable"},
+        )
+
+        assert action_id is not None
+        mock_table_fn.assert_called_with("hypothesis_experiment_actions")
+        row = mock_insert.call_args[0][0]
+        assert row["experiment_id"] == _TEST_SOURCE_ID
+        assert row["session_id"] == _TEST_SESSION_ID
+        assert row["action"] == "checkpoint"
+        assert row["details"]["verdict"] == "questionable"
+
+    async def test_get_hypothesis_experiment_returns_first_row(self):
+        """get_hypothesis_experiment should return first row when present."""
+        (
+            mock_client,
+            mock_table_fn,
+            _mock_insert,
+            _mock_update,
+            _mock_eq,
+        ) = _mock_supabase_client_with_mutations()
+
+        table_obj = mock_table_fn.return_value
+        query_obj = table_obj.select.return_value
+        query_obj.execute.return_value = MagicMock(
+            data=[{"id": _TEST_SOURCE_ID, "session_id": _TEST_SESSION_ID}]
+        )
+
+        SupabasePersistence = _import_supabase_persistence()
+        supabase_mod = sys.modules["supabase"]
+        supabase_mod.create_client.return_value = mock_client
+
+        persistence = SupabasePersistence(_settings_base())
+        row = await persistence.get_hypothesis_experiment(_TEST_SOURCE_ID)
+
+        assert row is not None
+        assert row["id"] == _TEST_SOURCE_ID
+        mock_table_fn.assert_called_with("hypothesis_experiments")
+        table_obj.select.assert_called_with("*")
+        query_obj.eq.assert_called_once_with("id", _TEST_SOURCE_ID)
+
+    async def test_list_session_hypothesis_experiments_applies_filters(self):
+        """list_session_hypothesis_experiments should apply session/status/limit."""
+        (
+            mock_client,
+            mock_table_fn,
+            _mock_insert,
+            _mock_update,
+            _mock_eq,
+        ) = _mock_supabase_client_with_mutations()
+
+        table_obj = mock_table_fn.return_value
+        query_obj = table_obj.select.return_value
+        query_obj.execute.return_value = MagicMock(
+            data=[
+                {
+                    "id": _TEST_SOURCE_ID,
+                    "session_id": _TEST_SESSION_ID,
+                    "status": "comparing",
+                }
+            ]
+        )
+
+        SupabasePersistence = _import_supabase_persistence()
+        supabase_mod = sys.modules["supabase"]
+        supabase_mod.create_client.return_value = mock_client
+
+        persistence = SupabasePersistence(_settings_base())
+        rows = await persistence.list_session_hypothesis_experiments(
+            _TEST_SESSION_ID,
+            status="comparing",
+            limit=25,
+        )
+
+        assert len(rows) == 1
+        assert rows[0]["status"] == "comparing"
+        mock_table_fn.assert_called_with("hypothesis_experiments")
+        table_obj.select.assert_called_with("*")
+        query_obj.eq.assert_any_call("session_id", _TEST_SESSION_ID)
+        query_obj.eq.assert_any_call("status", "comparing")
+        query_obj.order.assert_called_once_with("last_updated", desc=True)
+        query_obj.limit.assert_called_with(25)
+
+    async def test_list_session_hypothesis_experiments_returns_empty_when_table_missing(self):
+        """list_session_hypothesis_experiments should degrade to [] on missing table."""
+        (
+            mock_client,
+            mock_table_fn,
+            _mock_insert,
+            _mock_update,
+            _mock_eq,
+        ) = _mock_supabase_client_with_mutations()
+
+        table_obj = mock_table_fn.return_value
+        query_obj = table_obj.select.return_value
+        query_obj.execute.side_effect = Exception(
+            "{'message': \"Could not find the table 'public.hypothesis_experiments' in the schema cache\", 'code': 'PGRST205'}"
+        )
+
+        SupabasePersistence = _import_supabase_persistence()
+        supabase_mod = sys.modules["supabase"]
+        supabase_mod.create_client.return_value = mock_client
+
+        persistence = SupabasePersistence(_settings_base())
+        rows = await persistence.list_session_hypothesis_experiments(_TEST_SESSION_ID)
+
+        assert rows == []
+
+    async def test_get_hypothesis_experiment_returns_none_when_table_missing(self):
+        """get_hypothesis_experiment should degrade to None on missing table."""
+        (
+            mock_client,
+            mock_table_fn,
+            _mock_insert,
+            _mock_update,
+            _mock_eq,
+        ) = _mock_supabase_client_with_mutations()
+
+        table_obj = mock_table_fn.return_value
+        query_obj = table_obj.select.return_value
+        query_obj.execute.side_effect = Exception(
+            "{'message': \"Could not find the table 'public.hypothesis_experiments' in the schema cache\", 'code': 'PGRST205'}"
+        )
+
+        SupabasePersistence = _import_supabase_persistence()
+        supabase_mod = sys.modules["supabase"]
+        supabase_mod.create_client.return_value = mock_client
+
+        persistence = SupabasePersistence(_settings_base())
+        row = await persistence.get_hypothesis_experiment(_TEST_SOURCE_ID)
+
+        assert row is None
 
 
 # ===========================================================================
@@ -406,6 +686,77 @@ class TestPersistenceGracefulDegradation:
             persistence = SupabasePersistence(_settings_base())
             # sync() wraps sync_node() in try/except, should not crash
             await persistence.sync("node_added", _make_node())
+
+    async def test_semantic_hypothesis_search_maps_rpc_rows(self):
+        """search_structured_reasoning_hypotheses_semantic should map RPC rows."""
+        mock_client = MagicMock()
+        mock_execute = MagicMock(
+            return_value=MagicMock(
+                data=[
+                    {
+                        "hypothesis_id": _TEST_SOURCE_ID,
+                        "session_id": _TEST_SESSION_ID,
+                        "thinking_node_id": _TEST_SOURCE_ID,
+                        "step_id": _TEST_TARGET_ID,
+                        "hypothesis_text": "Hypothesis A",
+                        "status": "proposed",
+                        "confidence": 0.72,
+                        "created_at": "2026-02-12T00:00:00+00:00",
+                        "importance_score": 0.72,
+                        "retained_policy_bonus": 0.0,
+                        "similarity": 0.88,
+                        "hypothesis_text_hash": "abcd",
+                    }
+                ]
+            )
+        )
+        mock_client.rpc = MagicMock(
+            return_value=MagicMock(execute=mock_execute)
+        )
+
+        SupabasePersistence = _import_supabase_persistence()
+        supabase_mod = sys.modules["supabase"]
+        supabase_mod.create_client.return_value = mock_client
+
+        persistence = SupabasePersistence(_settings_base())
+        rows = await persistence.search_structured_reasoning_hypotheses_semantic(
+            [0.1, 0.2, 0.3],
+            match_threshold=0.7,
+            match_count=4,
+        )
+
+        assert len(rows) == 1
+        assert rows[0]["hypothesis_id"] == _TEST_SOURCE_ID
+        mock_client.rpc.assert_called_once_with(
+            "match_structured_reasoning_hypotheses",
+            {
+                "query_embedding": [0.1, 0.2, 0.3],
+                "match_threshold": 0.7,
+                "match_count": 4,
+                "filter_session_id": None,
+                "filter_status": None,
+            },
+        )
+
+    async def test_semantic_hypothesis_search_returns_empty_when_rpc_missing(self):
+        """search_structured_reasoning_hypotheses_semantic should degrade on missing RPC."""
+        mock_client = MagicMock()
+        mock_client.rpc = MagicMock(
+            side_effect=Exception(
+                "{'message': \"Could not find function public.match_structured_reasoning_hypotheses\", 'code': 'PGRST202'}"
+            )
+        )
+
+        SupabasePersistence = _import_supabase_persistence()
+        supabase_mod = sys.modules["supabase"]
+        supabase_mod.create_client.return_value = mock_client
+
+        persistence = SupabasePersistence(_settings_base())
+        rows = await persistence.search_structured_reasoning_hypotheses_semantic(
+            [0.1, 0.2, 0.3]
+        )
+
+        assert rows == []
 
 
 # ===========================================================================

@@ -9,6 +9,7 @@ import {
   GitBranch,
   Lightbulb,
   Network,
+  RefreshCw,
   Shield,
   Sparkles,
   Swords,
@@ -27,6 +28,55 @@ interface EventDisplay {
   icon: React.ReactNode;
   description: string;
   agent?: string;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function truncate(text: string, max = 120): string {
+  return text.length > max ? `${text.slice(0, max - 3)}...` : text;
+}
+
+function shortExperimentId(id: string): string {
+  return id.length > 10 ? `${id.slice(0, 8)}...` : id;
+}
+
+function comparisonSummary(
+  comparisonResult?: Record<string, unknown> | null
+): string | null {
+  const comparison = asRecord(comparisonResult);
+  if (!comparison) return null;
+
+  const directSummary = comparison.summary;
+  if (typeof directSummary === "string" && directSummary.trim().length > 0) {
+    return truncate(directSummary.trim(), 140);
+  }
+
+  const rerun = asRecord(comparison.rerun);
+  if (!rerun) return null;
+
+  const totalTokens = typeof rerun.total_tokens === "number" ? rerun.total_tokens : null;
+  const totalDurationMs =
+    typeof rerun.total_duration_ms === "number" ? rerun.total_duration_ms : null;
+  const agents = Array.isArray(rerun.agents)
+    ? rerun.agents.filter((agent): agent is string => typeof agent === "string")
+    : [];
+
+  const parts: string[] = [];
+  if (agents.length > 0) {
+    parts.push(`rerun agents: ${agents.map(formatName).join(", ")}`);
+  }
+  if (totalTokens !== null) {
+    parts.push(`tokens: ${totalTokens.toLocaleString()}`);
+  }
+  if (totalDurationMs !== null) {
+    parts.push(`duration: ${(totalDurationMs / 1000).toFixed(1)}s`);
+  }
+  if (parts.length === 0) return null;
+  return `Comparison ${parts.join(", ")}`;
 }
 
 function getEventDisplay(event: SwarmEventUnion): EventDisplay | null {
@@ -78,6 +128,35 @@ function getEventDisplay(event: SwarmEventUnion): EventDisplay | null {
         icon: <Lightbulb className="w-3.5 h-3.5 text-amber-400" />,
         description: event.description,
       };
+    case "swarm_rerun_started":
+      return {
+        icon: <RefreshCw className="w-3.5 h-3.5 text-blue-400" />,
+        description: truncate(
+          `Rerun started for ${event.agents.map(formatName).join(", ")}${
+            event.experiment_id
+              ? ` (experiment ${shortExperimentId(event.experiment_id)})`
+              : ""
+          }: ${event.correction_preview}`,
+          160
+        ),
+      };
+    case "hypothesis_experiment_updated":
+      {
+        const updates = [
+          `Experiment ${shortExperimentId(event.experiment_id)} -> ${formatName(event.status)}`,
+        ];
+        if (event.retention_decision) {
+          updates.push(`retention: ${formatName(event.retention_decision)}`);
+        }
+        const summary = comparisonSummary(event.comparison_result);
+        if (summary) {
+          updates.push(summary);
+        }
+        return {
+          icon: <Lightbulb className="w-3.5 h-3.5 text-indigo-400" />,
+          description: updates.join(" | "),
+        };
+      }
     default:
       return null;
   }

@@ -16,15 +16,17 @@
     "typecheck": "tsc --noEmit",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "migrate": "tsx run-migrations.ts",
+    "migrate:local": "SUPABASE_MIGRATION_MODE=local tsx run-migrations.ts",
+    "migrate:linked": "SUPABASE_MIGRATION_MODE=linked tsx run-migrations.ts",
     "generate": "supabase gen types typescript --local > src/types.ts"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.95.3",
-    "@opus-nx/shared": "workspace:*"
+    "@opus-nx/shared": "workspace:*",
+    "@supabase/supabase-js": "^2.95.3"
   },
   "devDependencies": {
+    "supabase": "^2.76.8",
     "tsx": "4.21.0",
-    "typescript": "^5.9.3",
-    "supabase": "^1.226.4"
+    "typescript": "^5.9.3"
   }
 }

@@ -193,7 +193,7 @@ export default function LoginPage() {
             Claude Opus 4.6
           </span>
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-[#7BA3BE]/10 text-[#7BA3BE] border border-[#7BA3BE]/20">
-            Cerebral Valley Hackathon 2026
+            Research Platform
           </span>
         </div>
       </div>

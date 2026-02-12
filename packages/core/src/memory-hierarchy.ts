@@ -1,6 +1,6 @@
 /**
  * @module Memory Hierarchy
- * @scope active - Hackathon demo
+ * @scope active
  * @paper MemGPT (Packer et al., 2023)
  * @description 3-tier memory with paging and auto-eviction
  */

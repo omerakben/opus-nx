@@ -1,6 +1,6 @@
 /**
  * @module GoT Engine - Graph of Thoughts
- * @scope future - Post-hackathon roadmap
+ * @scope active
  * @paper Graph of Thoughts (Besta et al., 2023)
  * @description Arbitrary thought graph topology with BFS/DFS/best-first search
  */
@@ -147,6 +147,8 @@ export interface GoTEngineOptions {
 export class GoTEngine {
   private options: GoTEngineOptions;
   private thoughtCounter = 0;
+  private generationFailureStreak = 0;
+  private generationCircuitOpenUntil = 0;
 
   // Reusable engines created per reason() call to avoid
   // instantiating a new Anthropic client for every LLM call.
@@ -184,6 +186,8 @@ export class GoTEngine {
 
     // Reset per-call state
     this.thoughtCounter = 0;
+    this.generationFailureStreak = 0;
+    this.generationCircuitOpenUntil = 0;
 
     // Create reusable engines for this reasoning session
     this.engine = this.createEngineInstance(fullConfig.effort);
@@ -546,6 +550,44 @@ export class GoTEngine {
     arr.splice(lo, 0, thought);
   }
 
+  private isTransientGenerationError(message: string): boolean {
+    const lowered = message.toLowerCase();
+    return (
+      lowered.includes("connection error") ||
+      lowered.includes("econn") ||
+      lowered.includes("etimedout") ||
+      lowered.includes("timeout") ||
+      lowered.includes("rate limit") ||
+      lowered.includes("429") ||
+      lowered.includes("temporarily unavailable")
+    );
+  }
+
+  private isGenerationCircuitOpen(): boolean {
+    return Date.now() < this.generationCircuitOpenUntil;
+  }
+
+  private markGenerationFailure(errorMessage: string): void {
+    this.generationFailureStreak += 1;
+    if (this.generationFailureStreak >= 3) {
+      this.generationCircuitOpenUntil = Date.now() + 30_000;
+      logger.warn("GoT generation circuit opened", {
+        failureStreak: this.generationFailureStreak,
+        cooldownMs: 30_000,
+        error: errorMessage,
+      });
+    }
+  }
+
+  private resetGenerationFailureState(): void {
+    this.generationFailureStreak = 0;
+    this.generationCircuitOpenUntil = 0;
+  }
+
+  private async sleep(ms: number): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
   // ============================================================
   // Core Operations
   // ============================================================
@@ -589,16 +631,62 @@ Generate ${k} distinct next-step thoughts that continue the reasoning. Each thou
 
 Use the record_thoughts tool to submit your thoughts.`;
 
+    if (this.isGenerationCircuitOpen()) {
+      const cooldownMs = Math.max(0, this.generationCircuitOpenUntil - Date.now());
+      const circuitMessage = `Generation circuit is open; retry after ${cooldownMs}ms.`;
+      logger.warn("Skipping thought generation while circuit is open", {
+        cooldownMs,
+      });
+      stats.generationErrors++;
+      this.options.onGenerationFailed?.(parent.id, depth, circuitMessage);
+      return [];
+    }
+
     try {
-      const result = await engine.think(
-        "You are a systematic problem solver using Graph of Thoughts reasoning. Generate diverse, high-quality thoughts.",
-        [{ role: "user", content: prompt }],
-        [THOUGHT_GENERATION_TOOL]
-      );
+      const maxAttempts = 3;
+      const retryBackoffMs = [700, 1500];
+      let result:
+        | Awaited<ReturnType<ThinkingEngine["think"]>>
+        | null = null;
+      let lastErrorMessage = "";
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          result = await engine.think(
+            "You are a systematic problem solver using Graph of Thoughts reasoning. Generate diverse, high-quality thoughts.",
+            [{ role: "user", content: prompt }],
+            [THOUGHT_GENERATION_TOOL]
+          );
+          this.resetGenerationFailureState();
+          break;
+        } catch (error) {
+          lastErrorMessage = error instanceof Error ? error.message : String(error);
+          const shouldRetry =
+            attempt < maxAttempts &&
+            this.isTransientGenerationError(lastErrorMessage);
+          if (!shouldRetry) {
+            throw error;
+          }
+
+          const backoffMs =
+            retryBackoffMs[Math.min(attempt - 1, retryBackoffMs.length - 1)];
+          logger.warn("Retrying GoT thought generation after transient failure", {
+            attempt,
+            maxAttempts,
+            backoffMs,
+            error: lastErrorMessage,
+          });
+          await this.sleep(backoffMs);
+        }
+      }
+
+      if (!result) {
+        throw new Error(lastErrorMessage || "Thought generation failed");
+      }
 
       const toolUse = result.toolUseBlocks.find((b) => b.name === "record_thoughts");
       if (!toolUse) {
-        // Fallback: create single thought from text response
+        // Fallback: create single thought from text response.
         const textContent = result.textBlocks.map((b) => b.text).join("\n");
         if (textContent.trim()) {
           const thought = this.createThought(textContent, depth, "generation", [parent.id]);
@@ -648,6 +736,7 @@ Use the record_thoughts tool to submit your thoughts.`;
       const errorMsg = error instanceof Error ? error.message : String(error);
       logger.error("Thought generation failed", { error: errorMsg });
       stats.generationErrors++;
+      this.markGenerationFailure(errorMsg);
 
       // Create a visible "failed" node so the error appears in the graph
       const failedThought = this.createThought(

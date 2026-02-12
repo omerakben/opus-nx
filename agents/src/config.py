@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     agent_stagger_seconds: float = 2.5
     max_concurrent_agents: int = 6
 
+    # Optional semantic reasoning retrieval (Voyage)
+    voyage_api_key: str | None = None
+    voyage_model: str = "voyage-3"
+
     # Neo4j (optional — system works without it)
     neo4j_uri: str | None = None
     neo4j_user: str | None = None

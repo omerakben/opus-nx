@@ -17,7 +17,6 @@ interface ConvergenceProps {
 /**
  * Convergence/Divergence Display
  *
- * This is THE key feature for the hackathon demo.
  * Shows where independent reasoning paths agree (convergence)
  * and disagree (divergence), allowing users to select which
  * assumption they want to proceed with.

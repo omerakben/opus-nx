@@ -26,6 +26,15 @@ type EventPayload = {
   "session:changed": { sessionId: string | null; previousSessionId: string | null };
   /** Fired when a swarm analysis finishes */
   "swarm:complete": { sessionId: string };
+  /** Fired when a hypothesis experiment status changes */
+  "hypothesis:experiment_updated": {
+    sessionId: string;
+    experimentId: string;
+    status: string;
+    comparisonResult?: Record<string, unknown> | null;
+    retentionDecision?: string | null;
+    metadata?: Record<string, unknown>;
+  };
   /** Fired when GoT reasoning starts */
   "got:started": { sessionId: string; strategy: "bfs" | "dfs" | "best_first" };
   /** Fired when GoT reasoning completes */

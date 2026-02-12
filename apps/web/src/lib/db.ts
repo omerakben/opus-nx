@@ -53,6 +53,9 @@ export {
   appendSteeringResult,
   // Types
   type ForkAnalysis,
+  type HypothesisExperimentRow,
+  type HypothesisExperimentStatusDB,
+  type HypothesisRetentionDecisionDB,
   type Session,
   type ThinkingNode,
   type ReasoningEdge,

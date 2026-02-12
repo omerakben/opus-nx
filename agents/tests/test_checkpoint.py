@@ -6,7 +6,7 @@ and the rerun_with_correction flow in SwarmManager.
 
 from __future__ import annotations
 
-from src.events.types import HumanCheckpoint, SwarmRerunStarted
+from src.events.types import HumanCheckpoint, HypothesisExperimentUpdated, SwarmRerunStarted
 from src.graph.models import AgentName, EdgeRelation, ReasoningEdge, ReasoningNode
 from src.swarm import SwarmManager
 
@@ -50,6 +50,19 @@ class TestCheckpointEvents:
         assert data["event"] == "swarm_rerun_started"
         assert len(data["agents"]) == 2
         assert data["correction_preview"] == "Use event sourcing"
+
+    def test_hypothesis_experiment_updated_event(self):
+        event = HypothesisExperimentUpdated(
+            session_id="sess-1",
+            experiment_id="exp-123",
+            status="rerunning",
+            metadata={"node_id": "node-abc"},
+        )
+        data = event.model_dump(mode="json")
+        assert data["event"] == "hypothesis_experiment_updated"
+        assert data["experiment_id"] == "exp-123"
+        assert data["status"] == "rerunning"
+        assert data["metadata"]["node_id"] == "node-abc"
 
 
 # ---------------------------------------------------------------------------

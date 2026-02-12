@@ -1,7 +1,7 @@
 export * from "./types/index.js";
 
 // ============================================================
-// Hackathon Core - Cerebral Valley Feb 2026
+// Core Reasoning Engines
 // ============================================================
 export * from "./thinking-engine.js";
 export * from "./think-graph.js";
@@ -11,7 +11,7 @@ export * from "./thinkfork.js";
 export * from "./prm-verifier.js";
 
 // ============================================================
-// Future Scope - Post-Hackathon Roadmap
+// Extended Reasoning Engines
 // ============================================================
 export * from "./got-engine.js";
 export * from "./memory-hierarchy.js";

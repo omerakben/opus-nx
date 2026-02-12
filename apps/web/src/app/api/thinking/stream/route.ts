@@ -172,7 +172,7 @@ export async function POST(request: Request) {
           // MITIGATION: We look up the parent node BEFORE persisting, but the actual
           // edge creation happens atomically inside persistThinkingNode. The database
           // uses created_at ordering, so even if there's a race, the graph remains
-          // navigable (just with potential parallel branches). For a hackathon demo,
+          // navigable (just with potential parallel branches). For now,
           // this is acceptable - production would need a session-level mutex or
           // database-level optimistic locking.
           //

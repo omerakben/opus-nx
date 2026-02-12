@@ -19,7 +19,15 @@ import {
   type SwarmEventUnion,
   type SwarmSubscription,
 } from "../swarm-client";
-import { getSessionNodes } from "../api";
+import {
+  compareSwarmHypothesis,
+  getSessionNodes,
+  retainSwarmHypothesis,
+  getSwarmHypothesisExperiments,
+  type SwarmHypothesisExperiment,
+  type SwarmHypothesisLifecycleInfo,
+  type SwarmHypothesisRetentionDecision,
+} from "../api";
 import { appEvents } from "../events";
 
 // ---------------------------------------------------------------------------
@@ -83,6 +91,12 @@ export interface SwarmState {
     selectedAgents: string[];
     reasoning: string;
   } | null;
+  /** Hypothesis lifecycle experiments for the session */
+  experiments: SwarmHypothesisExperiment[];
+  /** Loading flag for hypothesis experiment refresh/restoration */
+  experimentsLoading: boolean;
+  /** Lifecycle telemetry/degraded mode metadata */
+  lifecycle: SwarmHypothesisLifecycleInfo | null;
 }
 
 const INITIAL_STATE: SwarmState = {
@@ -100,6 +114,9 @@ const INITIAL_STATE: SwarmState = {
   graphNodes: [],
   graphEdges: [],
   maestroDecomposition: null,
+  experiments: [],
+  experimentsLoading: false,
+  lifecycle: null,
 };
 
 /** Polling interval for connection state (ms) */
@@ -110,6 +127,70 @@ function mapSwarmInsightType(swarmType: string): "bias_detection" | "pattern" | 
   if (swarmType.includes("bias")) return "bias_detection";
   if (swarmType.includes("improvement") || swarmType.includes("hypothesis")) return "improvement_hypothesis";
   return "pattern";
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function mergeExperimentUpdate(
+  existing: SwarmHypothesisExperiment[],
+  event: Extract<SwarmEventUnion, { event: "hypothesis_experiment_updated" }>
+): SwarmHypothesisExperiment[] {
+  const index = existing.findIndex((exp) => exp.id === event.experiment_id);
+  const current = index >= 0 ? existing[index] : null;
+  const metadata = event.metadata ?? current?.metadata ?? {};
+  const metadataRecord = asRecord(metadata) ?? {};
+
+  const updated: SwarmHypothesisExperiment = current
+    ? {
+        ...current,
+        status: event.status,
+        comparisonResult:
+          event.comparison_result !== undefined
+            ? event.comparison_result
+            : current.comparisonResult,
+        retentionDecision:
+          event.retention_decision !== undefined
+            ? event.retention_decision
+            : current.retentionDecision,
+        metadata: metadataRecord,
+        lastUpdated: event.timestamp,
+      }
+    : {
+        id: event.experiment_id,
+        sessionId: event.session_id,
+        hypothesisNodeId: readString(metadataRecord.node_id) ?? "",
+        promotedBy: readString(metadataRecord.promoted_by) ?? "human",
+        alternativeSummary:
+          readString(metadataRecord.alternative_summary) ??
+          readString(metadataRecord.summary) ??
+          "Awaiting hypothesis summary",
+        status: event.status,
+        preferredRunId: null,
+        rerunRunId: null,
+        comparisonResult: event.comparison_result ?? null,
+        retentionDecision: event.retention_decision ?? null,
+        metadata: metadataRecord,
+        createdAt: event.timestamp,
+        lastUpdated: event.timestamp,
+      };
+
+  const merged =
+    index >= 0
+      ? existing.map((exp, i) => (i === index ? updated : exp))
+      : [updated, ...existing];
+
+  return merged.sort(
+    (a, b) =>
+      new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -155,6 +236,28 @@ export function useSwarm(authSecret: string, sessionId: string | null) {
     };
   }, [stopPolling]);
 
+  const refreshExperiments = useCallback(async () => {
+    if (!sessionId) {
+      setState((prev) => ({
+        ...prev,
+        experiments: [],
+        experimentsLoading: false,
+        lifecycle: null,
+      }));
+      return;
+    }
+
+    setState((prev) => ({ ...prev, experimentsLoading: true }));
+    const response = await getSwarmHypothesisExperiments(sessionId);
+
+    setState((prev) => ({
+      ...prev,
+      experiments: response.data?.experiments ?? prev.experiments,
+      lifecycle: response.data?.lifecycle ?? prev.lifecycle,
+      experimentsLoading: false,
+    }));
+  }, [sessionId]);
+
   // Restore swarm state from DB when sessionId changes
   useEffect(() => {
     const sessionChanged = prevSessionIdRef.current !== sessionId;
@@ -165,21 +268,47 @@ export function useSwarm(authSecret: string, sessionId: string | null) {
     }
 
     if (!sessionId) return;
+    const currentSessionId = sessionId;
 
     let cancelled = false;
+    setState((prev) => ({ ...prev, experimentsLoading: true }));
 
     async function restoreSwarmState() {
       try {
-        const response = await getSessionNodes(sessionId!);
-        if (cancelled || response.error || !response.data) return;
+        const [nodesResponse, experimentsResponse] = await Promise.all([
+          getSessionNodes(currentSessionId),
+          getSwarmHypothesisExperiments(currentSessionId),
+        ]);
+        if (cancelled) return;
 
-        const { nodes, edges } = response.data;
+        const experiments = experimentsResponse.data?.experiments ?? [];
+        const lifecycle = experimentsResponse.data?.lifecycle ?? null;
+
+        if (nodesResponse.error || !nodesResponse.data) {
+          setState((prev) => ({
+            ...prev,
+            experiments,
+            lifecycle,
+            experimentsLoading: false,
+          }));
+          return;
+        }
+
+        const { nodes, edges } = nodesResponse.data;
 
         // Filter swarm nodes by structuredReasoning.swarm flag
         const swarmNodes = nodes.filter(
           (n) => (n.structuredReasoning as Record<string, unknown>)?.swarm === true
         );
-        if (swarmNodes.length === 0) return;
+        if (swarmNodes.length === 0) {
+          setState((prev) => ({
+            ...prev,
+            experiments,
+            lifecycle,
+            experimentsLoading: false,
+          }));
+          return;
+        }
 
         // Build agent map
         const agents: Record<string, AgentStatus> = {};
@@ -257,15 +386,23 @@ export function useSwarm(authSecret: string, sessionId: string | null) {
             graphNodes,
             graphEdges,
             maestroDecomposition: null,
+            experiments,
+            experimentsLoading: false,
+            lifecycle,
           });
         }
       } catch {
         // Silent — restoration is best-effort
+        if (!cancelled) {
+          setState((prev) => ({ ...prev, experimentsLoading: false }));
+        }
       }
     }
 
     restoreSwarmState();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [sessionId]);
 
   const handleEvent = useCallback((event: SwarmEventUnion) => {
@@ -430,6 +567,14 @@ export function useSwarm(authSecret: string, sessionId: string | null) {
             },
           };
 
+        case "hypothesis_experiment_updated":
+          return {
+            ...prev,
+            events,
+            experiments: mergeExperimentUpdate(prev.experiments, event),
+            experimentsLoading: false,
+          };
+
         default:
           return { ...prev, events };
       }
@@ -480,7 +625,13 @@ export function useSwarm(authSecret: string, sessionId: string | null) {
       activeSessionIdRef.current = startSessionId;
 
       // Reset state
-      setState({ ...INITIAL_STATE, phase: "running" });
+      setState((prev) => ({
+        ...INITIAL_STATE,
+        phase: "running",
+        experiments: prev.experiments,
+        experimentsLoading: prev.experimentsLoading,
+        lifecycle: prev.lifecycle,
+      }));
 
       try {
         // Subscribe to WebSocket events first
@@ -529,5 +680,92 @@ export function useSwarm(authSecret: string, sessionId: string | null) {
     setState((prev) => ({ ...prev, connectionState: "disconnected" }));
   }, [stopPolling]);
 
-  return { state, start, stop };
+  const retainExperiment = useCallback(
+    async (experimentId: string, decision: SwarmHypothesisRetentionDecision) => {
+      const response = await retainSwarmHypothesis(experimentId, {
+        decision,
+        performedBy: "human",
+      });
+
+      if (response.error || !response.data?.experiment) {
+        return { ok: false as const, error: response.error?.message ?? "Failed to retain experiment" };
+      }
+
+      const updatedExperiment = response.data.experiment;
+      setState((prev) => {
+        const index = prev.experiments.findIndex((exp) => exp.id === updatedExperiment.id);
+        const experiments =
+          index >= 0
+            ? prev.experiments.map((exp, i) => (i === index ? updatedExperiment : exp))
+            : [updatedExperiment, ...prev.experiments];
+
+        return {
+          ...prev,
+          experiments: experiments.sort(
+            (a, b) =>
+              new Date(b.lastUpdated).getTime() -
+              new Date(a.lastUpdated).getTime()
+          ),
+        };
+      });
+
+      return { ok: true as const };
+    },
+    []
+  );
+
+  const compareExperiment = useCallback(
+    async (experimentId: string) => {
+      const response = await compareSwarmHypothesis(experimentId, {
+        performedBy: "human",
+        rerunIfMissing: true,
+      });
+
+      if (response.error || !response.data) {
+        return {
+          ok: false as const,
+          error: response.error?.message ?? "Failed to compare experiment",
+        };
+      }
+
+      const payload = response.data;
+      setState((prev) => {
+        if (!payload?.experimentId) return prev;
+        const status =
+          payload.status === "comparison_ready" ? "comparing" : "rerunning";
+        const index = prev.experiments.findIndex(
+          (exp) => exp.id === payload.experimentId
+        );
+        if (index < 0) return prev;
+
+        const current = prev.experiments[index];
+        const updated: SwarmHypothesisExperiment = {
+          ...current,
+          status,
+          comparisonResult: payload.comparisonResult ?? current.comparisonResult,
+          lastUpdated: new Date().toISOString(),
+        };
+        const experiments = prev.experiments.map((exp, i) =>
+          i === index ? updated : exp
+        );
+        return { ...prev, experiments };
+      });
+
+      // For immediate compare responses, refresh to hydrate latest persisted row.
+      // For compare_started responses, this remains best-effort while WS updates stream in.
+      await refreshExperiments();
+
+      return { ok: true as const };
+    },
+    [refreshExperiments]
+  );
+
+  return {
+    state,
+    start,
+    stop,
+    refreshExperiments,
+    retainExperiment,
+    compareExperiment,
+  };
 }
