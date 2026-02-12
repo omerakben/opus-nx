@@ -1,6 +1,8 @@
 import { z } from "zod";
-import { GoTEngine, ThinkGraph } from "@opus-nx/core";
+import { GoTEngine } from "@opus-nx/core";
+import { createThinkingNode, getSessionGoTResults } from "@/lib/db";
 import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
+import { isValidUuid } from "@/lib/validation";
 
 export const maxDuration = 300;
 
@@ -14,6 +16,73 @@ const GoTRequestSchema = z.object({
   effort: z.enum(["low", "medium", "high", "max"]).default("high"),
   sessionId: z.string().uuid().optional(),
 });
+
+/**
+ * GET /api/got?sessionId=X
+ * Retrieve persisted GoT results for a session
+ */
+export async function GET(request: Request) {
+  const correlationId = getCorrelationId(request);
+
+  try {
+    const { searchParams } = new URL(request.url);
+    const sessionId = searchParams.get("sessionId");
+
+    if (!sessionId || !isValidUuid(sessionId)) {
+      return jsonError({
+        status: 400,
+        code: "INVALID_SESSION_ID",
+        message: "Valid sessionId query parameter is required",
+        correlationId,
+        recoverable: true,
+      });
+    }
+
+    const gotNodes = await getSessionGoTResults(sessionId);
+
+    // Transform DB rows into GoTStreamResult format for the frontend
+    const results = gotNodes
+      .map((node) => {
+        const sr = node.structuredReasoning as Record<string, unknown>;
+        // Only return nodes that have persisted GoT graph data
+        if (sr.type !== "got_graph" || !sr.graphState) return null;
+
+        const graphState = sr.graphState as {
+          thoughts: unknown[];
+          edges: unknown[];
+          bestThoughts: string[];
+        };
+
+        return {
+          answer: (sr.answer as string) ?? node.response ?? "",
+          confidence: (sr.confidence as number) ?? node.confidenceScore ?? 0,
+          reasoningSummary: (sr.reasoningSummary as string) ?? "",
+          stats: (sr.stats as Record<string, unknown>) ?? {},
+          config: (sr.config as Record<string, unknown>) ?? {},
+          query: node.inputQuery ?? "",
+          nodeId: node.id,
+          createdAt: node.createdAt.toISOString(),
+          graphState: {
+            thoughts: graphState.thoughts,
+            edges: graphState.edges,
+            bestThoughts: graphState.bestThoughts,
+            sessionId,
+          },
+        };
+      })
+      .filter(Boolean);
+
+    return jsonSuccess({ results }, { correlationId });
+  } catch (error) {
+    console.error("[API] Failed to get GoT results:", { correlationId, error });
+    return jsonError({
+      status: 500,
+      code: "GOT_RESULTS_FETCH_FAILED",
+      message: "Failed to get GoT results",
+      correlationId,
+    });
+  }
+}
 
 /**
  * POST /api/got
@@ -46,32 +115,39 @@ export async function POST(request: Request) {
     const engine = new GoTEngine();
     const result = await engine.reason(problem, config);
 
-    // Persist GoT results as a thinking node if sessionId is provided
+    // Persist GoT results with full graph state if sessionId is provided
     let nodeId: string | undefined;
     let persistenceError: string | null = null;
     if (sessionId) {
       try {
-        const thinkGraph = new ThinkGraph();
-        // Build a synthetic thinking block from the GoT reasoning summary
-        const thinkingBlocks = [
-          {
-            type: "thinking" as const,
-            thinking: `[Graph of Thoughts - ${config.strategy.toUpperCase()}]\n\n${result.reasoningSummary}\n\nBest thought IDs: ${result.graphState.bestThoughts.join(", ") || "none"}`,
-            signature: "synthetic-got",
-          },
-        ];
-        const graphResult = await thinkGraph.persistThinkingNode(thinkingBlocks, {
+        const dbNode = await createThinkingNode({
           sessionId,
-          inputQuery: problem,
+          reasoning: `[Graph of Thoughts - ${config.strategy.toUpperCase()}]\n\n${result.reasoningSummary}`,
           response: result.answer,
+          inputQuery: problem,
+          confidenceScore: result.confidence,
           nodeType: "got_result",
+          signature: "synthetic-got",
           tokenUsage: {
             inputTokens: result.stats.totalTokens ?? 0,
             outputTokens: 0,
             thinkingTokens: 0,
           },
+          structuredReasoning: {
+            type: "got_graph",
+            graphState: {
+              thoughts: result.graphState.thoughts,
+              edges: result.graphState.edges,
+              bestThoughts: result.graphState.bestThoughts,
+            },
+            answer: result.answer,
+            confidence: result.confidence,
+            reasoningSummary: result.reasoningSummary,
+            stats: result.stats,
+            config,
+          },
         });
-        nodeId = graphResult.node.id;
+        nodeId = dbNode.id;
       } catch (err) {
         console.warn("[API] Failed to persist GoT results:", {
           correlationId,

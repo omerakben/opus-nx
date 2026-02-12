@@ -162,10 +162,12 @@ class TestSwarmEndpoint:
     def test_swarm_returns_started(self):
         """POST /api/swarm should return started status immediately."""
         client, _ = _make_test_client()
+        token = _generate_token()
         test_uuid = "550e8400-e29b-41d4-a716-446655440000"
         response = client.post(
             "/api/swarm",
             json={"query": "Test query", "session_id": test_uuid},
+            headers={"Authorization": f"Bearer {token}"},
         )
         assert response.status_code == 200
         data = response.json()

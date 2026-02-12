@@ -107,11 +107,10 @@ def _mock_supabase_client():
 # ---------------------------------------------------------------------------
 
 def _ensure_neo4j_importable():
-    """Ensure 'neo4j' is importable by injecting a mock if needed."""
-    if "neo4j" not in sys.modules:
-        mock_neo4j = MagicMock()
-        mock_neo4j.AsyncGraphDatabase = MagicMock()
-        sys.modules["neo4j"] = mock_neo4j
+    """Force 'neo4j' imports to resolve to a mock module."""
+    mock_neo4j = MagicMock()
+    mock_neo4j.AsyncGraphDatabase = MagicMock()
+    sys.modules["neo4j"] = mock_neo4j
     # Also clear cached persistence modules to force reimport
     for key in list(sys.modules):
         if "src.persistence" in key:
@@ -119,12 +118,11 @@ def _ensure_neo4j_importable():
 
 
 def _ensure_supabase_importable():
-    """Ensure 'supabase' is importable by injecting a mock if needed."""
-    if "supabase" not in sys.modules:
-        mock_supabase = MagicMock()
-        mock_supabase.create_client = MagicMock()
-        mock_supabase.Client = MagicMock()
-        sys.modules["supabase"] = mock_supabase
+    """Force 'supabase' imports to resolve to a mock module."""
+    mock_supabase = MagicMock()
+    mock_supabase.create_client = MagicMock()
+    mock_supabase.Client = MagicMock()
+    sys.modules["supabase"] = mock_supabase
     for key in list(sys.modules):
         if "src.persistence" in key:
             del sys.modules[key]

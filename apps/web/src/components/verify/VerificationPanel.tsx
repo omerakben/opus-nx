@@ -43,38 +43,38 @@ interface VerificationResult {
 const VERDICT_STYLES = {
   correct: {
     bg: "bg-green-500/10",
-    text: "text-green-400",
-    border: "border-green-500/20",
+    text: "text-green-700 dark:text-green-400",
+    border: "border-green-500/30 dark:border-green-500/20",
     icon: "check",
     label: "Correct",
   },
   incorrect: {
     bg: "bg-red-500/10",
-    text: "text-red-400",
-    border: "border-red-500/20",
+    text: "text-red-700 dark:text-red-400",
+    border: "border-red-500/30 dark:border-red-500/20",
     icon: "x",
     label: "Incorrect",
   },
   neutral: {
     bg: "bg-yellow-500/10",
-    text: "text-yellow-400",
-    border: "border-yellow-500/20",
+    text: "text-yellow-700 dark:text-yellow-400",
+    border: "border-yellow-500/30 dark:border-yellow-500/20",
     icon: "minus",
     label: "Neutral",
   },
   uncertain: {
     bg: "bg-gray-500/10",
-    text: "text-gray-400",
-    border: "border-gray-500/20",
+    text: "text-gray-700 dark:text-gray-400",
+    border: "border-gray-500/30 dark:border-gray-500/20",
     icon: "question",
     label: "Uncertain",
   },
 } as const;
 
 const SEVERITY_STYLES = {
-  critical: "bg-red-500/20 text-red-300 border-red-500/30",
-  major: "bg-orange-500/20 text-orange-300 border-orange-500/30",
-  minor: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+  critical: "bg-red-500/20 text-red-800 dark:text-red-300 border-red-500/40 dark:border-red-500/30",
+  major: "bg-orange-500/20 text-orange-800 dark:text-orange-300 border-orange-500/40 dark:border-orange-500/30",
+  minor: "bg-yellow-500/20 text-yellow-800 dark:text-yellow-300 border-yellow-500/40 dark:border-yellow-500/30",
 } as const;
 
 // ============================================================
@@ -349,9 +349,9 @@ export function VerificationPanel({ sessionId, initialSteps }: VerificationPanel
                 className={cn(
                   "w-7 h-7 rounded-md flex items-center justify-center text-[10px] font-medium transition-all duration-300",
                   i < verifyingStep
-                    ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                    ? "bg-green-500/20 text-green-700 dark:text-green-400 border border-green-500/30"
                     : i === verifyingStep
-                      ? "bg-blue-500/20 text-blue-400 border border-blue-500/30 animate-pulse"
+                      ? "bg-blue-500/20 text-blue-700 dark:text-blue-400 border border-blue-500/30 animate-pulse"
                       : "bg-[var(--muted)]/30 text-[var(--muted-foreground)] border border-[var(--border)]"
                 )}
               >
@@ -491,7 +491,7 @@ export function VerificationPanel({ sessionId, initialSteps }: VerificationPanel
                       )}
 
                       {step.suggestedCorrection && (
-                        <div className="px-2 py-1.5 rounded bg-[var(--accent)]/10 border border-[var(--accent)]/20 text-[10px] text-[var(--accent)]">
+                        <div className="px-2 py-1.5 rounded bg-blue-500/10 border border-blue-500/30 dark:border-blue-500/20 text-[10px] text-blue-700 dark:text-blue-300">
                           <span className="font-medium">Suggested fix:</span>{" "}
                           {step.suggestedCorrection}
                         </div>
@@ -516,7 +516,7 @@ export function VerificationPanel({ sessionId, initialSteps }: VerificationPanel
                   {pattern.affectedSteps.length > 0 && (
                     <div className="mt-1 flex items-center gap-1 flex-wrap">
                       <span className="text-[var(--muted-foreground)]">Steps:</span>
-                      {pattern.affectedSteps.map((stepIdx) => (
+                      {[...new Set(pattern.affectedSteps)].map((stepIdx) => (
                         <button
                           key={stepIdx}
                           onClick={() => setExpandedStep(expandedStep === stepIdx ? null : stepIdx)}

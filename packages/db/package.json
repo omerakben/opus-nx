@@ -19,12 +19,12 @@
     "generate": "supabase gen types typescript --local > src/types.ts"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.47.0",
+    "@supabase/supabase-js": "^2.95.3",
     "@opus-nx/shared": "workspace:*"
   },
   "devDependencies": {
     "tsx": "4.21.0",
-    "typescript": "^5.7.0",
-    "supabase": "^1.200.0"
+    "typescript": "^5.9.3",
+    "supabase": "^1.226.4"
   }
 }

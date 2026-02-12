@@ -18,6 +18,7 @@ export {
   createThinkingNode,
   getThinkingNode,
   getSessionThinkingNodes,
+  getSessionGoTResults,
   getLatestThinkingNode,
   getFirstNodePerSessions,
   // Reasoning edges

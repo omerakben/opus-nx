@@ -230,6 +230,33 @@ export async function getSessionThinkingNodes(
 }
 
 /**
+ * Get GoT (Graph of Thoughts) result nodes for a session.
+ * These are stored with node_type='got_result' and contain the full
+ * graph state in structured_reasoning JSONB.
+ */
+export async function getSessionGoTResults(
+  sessionId: string,
+  options: { limit?: number } = {}
+): Promise<ThinkingNode[]> {
+  const supabase = getSupabase();
+  const { limit = 10 } = options;
+
+  const { data, error } = await supabase
+    .from("thinking_nodes")
+    .select("*")
+    .eq("session_id", sessionId)
+    .eq("node_type", "got_result")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    handleSupabaseError(error, "Failed to get session GoT results");
+  }
+
+  return (data ?? []).map(mapThinkingNode);
+}
+
+/**
  * Get the first (earliest) thinking node for each of the given session IDs.
  * Single query to avoid N+1 when loading display names for session lists.
  */

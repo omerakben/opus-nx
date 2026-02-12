@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { GoTEngine, ThinkGraph } from "@opus-nx/core";
+import { GoTEngine } from "@opus-nx/core";
+import { createThinkingNode } from "@/lib/db";
 import { getCorrelationId, jsonError } from "@/lib/api-response";
 
 export const maxDuration = 300;
@@ -164,31 +165,39 @@ export async function POST(request: Request) {
 
           if (isAborted) { controller.close(); clearInterval(heartbeat); return; }
 
-          // Persist GoT results as a thinking node if sessionId is provided
+          // Persist GoT results with full graph state if sessionId is provided
           let nodeId: string | undefined;
           let persistenceError: string | null = null;
           if (sessionId) {
             try {
-              const thinkGraph = new ThinkGraph();
-              const thinkingBlocks = [
-                {
-                  type: "thinking" as const,
-                  thinking: `[Graph of Thoughts - ${config.strategy.toUpperCase()}]\n\n${result.reasoningSummary}\n\nBest thought IDs: ${result.graphState.bestThoughts.join(", ") || "none"}`,
-                  signature: "synthetic-got",
-                },
-              ];
-              const graphResult = await thinkGraph.persistThinkingNode(thinkingBlocks, {
+              const dbNode = await createThinkingNode({
                 sessionId,
-                inputQuery: problem,
+                reasoning: `[Graph of Thoughts - ${config.strategy.toUpperCase()}]\n\n${result.reasoningSummary}`,
                 response: result.answer,
+                inputQuery: problem,
+                confidenceScore: result.confidence,
                 nodeType: "got_result",
+                signature: "synthetic-got",
                 tokenUsage: {
                   inputTokens: result.stats.totalTokens ?? 0,
                   outputTokens: 0,
                   thinkingTokens: 0,
                 },
+                structuredReasoning: {
+                  type: "got_graph",
+                  graphState: {
+                    thoughts: result.graphState.thoughts,
+                    edges: result.graphState.edges,
+                    bestThoughts: result.graphState.bestThoughts,
+                  },
+                  answer: result.answer,
+                  confidence: result.confidence,
+                  reasoningSummary: result.reasoningSummary,
+                  stats: result.stats,
+                  config,
+                },
               });
-              nodeId = graphResult.node.id;
+              nodeId = dbNode.id;
             } catch (err) {
               console.warn("[API] Failed to persist GoT stream results:", {
                 correlationId,

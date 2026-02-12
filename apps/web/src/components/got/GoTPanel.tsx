@@ -55,25 +55,62 @@ export function GoTPanel({ sessionId, onSendToVerify }: GoTPanelProps) {
   // ── SessionStorage cache key for GoT results ────────────────
   const cacheKey = sessionId ? `opus-nx:got:${sessionId}` : null;
 
-  // Restore cached result on mount / session change
+  // Restore persisted GoT result on mount / session change.
+  // Priority: 1) sessionStorage (fast, in-session) → 2) database (survives logout)
   useEffect(() => {
-    if (!cacheKey || phase !== "idle") return;
-    try {
-      const cached = sessionStorage.getItem(cacheKey);
-      if (cached) {
-        const { result: cachedResult, query: cachedQuery, strategy: cachedStrategy, elapsedMs: cachedMs } = JSON.parse(cached);
-        if (cachedResult) {
-          restore(cachedResult, cachedMs ?? 0);
-          setQuery(cachedQuery ?? "");
-          setStrategy(cachedStrategy ?? "bfs");
-        }
-      }
-    } catch {
-      // Corrupted cache — ignore
-    }
-  }, [cacheKey, phase, restore]);
+    if (!sessionId || phase !== "idle") return;
 
-  // Cache result to sessionStorage on completion
+    // Try sessionStorage first (fast path for in-session navigation)
+    if (cacheKey) {
+      try {
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+          const { result: cachedResult, query: cachedQuery, strategy: cachedStrategy, elapsedMs: cachedMs } = JSON.parse(cached);
+          if (cachedResult) {
+            restore(cachedResult, cachedMs ?? 0);
+            setQuery(cachedQuery ?? "");
+            setStrategy(cachedStrategy ?? "bfs");
+            return; // sessionStorage hit — skip DB fetch
+          }
+        }
+      } catch {
+        // Corrupted cache — fall through to DB
+      }
+    }
+
+    // Fall back to database (survives logout/refresh)
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/got?sessionId=${sessionId}`);
+        if (!res.ok || cancelled) return;
+        const json = await res.json();
+        const results = json.data?.results ?? [];
+        if (cancelled || results.length === 0) return;
+
+        // Use the most recent GoT result
+        const latest = results[0];
+        const dbResult = {
+          answer: latest.answer,
+          confidence: latest.confidence,
+          reasoningSummary: latest.reasoningSummary,
+          stats: latest.stats,
+          graphState: latest.graphState,
+        };
+        restore(dbResult, latest.stats?.totalDurationMs ?? 0);
+        setQuery(latest.query ?? "");
+        if (latest.config?.strategy) {
+          setStrategy(latest.config.strategy);
+        }
+      } catch {
+        // DB fetch failed — non-critical, GoT panel starts empty
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [sessionId, cacheKey, phase, restore]);
+
+  // Cache result to sessionStorage on completion (write-through cache)
   useEffect(() => {
     if (phase === "done" && result && cacheKey) {
       try {

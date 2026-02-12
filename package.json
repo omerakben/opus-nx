@@ -15,15 +15,16 @@
     "test": "pnpm check:migrations && turbo test"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
+    "@types/node": "^22.19.11",
     "dotenv": "17.2.4",
     "tsx": "4.21.0",
-    "turbo": "^2.3.0",
-    "typescript": "^5.7.0",
+    "turbo": "^2.8.6",
+    "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   },
   "pnpm": {
     "overrides": {
+      "axios": ">=1.13.5",
       "tar": ">=7.5.7",
       "fast-xml-parser": ">=5.3.4"
     }

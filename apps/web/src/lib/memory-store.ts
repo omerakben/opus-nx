@@ -151,13 +151,6 @@ async function doHydrate(
     memory.hydrate(snapshot);
 
     markHydrated(sessionId);
-    console.log("[MemoryStore] Hydrated from Supabase:", {
-      sessionId,
-      entries: rows.length,
-      working: snapshot.workingMemory.length,
-      recall: snapshot.recallStorage.length,
-      archival: snapshot.archivalStorage.length,
-    });
   } catch (err) {
     // Graceful degradation -- memory works ephemerally if DB is unavailable
     console.warn("[MemoryStore] Hydration failed, running ephemeral:", err);
