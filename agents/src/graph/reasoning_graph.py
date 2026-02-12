@@ -11,12 +11,27 @@ All mutations are protected by asyncio.Lock for coroutine safety.
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Callable
+from datetime import datetime
 from typing import Any
 
 import networkx as nx
 
 from .models import AgentName, EdgeRelation, ReasoningEdge, ReasoningNode
+
+logger = logging.getLogger(__name__)
+
+
+class CycleDetectedError(Exception):
+    """Raised when adding an edge would create a cycle in the reasoning graph."""
+
+    def __init__(self, source_id: str, target_id: str) -> None:
+        self.source_id = source_id
+        self.target_id = target_id
+        super().__init__(
+            f"Adding edge {source_id} -> {target_id} would create a cycle"
+        )
 
 
 class SharedReasoningGraph:
@@ -27,6 +42,14 @@ class SharedReasoningGraph:
         self._lock = asyncio.Lock()
         self._listeners: list[Callable] = []
 
+    @property
+    def node_count(self) -> int:
+        return self._graph.number_of_nodes()
+
+    @property
+    def edge_count(self) -> int:
+        return self._graph.number_of_edges()
+
     async def add_node(self, node: ReasoningNode) -> str:
         """Add a reasoning node. Notifies listeners for real-time streaming."""
         async with self._lock:
@@ -35,8 +58,25 @@ class SharedReasoningGraph:
             return node.id
 
     async def add_edge(self, edge: ReasoningEdge) -> None:
-        """Add a relationship edge between nodes."""
+        """Add a relationship edge between nodes.
+
+        Raises CycleDetectedError if the edge would create a cycle.
+        """
         async with self._lock:
+            # Cycle detection: if there's already a path from target to source,
+            # adding source -> target would create a cycle.
+            if (
+                edge.target_id in self._graph
+                and edge.source_id in self._graph
+                and nx.has_path(self._graph, edge.target_id, edge.source_id)
+            ):
+                logger.warning(
+                    "Cycle detected: %s -> %s rejected",
+                    edge.source_id,
+                    edge.target_id,
+                )
+                raise CycleDetectedError(edge.source_id, edge.target_id)
+
             self._graph.add_edge(
                 edge.source_id,
                 edge.target_id,
@@ -98,6 +138,61 @@ class SharedReasoningGraph:
         """Export graph as JSON for API responses and dashboard."""
         return nx.node_link_data(self._graph, edges="edges")
 
+    def to_snapshot(self, session_id: str) -> dict[str, Any]:
+        """Export session-scoped graph snapshot for persistence.
+
+        Returns a dict with 'nodes' and 'edges' that can be stored
+        and later restored via load_snapshot().
+        """
+        nodes = []
+        node_ids: set[str] = set()
+        for nid, data in self._graph.nodes(data=True):
+            if data.get("session_id") == session_id:
+                node_ids.add(nid)
+                serializable = {}
+                for k, v in data.items():
+                    if isinstance(v, datetime):
+                        serializable[k] = v.isoformat()
+                    else:
+                        serializable[k] = v
+                nodes.append({"id": nid, **serializable})
+
+        edges = []
+        for src, tgt, data in self._graph.edges(data=True):
+            if src in node_ids and tgt in node_ids:
+                edges.append({"source_id": src, "target_id": tgt, **data})
+
+        return {"session_id": session_id, "nodes": nodes, "edges": edges}
+
+    async def load_snapshot(self, snapshot: dict[str, Any]) -> int:
+        """Restore a session graph from a previously exported snapshot.
+
+        Returns the number of nodes loaded.
+        """
+        nodes = snapshot.get("nodes", [])
+        edges = snapshot.get("edges", [])
+
+        async with self._lock:
+            for node_data in nodes:
+                nid = node_data.pop("id", None)
+                if nid:
+                    self._graph.add_node(nid, **node_data)
+
+            for edge_data in edges:
+                src = edge_data.pop("source_id", None)
+                tgt = edge_data.pop("target_id", None)
+                if src and tgt:
+                    self._graph.add_edge(src, tgt, **edge_data)
+
+        loaded = len(nodes)
+        if loaded > 0:
+            logger.info(
+                "Loaded graph snapshot: %d nodes, %d edges",
+                loaded,
+                len(edges),
+            )
+        return loaded
+
     async def cleanup_session(self, session_id: str) -> int:
         """Remove all nodes (and their edges) for a session. Returns count removed."""
         async with self._lock:
@@ -108,6 +203,12 @@ class SharedReasoningGraph:
             ]
             for nid in to_remove:
                 self._graph.remove_node(nid)
+            if to_remove:
+                logger.info(
+                    "Cleaned up session %s: %d nodes removed",
+                    session_id,
+                    len(to_remove),
+                )
             return len(to_remove)
 
     def on_change(self, callback: Callable) -> None:
@@ -120,4 +221,4 @@ class SharedReasoningGraph:
             try:
                 await listener(event_type, data)
             except Exception:
-                pass  # Don't let listener errors crash the graph
+                logger.exception("Listener error during %s notification", event_type)
