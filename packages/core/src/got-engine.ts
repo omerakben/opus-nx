@@ -5,6 +5,7 @@
  * @description Arbitrary thought graph topology with BFS/DFS/best-first search
  */
 import { createLogger } from "@opus-nx/shared";
+import { CircuitBreaker } from "./circuit-breaker.js";
 import { ThinkingEngine } from "./thinking-engine.js";
 import type {
   Thought,
@@ -147,8 +148,7 @@ export interface GoTEngineOptions {
 export class GoTEngine {
   private options: GoTEngineOptions;
   private thoughtCounter = 0;
-  private generationFailureStreak = 0;
-  private generationCircuitOpenUntil = 0;
+  private generationCircuit: CircuitBreaker;
 
   // Reusable engines created per reason() call to avoid
   // instantiating a new Anthropic client for every LLM call.
@@ -157,6 +157,11 @@ export class GoTEngine {
 
   constructor(options: GoTEngineOptions = {}) {
     this.options = options;
+    this.generationCircuit = new CircuitBreaker({
+      name: "got-generation",
+      failureThreshold: 3,
+      cooldownMs: 30_000,
+    });
     logger.debug("GoTEngine initialized");
   }
 
@@ -186,8 +191,7 @@ export class GoTEngine {
 
     // Reset per-call state
     this.thoughtCounter = 0;
-    this.generationFailureStreak = 0;
-    this.generationCircuitOpenUntil = 0;
+    this.generationCircuit.reset();
 
     // Create reusable engines for this reasoning session
     this.engine = this.createEngineInstance(fullConfig.effort);
@@ -553,35 +557,11 @@ export class GoTEngine {
   private isTransientGenerationError(message: string): boolean {
     const lowered = message.toLowerCase();
     return (
+      CircuitBreaker.isTransientError(message) ||
       lowered.includes("connection error") ||
       lowered.includes("econn") ||
-      lowered.includes("etimedout") ||
-      lowered.includes("timeout") ||
-      lowered.includes("rate limit") ||
-      lowered.includes("429") ||
-      lowered.includes("temporarily unavailable")
+      lowered.includes("etimedout")
     );
-  }
-
-  private isGenerationCircuitOpen(): boolean {
-    return Date.now() < this.generationCircuitOpenUntil;
-  }
-
-  private markGenerationFailure(errorMessage: string): void {
-    this.generationFailureStreak += 1;
-    if (this.generationFailureStreak >= 3) {
-      this.generationCircuitOpenUntil = Date.now() + 30_000;
-      logger.warn("GoT generation circuit opened", {
-        failureStreak: this.generationFailureStreak,
-        cooldownMs: 30_000,
-        error: errorMessage,
-      });
-    }
-  }
-
-  private resetGenerationFailureState(): void {
-    this.generationFailureStreak = 0;
-    this.generationCircuitOpenUntil = 0;
   }
 
   private async sleep(ms: number): Promise<void> {
@@ -631,8 +611,8 @@ Generate ${k} distinct next-step thoughts that continue the reasoning. Each thou
 
 Use the record_thoughts tool to submit your thoughts.`;
 
-    if (this.isGenerationCircuitOpen()) {
-      const cooldownMs = Math.max(0, this.generationCircuitOpenUntil - Date.now());
+    if (this.generationCircuit.isOpen) {
+      const cooldownMs = this.generationCircuit.remainingCooldownMs;
       const circuitMessage = `Generation circuit is open; retry after ${cooldownMs}ms.`;
       logger.warn("Skipping thought generation while circuit is open", {
         cooldownMs,
@@ -657,7 +637,7 @@ Use the record_thoughts tool to submit your thoughts.`;
             [{ role: "user", content: prompt }],
             [THOUGHT_GENERATION_TOOL]
           );
-          this.resetGenerationFailureState();
+          this.generationCircuit.recordSuccess();
           break;
         } catch (error) {
           lastErrorMessage = error instanceof Error ? error.message : String(error);
@@ -736,7 +716,7 @@ Use the record_thoughts tool to submit your thoughts.`;
       const errorMsg = error instanceof Error ? error.message : String(error);
       logger.error("Thought generation failed", { error: errorMsg });
       stats.generationErrors++;
-      this.markGenerationFailure(errorMsg);
+      this.generationCircuit.recordFailure(errorMsg);
 
       // Create a visible "failed" node so the error appears in the graph
       const failedThought = this.createThought(
