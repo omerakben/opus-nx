@@ -19,6 +19,7 @@ def mock_settings() -> Settings:
         supabase_url="http://localhost:54321",
         supabase_service_role_key="test-service-key",
         auth_secret="test-secret-key",
+        voyage_api_key=None,
         agent_timeout_seconds=10,
         agent_stagger_seconds=0.1,  # Fast for tests
         neo4j_uri=None,
