@@ -3,7 +3,14 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { getConfidenceColor, getConfidenceTextClass } from "@/lib/colors";
-import { Badge, Button, Card, CardContent } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  MarkdownContent,
+  MarkdownRawToggle,
+} from "@/components/ui";
 
 // ============================================================
 // Types
@@ -423,8 +430,8 @@ export function VerificationPanel({ sessionId, initialSteps }: VerificationPanel
               <summary className="text-[11px] text-[var(--muted-foreground)] cursor-pointer hover:text-[var(--foreground)] transition-colors">
                 View verification summary
               </summary>
-              <div className="mt-2 px-3 py-2 rounded-lg bg-[var(--card)] border border-[var(--border)] text-xs text-[var(--muted-foreground)] whitespace-pre-wrap leading-relaxed">
-                {result.summary}
+              <div className="mt-2 px-3 py-2 rounded-lg bg-[var(--card)] border border-[var(--border)]">
+                <MarkdownRawToggle content={result.summary} size="sm" />
               </div>
             </details>
           )}
@@ -465,13 +472,19 @@ export function VerificationPanel({ sessionId, initialSteps }: VerificationPanel
                   {isExpanded && (
                     <div className="mt-2 space-y-2" onClick={(e) => e.stopPropagation()}>
                       {step.stepContent && (
-                        <div className="px-2 py-1.5 rounded bg-[var(--muted)]/30 text-[10px] text-[var(--foreground)] leading-relaxed italic">
-                          {step.stepContent}
+                        <div className="px-2 py-1.5 rounded bg-[var(--muted)]/30 italic">
+                          <MarkdownContent
+                            content={step.stepContent}
+                            size="xs"
+                            className="[&_p]:my-0"
+                          />
                         </div>
                       )}
-                      <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
-                        {step.explanation}
-                      </p>
+                      <MarkdownContent
+                        content={step.explanation}
+                        size="sm"
+                        className="[&_p]:my-0 [&_p]:text-[var(--muted-foreground)]"
+                      />
 
                       {step.issues.length > 0 && (
                         <div className="space-y-1">
@@ -491,9 +504,13 @@ export function VerificationPanel({ sessionId, initialSteps }: VerificationPanel
                       )}
 
                       {step.suggestedCorrection && (
-                        <div className="px-2 py-1.5 rounded bg-blue-500/10 border border-blue-500/30 dark:border-blue-500/20 text-[10px] text-blue-700 dark:text-blue-300">
-                          <span className="font-medium">Suggested fix:</span>{" "}
-                          {step.suggestedCorrection}
+                        <div className="px-2 py-1.5 rounded bg-blue-500/10 border border-blue-500/30 dark:border-blue-500/20 text-blue-700 dark:text-blue-300">
+                          <span className="text-[10px] font-medium">Suggested fix:</span>{" "}
+                          <MarkdownContent
+                            content={step.suggestedCorrection}
+                            size="xs"
+                            className="inline [&_p]:inline [&_p]:my-0"
+                          />
                         </div>
                       )}
                     </div>
@@ -512,7 +529,11 @@ export function VerificationPanel({ sessionId, initialSteps }: VerificationPanel
               {result.patterns.map((pattern, i) => (
                 <div key={i} className="px-2.5 py-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)] text-[10px]">
                   <div className="font-medium text-[var(--foreground)]">{pattern.name}</div>
-                  <div className="text-[var(--muted-foreground)]">{pattern.description}</div>
+                  <MarkdownContent
+                    content={pattern.description}
+                    size="xs"
+                    className="[&_p]:my-0 [&_p]:text-[var(--muted-foreground)]"
+                  />
                   {pattern.affectedSteps.length > 0 && (
                     <div className="mt-1 flex items-center gap-1 flex-wrap">
                       <span className="text-[var(--muted-foreground)]">Steps:</span>

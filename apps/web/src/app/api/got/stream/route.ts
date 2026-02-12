@@ -102,7 +102,7 @@ export async function POST(request: Request) {
               emit({
                 type: "thought:generated",
                 id: thought.id,
-                content: thought.content.slice(0, 500),
+                content: thought.content,
                 score: thought.score,
                 state: thought.state,
                 depth: thought.depth,
@@ -122,7 +122,7 @@ export async function POST(request: Request) {
                 type: "aggregation:complete",
                 thought: {
                   id: output.id,
-                  content: output.content.slice(0, 500),
+                  content: output.content,
                   score: output.score,
                   state: output.state,
                   depth: output.depth,

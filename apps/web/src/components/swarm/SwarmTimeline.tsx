@@ -48,13 +48,13 @@ function getEventDisplay(event: SwarmEventUnion): EventDisplay | null {
     case "graph_node_created":
       return {
         icon: <GitBranch className="w-3.5 h-3.5 text-green-400" />,
-        description: `Node created: ${event.content_preview.slice(0, 50)}${event.content_preview.length > 50 ? "..." : ""}`,
+        description: `Node created: ${event.content_preview}`,
         agent: event.agent,
       };
     case "agent_challenges":
       return {
         icon: <Swords className="w-3.5 h-3.5 text-amber-400" />,
-        description: `Challenge: ${event.argument_preview.slice(0, 50)}${event.argument_preview.length > 50 ? "..." : ""}`,
+        description: `Challenge: ${event.argument_preview}`,
         agent: event.challenger,
       };
     case "verification_score":
@@ -76,7 +76,7 @@ function getEventDisplay(event: SwarmEventUnion): EventDisplay | null {
     case "metacognition_insight":
       return {
         icon: <Lightbulb className="w-3.5 h-3.5 text-amber-400" />,
-        description: event.description.slice(0, 60) + (event.description.length > 60 ? "..." : ""),
+        description: event.description,
       };
     default:
       return null;
@@ -161,7 +161,7 @@ export const SwarmTimeline = memo(function SwarmTimeline({
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] text-[var(--foreground)] leading-tight">
+                    <span className="text-[11px] text-[var(--foreground)] leading-tight whitespace-pre-wrap break-words">
                       {display.description}
                     </span>
                   </div>

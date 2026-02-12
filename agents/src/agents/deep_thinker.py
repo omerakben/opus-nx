@@ -324,7 +324,7 @@ class DeepThinkerAgent(BaseOpusAgent):
                 session_id=self.session_id,
                 node_id=node_id,
                 agent=self.name.value,
-                content_preview=content[:150],
+                content_preview=content,
             ),
         )
 
@@ -378,7 +378,7 @@ class DeepThinkerAgent(BaseOpusAgent):
                 session_id=self.session_id,
                 node_id=node_id,
                 agent=self.name.value,
-                content_preview=f"DECISION: {description[:100]}",
+                content_preview=f"DECISION: {description}",
             ),
         )
 

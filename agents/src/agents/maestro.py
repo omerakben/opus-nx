@@ -182,7 +182,7 @@ class MaestroAgent(BaseOpusAgent):
                 session_id=self.session_id,
                 subtasks=self._subtasks,
                 selected_agents=self._selected_agents,
-                reasoning_preview=self._reasoning[:200],
+                reasoning_preview=self._reasoning,
             ),
         )
 
@@ -236,7 +236,7 @@ class MaestroAgent(BaseOpusAgent):
                 session_id=self.session_id,
                 node_id=node_id,
                 agent=self.name.value,
-                content_preview=f"Decomposed into {len(subtasks)} sub-tasks",
+                content_preview=f"Decomposition: {reasoning}\nSub-tasks: {', '.join(subtasks)}",
             ),
         )
 

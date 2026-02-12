@@ -1,10 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { cn, formatNumber } from "@/lib/utils";
-import { Card, CardContent, Badge, Skeleton } from "@/components/ui";
+import {
+  Card,
+  CardContent,
+  Badge,
+  Skeleton,
+  MarkdownContent,
+  MarkdownRawToggle,
+} from "@/components/ui";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui";
 import {
   useReasoningDetail,
@@ -17,9 +22,6 @@ import {
   Brain,
   CheckCircle,
   ChevronDown,
-  ChevronRight,
-  Code,
-  FileText,
   FlaskConical,
   Gauge,
   GitBranch,
@@ -103,17 +105,10 @@ function StepItem({
   step: ReasoningStep;
   isLast: boolean;
 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
   const config = step.type
     ? STEP_TYPE_CONFIG[step.type]
     : DEFAULT_STEP_CONFIG;
   const StepIcon = config.icon;
-
-  const isLongContent = step.content.length > 280;
-  const displayContent =
-    isLongContent && !isExpanded
-      ? step.content.slice(0, 280) + "..."
-      : step.content;
 
   return (
     <div className="relative flex gap-3">
@@ -145,29 +140,7 @@ function StepItem({
         </div>
 
         {/* Content */}
-        <p className="text-xs text-[var(--foreground)] leading-relaxed whitespace-pre-wrap">
-          {displayContent}
-        </p>
-
-        {/* Expand toggle */}
-        {isLongContent && (
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="mt-1 flex items-center gap-0.5 text-[10px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
-          >
-            {isExpanded ? (
-              <>
-                <ChevronDown className="w-3 h-3" />
-                Show less
-              </>
-            ) : (
-              <>
-                <ChevronRight className="w-3 h-3" />
-                Show more
-              </>
-            )}
-          </button>
-        )}
+        <MarkdownContent content={step.content} size="sm" />
       </div>
     </div>
   );
@@ -189,9 +162,7 @@ function DecisionPointItem({
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="flex items-start gap-2 min-w-0">
             <GitBranch className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-[var(--foreground)] leading-relaxed">
-              {point.description}
-            </p>
+            <MarkdownContent content={point.description} size="sm" />
           </div>
           {point.confidence != null && (
             <Badge
@@ -215,9 +186,7 @@ function DecisionPointItem({
               Chosen Path
             </span>
           </div>
-          <p className="text-[11px] text-[var(--foreground)] leading-relaxed">
-            {point.chosenPath}
-          </p>
+          <MarkdownContent content={point.chosenPath} size="xs" />
         </div>
 
         {/* Alternatives (collapsible) */}
@@ -240,12 +209,11 @@ function DecisionPointItem({
               <div className="space-y-1.5 pl-3 border-l border-[var(--border)]">
                 {point.alternatives.map((alt, i) => (
                   <div key={i} className="rounded bg-[var(--muted)] px-2 py-1.5">
-                    <p className="text-[11px] text-[var(--foreground)]">
-                      {alt.path}
-                    </p>
-                    <p className="text-[10px] text-[var(--muted-foreground)] mt-0.5 italic">
-                      Rejected: {alt.reasonRejected}
-                    </p>
+                    <MarkdownContent content={alt.path} size="xs" />
+                    <div className="mt-0.5 text-[10px] text-[var(--muted-foreground)] italic">
+                      <span className="font-medium">Rejected:</span>{" "}
+                      {alt.reasonRejected}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -256,9 +224,11 @@ function DecisionPointItem({
         {/* Reasoning excerpt */}
         {point.reasoningExcerpt && (
           <div className="mt-2 pl-3 border-l-2 border-[var(--border)] py-1">
-            <p className="text-[10px] text-[var(--muted-foreground)] italic leading-relaxed">
-              {point.reasoningExcerpt}
-            </p>
+            <MarkdownContent
+              content={point.reasoningExcerpt}
+              size="xs"
+              className="[&_p]:text-[var(--muted-foreground)] [&_p]:italic"
+            />
           </div>
         )}
       </CardContent>
@@ -294,8 +264,6 @@ function EdgeItem({ edge, direction }: { edge: ReasoningEdge; direction: "in" | 
 
 /** Model output with Raw / Markdown toggle */
 export function ModelOutput({ content }: { content: string }) {
-  const [mode, setMode] = useState<"md" | "raw">("md");
-
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
@@ -305,45 +273,14 @@ export function ModelOutput({ content }: { content: string }) {
             Model Output
           </span>
         </div>
-        <div className="flex items-center rounded-md border border-[var(--border)] bg-[var(--muted)]/40 p-0.5">
-          <button
-            onClick={() => setMode("md")}
-            className={cn(
-              "flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors",
-              mode === "md"
-                ? "bg-[var(--card)] text-violet-400 shadow-sm border border-[var(--border)]"
-                : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-            )}
-            title="Rendered Markdown"
-          >
-            <FileText className="w-3 h-3" />
-            MD
-          </button>
-          <button
-            onClick={() => setMode("raw")}
-            className={cn(
-              "flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors",
-              mode === "raw"
-                ? "bg-[var(--card)] text-violet-400 shadow-sm border border-[var(--border)]"
-                : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-            )}
-            title="Raw Text"
-          >
-            <Code className="w-3 h-3" />
-            Raw
-          </button>
-        </div>
       </div>
 
-      {mode === "raw" ? (
-        <div className="text-xs text-[var(--foreground)] whitespace-pre-wrap leading-relaxed pl-3 border-l-2 border-violet-500/30 font-mono">
-          {content}
-        </div>
-      ) : (
-        <div className="pl-3 border-l-2 border-violet-500/30 max-w-none [&_h1]:text-base [&_h1]:font-bold [&_h1]:text-[var(--foreground)] [&_h1]:mt-4 [&_h1]:mb-2 [&_h2]:text-sm [&_h2]:font-bold [&_h2]:text-[var(--foreground)] [&_h2]:mt-3 [&_h2]:mb-1.5 [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:text-[var(--foreground)] [&_h3]:mt-2.5 [&_h3]:mb-1 [&_p]:text-xs [&_p]:leading-relaxed [&_p]:text-[var(--foreground)] [&_p]:my-1.5 [&_ul]:text-xs [&_ul]:text-[var(--foreground)] [&_ul]:my-1.5 [&_ul]:pl-4 [&_ul]:list-disc [&_ol]:text-xs [&_ol]:text-[var(--foreground)] [&_ol]:my-1.5 [&_ol]:pl-4 [&_ol]:list-decimal [&_li]:my-0.5 [&_li]:text-[var(--foreground)] [&_strong]:text-[var(--foreground)] [&_strong]:font-bold [&_em]:text-[var(--muted-foreground)] [&_em]:italic [&_code]:text-[11px] [&_code]:text-violet-300 [&_code]:bg-violet-500/10 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_pre]:bg-[var(--card)] [&_pre]:border [&_pre]:border-[var(--border)] [&_pre]:rounded-md [&_pre]:p-3 [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre_code]:text-[var(--foreground)] [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_hr]:my-3 [&_hr]:border-[var(--border)] [&_blockquote]:border-l-2 [&_blockquote]:border-violet-500/30 [&_blockquote]:pl-3 [&_blockquote]:my-2 [&_blockquote]:italic [&_blockquote_p]:text-[var(--muted-foreground)] [&_a]:text-violet-400 [&_a]:underline [&_table]:w-full [&_table]:text-xs [&_table]:my-2 [&_table]:border-collapse [&_thead]:border-b [&_thead]:border-[var(--border)] [&_th]:text-left [&_th]:text-[10px] [&_th]:font-semibold [&_th]:text-[var(--muted-foreground)] [&_th]:uppercase [&_th]:tracking-wider [&_th]:px-3 [&_th]:py-1.5 [&_th]:bg-[var(--card)] [&_td]:text-xs [&_td]:text-[var(--foreground)] [&_td]:px-3 [&_td]:py-1.5 [&_td]:border-b [&_td]:border-[var(--border)] [&_tr:hover]:bg-[var(--muted)]/30">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
-        </div>
-      )}
+      <MarkdownRawToggle
+        content={content}
+        size="sm"
+        markdownClassName="pl-3 border-l-2 border-violet-500/30"
+        rawClassName="pl-3 border-l-2 border-violet-500/30"
+      />
     </div>
   );
 }
@@ -401,9 +338,12 @@ function ReasoningFallback({
         <Brain className="w-3.5 h-3.5" />
         <span className="font-medium">Raw Reasoning</span>
       </div>
-      <div className="text-xs text-[var(--foreground)] whitespace-pre-wrap leading-relaxed font-mono border-l-2 border-amber-500/30 pl-3">
-        {reasoning}
-      </div>
+      <MarkdownRawToggle
+        content={reasoning}
+        size="sm"
+        markdownClassName="border-l-2 border-amber-500/30 pl-3"
+        rawClassName="border-l-2 border-amber-500/30 pl-3"
+      />
 
       {response && (
         <div className="border-t border-[var(--border)] pt-4">
@@ -624,9 +564,7 @@ export function ReasoningDetail({
                         Main Conclusion
                       </span>
                     </div>
-                    <p className="text-xs text-[var(--foreground)] leading-relaxed">
-                      {structured.mainConclusion}
-                    </p>
+                    <MarkdownContent content={structured.mainConclusion} size="sm" />
                   </CardContent>
                 </Card>
               </div>

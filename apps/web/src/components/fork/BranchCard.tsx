@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { Card, CardContent, Badge } from "@/components/ui";
+import { Card, CardContent, Badge, MarkdownContent } from "@/components/ui";
 import {
   FORK_ICONS,
   FORK_LABELS,
@@ -11,7 +10,6 @@ import {
   getConfidenceColor,
   type ForkStyle,
 } from "@/lib/colors";
-import { truncate } from "@/lib/utils";
 import type { ForkBranch } from "@/lib/api";
 import { AlertCircle } from "lucide-react";
 
@@ -32,7 +30,7 @@ export function BranchCard({ branch, isRecommended, defaultExpanded, isStreaming
   const classes = getForkStyleClasses(style);
 
   const confidencePercent = Math.round(branch.confidence * 100);
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded ?? false);
+  const _isExpanded = defaultExpanded ?? true;
 
   // Pending state: branch hasn't started yet
   if (isPending) {
@@ -119,25 +117,12 @@ export function BranchCard({ branch, isRecommended, defaultExpanded, isStreaming
   const dashOffset = circumference * (1 - branch.confidence);
 
   const assumptions = branch.assumptions ?? [];
-  const displayedAssumptions = isExpanded
-    ? assumptions
-    : assumptions.slice(0, 2);
-
-  const needsToggle =
-    branch.conclusion.length > 150 || branch.keyInsights.length > 3 ||
-    branch.keyInsights.some((insight) => insight.length > 60) ||
-    assumptions.length > 2 ||
-    assumptions.some((a) => a.length > 60);
-
-  const displayedInsights = isExpanded
-    ? branch.keyInsights
-    : branch.keyInsights.slice(0, 3);
 
   return (
     <Card
       className={cn(
         "overflow-hidden transition-all relative",
-        !isExpanded && "min-h-[180px]",
+        "min-h-[180px]",
         isRecommended && "ring-2 ring-green-500/50"
       )}
       style={{
@@ -193,9 +178,11 @@ export function BranchCard({ branch, isRecommended, defaultExpanded, isStreaming
         </div>
 
         {/* Conclusion */}
-        <p className="text-sm text-[var(--foreground)] mb-2">
-          {isExpanded ? branch.conclusion : truncate(branch.conclusion, 150)}
-        </p>
+        <MarkdownContent
+          content={branch.conclusion}
+          size="base"
+          className="mb-2 [&_p]:my-0"
+        />
 
         {/* Assumptions */}
         {assumptions.length > 0 && (
@@ -204,21 +191,16 @@ export function BranchCard({ branch, isRecommended, defaultExpanded, isStreaming
               Assumptions
             </div>
             <ul className="space-y-0.5">
-              {displayedAssumptions.map((assumption, i) => (
+              {assumptions.map((assumption, i) => (
                 <li
                   key={i}
                   className="text-[12px] text-[var(--foreground)]/80 flex items-start gap-1"
                 >
                   <span className="text-amber-400/70 mt-px">~</span>
-                  <span>{isExpanded ? assumption : truncate(assumption, 60)}</span>
+                  <MarkdownContent content={assumption} size="xs" className="[&_p]:my-0" />
                 </li>
               ))}
             </ul>
-            {!isExpanded && assumptions.length > 2 && (
-              <span className="text-[10px] text-amber-400/50 mt-0.5 block">
-                +{assumptions.length - 2} more
-              </span>
-            )}
           </div>
         )}
 
@@ -229,28 +211,17 @@ export function BranchCard({ branch, isRecommended, defaultExpanded, isStreaming
               Key Insights
             </div>
             <ul className="space-y-0.5">
-              {displayedInsights.map((insight, i) => (
+              {branch.keyInsights.map((insight, i) => (
                 <li
                   key={i}
                   className="text-[12px] text-[var(--foreground)] flex items-start gap-1"
                 >
                   <span className="text-[var(--muted-foreground)]">&#8226;</span>
-                  <span>{isExpanded ? insight : truncate(insight, 60)}</span>
+                  <MarkdownContent content={insight} size="xs" className="[&_p]:my-0" />
                 </li>
               ))}
             </ul>
           </div>
-        )}
-
-        {/* Expand/Collapse toggle */}
-        {needsToggle && (
-          <button
-            type="button"
-            onClick={() => setIsExpanded((prev) => !prev)}
-            className="text-[10px] text-[var(--muted-foreground)] hover:text-violet-400 cursor-pointer mt-1"
-          >
-            {isExpanded ? "Show less" : "Read more"}
-          </button>
         )}
 
         {/* Risks & Opportunities */}
@@ -261,10 +232,10 @@ export function BranchCard({ branch, isRecommended, defaultExpanded, isStreaming
             </div>
             {branch.risks && branch.risks.length > 0 ? (
               <ul className="space-y-0.5">
-                {(isExpanded ? branch.risks : branch.risks.slice(0, 1)).map((risk, i) => (
+                {branch.risks.map((risk, i) => (
                   <li key={i} className="text-[11px] text-[var(--muted-foreground)] flex items-start gap-1">
                     <span className="text-red-400 mt-0.5">&#8226;</span>
-                    <span>{isExpanded ? risk : truncate(risk, 60)}</span>
+                    <MarkdownContent content={risk} size="xs" className="[&_p]:my-0" />
                   </li>
                 ))}
               </ul>
@@ -278,10 +249,10 @@ export function BranchCard({ branch, isRecommended, defaultExpanded, isStreaming
             </div>
             {branch.opportunities && branch.opportunities.length > 0 ? (
               <ul className="space-y-0.5">
-                {(isExpanded ? branch.opportunities : branch.opportunities.slice(0, 1)).map((opp, i) => (
+                {branch.opportunities.map((opp, i) => (
                   <li key={i} className="text-[11px] text-[var(--muted-foreground)] flex items-start gap-1">
                     <span className="text-green-400 mt-0.5">&#8226;</span>
-                    <span>{isExpanded ? opp : truncate(opp, 60)}</span>
+                    <MarkdownContent content={opp} size="xs" className="[&_p]:my-0" />
                   </li>
                 ))}
               </ul>

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { cn, formatRelativeTime, truncate } from "@/lib/utils";
-import { Badge, Card, CardContent } from "@/components/ui";
+import { cn, formatRelativeTime } from "@/lib/utils";
+import { Badge, Card, CardContent, MarkdownContent } from "@/components/ui";
 import {
   INSIGHT_COLORS,
   INSIGHT_ICONS,
@@ -10,7 +10,7 @@ import {
   getConfidenceColor,
 } from "@/lib/colors";
 import type { Insight } from "@/lib/api";
-import { Link, ChevronDown, ChevronRight, Layers } from "lucide-react";
+import { Link, ChevronRight, Layers } from "lucide-react";
 
 interface InsightCardProps {
   insight: Insight;
@@ -19,18 +19,13 @@ interface InsightCardProps {
 
 export function InsightCard({ insight, onEvidenceClick }: InsightCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isEvidenceExpanded, setIsEvidenceExpanded] = useState(false);
   const [navigatingNodeId, setNavigatingNodeId] = useState<string | null>(null);
   const Icon = INSIGHT_ICONS[insight.insightType];
   const label = INSIGHT_LABELS[insight.insightType];
   const color = INSIGHT_COLORS[insight.insightType];
 
   const confidencePercent = Math.round(insight.confidence * 100);
-  const hasMoreEvidence = insight.evidence.length > 1;
-  const visibleEvidence = isEvidenceExpanded
-    ? insight.evidence
-    : insight.evidence.slice(0, 1);
-  const hiddenCount = insight.evidence.length - 1;
+  const visibleEvidence = insight.evidence;
 
   const nodesAnalyzedCount = insight.thinkingNodesAnalyzed?.length ?? 0;
   const metadataEntries = insight.metadata
@@ -117,23 +112,11 @@ export function InsightCard({ insight, onEvidenceClick }: InsightCardProps) {
         </div>
 
         {/* Insight text */}
-        <p
-          className={cn(
-            "text-sm text-[var(--foreground)] mb-2",
-            !isExpanded && "line-clamp-3"
-          )}
-        >
-          {insight.insight}
-        </p>
+        <MarkdownContent content={insight.insight} size="base" className="mb-2" />
 
         {/* Expanded detail view */}
-        <div
-          className="overflow-hidden transition-[max-height,opacity] duration-300 ease-out"
-          style={{
-            maxHeight: isExpanded ? "500px" : "0px",
-            opacity: isExpanded ? 1 : 0,
-          }}
-        >
+        {isExpanded && (
+          <div className="animate-fade-in-up">
           {/* Metadata entries */}
           {metadataEntries.length > 0 && (
             <div className="mb-2 p-2 rounded bg-[var(--muted)]/50 space-y-1">
@@ -160,7 +143,8 @@ export function InsightCard({ insight, onEvidenceClick }: InsightCardProps) {
           <p className="text-[10px] text-[var(--muted-foreground)] mb-2">
             {absoluteDate}
           </p>
-        </div>
+          </div>
+        )}
 
         {/* Evidence links */}
         {insight.evidence.length > 0 && (
@@ -181,23 +165,20 @@ export function InsightCard({ insight, onEvidenceClick }: InsightCardProps) {
             )}
 
             {/* Expandable evidence section */}
-            <div
-              className="space-y-1 overflow-hidden transition-[max-height] duration-300 ease-out"
-              style={{
-                maxHeight: isEvidenceExpanded
-                  ? `${Math.max(200, insight.evidence.length * 100)}px`
-                  : "72px",
-              }}
-            >
+            <div className="space-y-1">
               {visibleEvidence.map((ev, i) => (
                 <button
                   key={i}
                   onClick={() => handleEvidenceClick(ev.nodeId)}
-                  aria-label={`Navigate to evidence node: ${truncate(ev.excerpt, 40)}`}
+                  aria-label={`Navigate to evidence node: ${ev.excerpt}`}
                   className="w-full text-left p-1.5 rounded border-l-2 border-violet-500/50 bg-[var(--muted)] hover:bg-[var(--border)] transition-colors focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--card)] outline-none"
                 >
-                  <blockquote className="text-[11px] text-[var(--foreground)] italic line-clamp-2 bg-[var(--muted)]/50 pl-1">
-                    {truncate(ev.excerpt, 80)}
+                  <blockquote className="text-[11px] text-[var(--foreground)] italic bg-[var(--muted)]/50 pl-1">
+                    <MarkdownContent
+                      content={ev.excerpt}
+                      size="xs"
+                      className="[&_p]:my-0"
+                    />
                   </blockquote>
                   <p className="text-[9px] text-[var(--muted-foreground)] mt-0.5">
                     Relevance: {Math.round(ev.relevance * 100)}%
@@ -205,24 +186,6 @@ export function InsightCard({ insight, onEvidenceClick }: InsightCardProps) {
                 </button>
               ))}
             </div>
-
-            {/* Show more / Show less toggle */}
-            {hasMoreEvidence && (
-              <button
-                onClick={() => setIsEvidenceExpanded(!isEvidenceExpanded)}
-                className="mt-1.5 flex items-center gap-1 text-[10px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--card)] outline-none rounded px-1 py-0.5"
-              >
-                <ChevronDown
-                  className={cn(
-                    "w-3 h-3 transition-transform duration-200",
-                    isEvidenceExpanded && "rotate-180"
-                  )}
-                />
-                {isEvidenceExpanded
-                  ? "Show less"
-                  : `Show ${hiddenCount} more`}
-              </button>
-            )}
           </div>
         )}
 

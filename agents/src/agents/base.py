@@ -279,7 +279,7 @@ class BaseOpusAgent(ABC):
             AgentCompleted(
                 session_id=self.session_id,
                 agent=self.name.value,
-                conclusion_preview=conclusion[:200],
+                conclusion_preview=conclusion,
                 confidence=confidence,
                 tokens_used=tokens_used,
             ),

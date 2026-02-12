@@ -18,6 +18,7 @@ import { calculateSwarmLayout } from "@/lib/swarm-graph-layout";
 import type { SwarmGraphNode, SwarmGraphEdge } from "@/lib/hooks/use-swarm";
 import { EDGE_COLORS, type EdgeType } from "@/lib/colors";
 import { cn } from "@/lib/utils";
+import { MarkdownContent } from "@/components/ui";
 
 // ---------------------------------------------------------------------------
 // Agent color mapping (matches AgentCard.tsx AGENT_COLORS)
@@ -56,8 +57,6 @@ type SwarmFlowNode = Node<SwarmNodeData>;
 
 const SwarmNode = memo(function SwarmNode({ data }: NodeProps<SwarmFlowNode>) {
   const { agent, content, confidence, color } = data as SwarmNodeData;
-  const preview =
-    content.length > 120 ? content.slice(0, 117) + "..." : content;
 
   return (
     <>
@@ -98,9 +97,13 @@ const SwarmNode = memo(function SwarmNode({ data }: NodeProps<SwarmFlowNode>) {
 
         {/* Content */}
         <div className="px-2.5 py-2">
-          <p className="text-[11px] text-[var(--foreground)] leading-relaxed line-clamp-4">
-            {preview}
-          </p>
+          <div className="max-h-40 overflow-y-auto pr-1">
+            <MarkdownContent
+              content={content}
+              size="xs"
+              className="[&_p]:my-0"
+            />
+          </div>
         </div>
       </div>
 

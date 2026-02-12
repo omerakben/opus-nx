@@ -8,6 +8,7 @@ import {
   CardTitle,
   Input,
   NeuralSubmitButton,
+  MarkdownContent,
 } from "@/components/ui";
 import {
   steerForkAnalysis,
@@ -91,9 +92,6 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
     Record<string, { style: string; position: string }>
   >({});
 
-  // Cross-path insight expand/collapse
-  const [insightExpanded, setInsightExpanded] = useState(false);
-
   // Active branch for tab-style selector (null = show compact overview)
   const [activeBranch, setActiveBranch] = useState<number | null>(null);
 
@@ -102,14 +100,6 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
   const [branchGuidances, setBranchGuidances] = useState<
     Record<string, string>
   >({});
-
-  // Debate expand/collapse state per entry (Improvement 1a)
-  const [expandedDebateEntries, setExpandedDebateEntries] = useState<
-    Set<string>
-  >(new Set());
-
-  // Steering history collapse (Improvement 2c)
-  const [showAllSteering, setShowAllSteering] = useState(false);
 
   // Last submitted query for retry (Improvement 2d)
   const [lastSubmittedQuery, setLastSubmittedQuery] = useState("");
@@ -155,7 +145,6 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
       setErrorTimestamp(null);
       setQuery("");
       setActiveBranch(null);
-      setExpandedDebateEntries(new Set());
       setSelectedAssumptions({});
       setDynamicSuggestions([]);
       forkStream.clear();
@@ -266,6 +255,7 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
           newContext: `Re-analyze using these selected assumptions:\n${assumptionSummary}`,
           keepOriginal: true,
         },
+        query.trim() || lastSubmittedQuery,
         analysisId ?? undefined,
       );
 
@@ -279,7 +269,7 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
 
       setIsSteering(false);
     },
-    [result, isSteering, analysisId],
+    [result, isSteering, analysisId, query, lastSubmittedQuery],
   );
 
   const handleSubmit = useCallback(
@@ -296,7 +286,6 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
       setExpandedSteeringIdx(0);
       setAnalysisId(null);
       setActiveBranch(null);
-      setExpandedDebateEntries(new Set());
       setLastSubmittedQuery(query.trim());
 
       if (mode === "debate") {
@@ -385,6 +374,7 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
       const response = await steerForkAnalysis(
         result,
         action,
+        query.trim() || lastSubmittedQuery,
         analysisId ?? undefined
       );
 
@@ -406,30 +396,12 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
     } finally {
       setIsSteering(false);
     }
-  }, [result, steerAction, steerTarget, steerInput, isSteering, analysisId, selectedAssumptions]);
-
-  // Toggle debate entry expand/collapse (Improvement 1a)
-  const toggleDebateEntry = useCallback((key: string) => {
-    setExpandedDebateEntries(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
-      return next;
-    });
-  }, []);
+  }, [result, steerAction, steerTarget, steerInput, isSteering, analysisId, selectedAssumptions, query, lastSubmittedQuery]);
 
   // Visible steering items (Improvement 2c)
   const visibleSteeringHistory = useMemo(() => {
-    if (steeringHistory.length <= 2 || showAllSteering) return steeringHistory;
-    return [steeringHistory[0]]; // Show only latest
-  }, [steeringHistory, showAllSteering]);
-
-  const hiddenSteeringCount = steeringHistory.length > 2 && !showAllSteering
-    ? steeringHistory.length - 1
-    : 0;
+    return steeringHistory;
+  }, [steeringHistory]);
 
   const steerActionConfig = {
     expand: {
@@ -730,9 +702,11 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
                               {Math.round(entry.confidence * 100)}%
                             </span>
                           </div>
-                          <p className="text-[11px] text-[var(--foreground)] leading-relaxed line-clamp-3">
-                            {entry.response.length > 200 ? entry.response.slice(0, 200) + "..." : entry.response}
-                          </p>
+                          <MarkdownContent
+                            content={entry.response}
+                            size="xs"
+                            className="[&_p]:my-0"
+                          />
                         </CardContent>
                       </Card>
                     );
@@ -943,11 +917,11 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
                             <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
                           )}
                         </div>
-                        <p className="text-[11px] text-[var(--foreground)] leading-relaxed line-clamp-2">
-                          {branch.conclusion.length > 80
-                            ? branch.conclusion.slice(0, 80) + "..."
-                            : branch.conclusion}
-                        </p>
+                        <MarkdownContent
+                          content={branch.conclusion}
+                          size="xs"
+                          className="[&_p]:my-0"
+                        />
                       </button>
                     );
                   })}
@@ -1046,7 +1020,7 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
               {steeringHistory.length > 0 && (
                 <div className="space-y-2">
                   {visibleSteeringHistory.map((sr, idx) => {
-                    const realIdx = showAllSteering || steeringHistory.length <= 2 ? idx : 0;
+                    const realIdx = idx;
                     const isExpanded = expandedSteeringIdx === realIdx;
                     return (
                       <Card key={realIdx} className="bg-cyan-500/10 border-cyan-500/30 overflow-hidden">
@@ -1064,17 +1038,21 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
                                 <ChevronUp className="w-3 h-3" />
                               </button>
                             </div>
-                            <p className="text-sm text-[var(--foreground)] mb-2 leading-relaxed">
-                              {sr.result}
-                            </p>
+                            <MarkdownContent
+                              content={sr.result}
+                              size="sm"
+                              className="mb-2 [&_p]:my-0"
+                            />
                             {sr.synthesizedApproach && (
                               <div className="mb-2 p-2 rounded bg-violet-500/10 border border-violet-500/20">
                                 <p className="text-[11px] text-violet-400 font-medium mb-0.5">
                                   Synthesized Approach
                                 </p>
-                                <p className="text-xs text-[var(--foreground)]">
-                                  {sr.synthesizedApproach}
-                                </p>
+                                <MarkdownContent
+                                  content={sr.synthesizedApproach}
+                                  size="xs"
+                                  className="[&_p]:my-0"
+                                />
                               </div>
                             )}
                             {sr.expandedAnalysis && (
@@ -1082,9 +1060,11 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
                                 <p className="text-[11px] text-blue-400 font-medium mb-0.5">
                                   Expanded Analysis
                                 </p>
-                                <p className="text-xs text-[var(--foreground)]">
-                                  {sr.expandedAnalysis}
-                                </p>
+                                <MarkdownContent
+                                  content={sr.expandedAnalysis}
+                                  size="xs"
+                                  className="[&_p]:my-0"
+                                />
                               </div>
                             )}
                             {sr.challengeResponse && (
@@ -1092,24 +1072,28 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
                                 <p className="text-[11px] text-red-400 font-medium mb-0.5">
                                   Challenge Response
                                 </p>
-                                <p className="text-xs text-[var(--foreground)]">
-                                  {sr.challengeResponse}
-                                </p>
+                                <MarkdownContent
+                                  content={sr.challengeResponse}
+                                  size="xs"
+                                  className="[&_p]:my-0"
+                                />
                               </div>
                             )}
                             {sr.keyInsights.length > 0 && (
                               <ul className="space-y-0.5 mb-2">
-                                {sr.keyInsights
-                                  .slice(0, 4)
-                                  .map((insight, i) => (
-                                    <li
-                                      key={i}
-                                      className="text-[11px] text-[var(--foreground)] flex items-start gap-1"
-                                    >
-                                      <span className="text-cyan-400 mt-0.5">•</span>
-                                      <span>{insight}</span>
-                                    </li>
-                                  ))}
+                                {sr.keyInsights.map((insight, i) => (
+                                  <li
+                                    key={i}
+                                    className="text-[11px] text-[var(--foreground)] flex items-start gap-1"
+                                  >
+                                    <span className="text-cyan-400 mt-0.5">•</span>
+                                    <MarkdownContent
+                                      content={insight}
+                                      size="xs"
+                                      className="[&_p]:my-0"
+                                    />
+                                  </li>
+                                ))}
                               </ul>
                             )}
                             <div className="flex items-center gap-3 text-[11px] text-[var(--muted-foreground)]">
@@ -1134,8 +1118,8 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
                               className="w-full flex items-center gap-2 text-left"
                             >
                               <Target className="w-3 h-3 text-cyan-400 shrink-0" />
-                              <span className="text-xs text-[var(--foreground)] truncate flex-1">
-                                {sr.result.slice(0, 80)}{sr.result.length > 80 ? "..." : ""}
+                              <span className="text-xs text-[var(--foreground)] flex-1 whitespace-pre-wrap break-words">
+                                {sr.result}
                               </span>
                               <span className="text-[11px] text-[var(--muted-foreground)] shrink-0">
                                 {(sr.durationMs / 1000).toFixed(1)}s
@@ -1147,25 +1131,6 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
                       </Card>
                     );
                   })}
-                  {/* Collapsed steering items toggle (Improvement 2c) */}
-                  {hiddenSteeringCount > 0 && (
-                    <button
-                      onClick={() => setShowAllSteering(true)}
-                      className="w-full flex items-center justify-center gap-1.5 py-1.5 text-[11px] text-[var(--muted-foreground)] hover:text-cyan-400 rounded border border-dashed border-[var(--border)] hover:border-cyan-500/30 transition-colors"
-                    >
-                      <ChevronDown className="w-3 h-3" />
-                      {hiddenSteeringCount} more steering result{hiddenSteeringCount !== 1 ? "s" : ""}
-                    </button>
-                  )}
-                  {showAllSteering && steeringHistory.length > 2 && (
-                    <button
-                      onClick={() => setShowAllSteering(false)}
-                      className="w-full flex items-center justify-center gap-1.5 py-1 text-[10px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
-                    >
-                      <ChevronUp className="w-3 h-3" />
-                      Collapse
-                    </button>
-                  )}
                 </div>
               )}
 
@@ -1177,19 +1142,7 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
                       <Sparkles className="w-3 h-3" />
                       Cross-Path Insight
                     </div>
-                    <p className="text-sm text-[var(--foreground)] leading-relaxed">
-                      {result.metaInsight.length > 250 && !insightExpanded
-                        ? result.metaInsight.slice(0, 250) + "..."
-                        : result.metaInsight}
-                    </p>
-                    {result.metaInsight.length > 250 && (
-                      <button
-                        onClick={() => setInsightExpanded(prev => !prev)}
-                        className="text-[11px] text-violet-400 hover:text-violet-300 mt-1 transition-colors"
-                      >
-                        {insightExpanded ? "Collapse" : "Show full insight"}
-                      </button>
-                    )}
+                    <MarkdownContent content={result.metaInsight} size="base" />
                   </CardContent>
                 </Card>
               )}
@@ -1201,9 +1154,11 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
                     <div className="text-xs text-green-400 mb-1">
                       Recommended Path
                     </div>
-                    <p className="text-sm text-[var(--foreground)]">
-                      {result.recommendedApproach.rationale}
-                    </p>
+                    <MarkdownContent
+                      content={result.recommendedApproach.rationale}
+                      size="sm"
+                      className="[&_p]:my-0"
+                    />
                     <p className="text-xs text-[var(--muted-foreground)] mt-1">
                       Confidence:{" "}
                       {Math.round(result.recommendedApproach.confidence * 100)}%
@@ -1267,7 +1222,6 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
                         </div>
                         {roundEntries.map((entry) => {
                           const entryKey = `${entry.style}-${entry.round}`;
-                          const isEntryExpanded = expandedDebateEntries.has(entryKey);
                           const branchStyle = entry.style as ForkStyle;
                           const branchColor = FORK_COLORS[branchStyle] ?? "var(--border)";
                           const branchIcon = FORK_ICONS[branchStyle] ?? "";
@@ -1313,29 +1267,11 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
                                 </div>
 
                                 {/* Response text with expand/collapse (Improvement 1a) */}
-                                <p className="text-[11px] text-[var(--foreground)] leading-relaxed">
-                                  {entry.response.length > 200 && !isEntryExpanded
-                                    ? entry.response.slice(0, 200) + "..."
-                                    : entry.response}
-                                </p>
-                                {entry.response.length > 200 && (
-                                  <button
-                                    onClick={() => toggleDebateEntry(entryKey)}
-                                    className="text-[10px] text-violet-400 hover:text-violet-300 mt-1 transition-colors flex items-center gap-0.5"
-                                  >
-                                    {isEntryExpanded ? (
-                                      <>
-                                        <ChevronUp className="w-2.5 h-2.5" />
-                                        Collapse
-                                      </>
-                                    ) : (
-                                      <>
-                                        <ChevronDown className="w-2.5 h-2.5" />
-                                        Show full response
-                                      </>
-                                    )}
-                                  </button>
-                                )}
+                                <MarkdownContent
+                                  content={entry.response}
+                                  size="xs"
+                                  className="[&_p]:my-0"
+                                />
 
                                 {/* Counterpoints section (Improvement 1b) */}
                                 {entry.keyCounterpoints.length > 0 && (
@@ -1453,9 +1389,11 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
                                     </span>
                                   </div>
                                 </div>
-                                <p className="text-[11px] text-[var(--foreground)] leading-relaxed">
-                                  {pos.conclusion}
-                                </p>
+                                <MarkdownContent
+                                  content={pos.conclusion}
+                                  size="xs"
+                                  className="[&_p]:my-0"
+                                />
                               </div>
                             );
                           })}
@@ -1489,9 +1427,10 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
                             <div className="text-[10px] text-[var(--muted-foreground)]">confidence</div>
                           </div>
                         </div>
-                        <p className="text-sm text-[var(--foreground)] leading-relaxed whitespace-pre-line">
-                          {debateResult.consensus}
-                        </p>
+                        <MarkdownContent
+                          content={debateResult.consensus}
+                          size="base"
+                        />
                         <div className="flex items-center gap-3 mt-2 pt-2 border-t border-green-500/20 text-[11px] text-[var(--muted-foreground)]">
                           <span className="flex items-center gap-0.5">
                             <MessageSquare className="w-2.5 h-2.5" />
@@ -1572,9 +1511,9 @@ export function ForkPanel({ sessionId }: ForkPanelProps) {
                         <button
                           key={suggestion}
                           onClick={() => setQuery(suggestion)}
-                          className="text-[11px] px-2.5 py-1 rounded-full border border-violet-500/20 text-violet-400/80 hover:border-violet-500/40 hover:text-violet-400 bg-violet-500/5 transition-colors focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-1 outline-none"
+                          className="text-[11px] px-2.5 py-1 rounded-full border border-violet-500/20 text-violet-400/80 hover:border-violet-500/40 hover:text-violet-400 bg-violet-500/5 transition-colors focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-1 outline-none whitespace-normal break-words"
                         >
-                          {suggestion.length > 60 ? suggestion.slice(0, 57) + "..." : suggestion}
+                          {suggestion}
                         </button>
                       ))}
                     </>

@@ -9,7 +9,9 @@ const ForkStyleSchema = z.enum(["conservative", "aggressive", "balanced", "contr
 
 const SteerRequestSchema = z.object({
   analysisId: z.string().uuid().optional(),
+  query: z.string().min(1).optional(),
   originalResult: z.object({
+    query: z.string().optional(),
     branches: z.array(z.object({
       style: z.string(),
       conclusion: z.string(),
@@ -72,12 +74,30 @@ export async function POST(request: Request) {
         recoverable: true,
       });
     }
-    const { originalResult, action, analysisId } = parsed.data;
+    const { originalResult, action, analysisId, query } = parsed.data;
+
+    // Refork requires the original query context to be present.
+    // Older UI payloads may omit originalResult.query, so accept top-level query fallback.
+    const effectiveQuery = originalResult.query ?? query;
+    if (action.action === "refork" && (!effectiveQuery || !effectiveQuery.trim())) {
+      return jsonError({
+        status: 400,
+        code: "MISSING_FORK_QUERY",
+        message: "Steering requires the original query context for re-analysis.",
+        correlationId,
+        recoverable: true,
+      });
+    }
+
+    const steerInput = {
+      ...originalResult,
+      query: effectiveQuery ?? "",
+    };
 
     const thinkFork = new ThinkForkEngine();
 
     const result = await thinkFork.steer(
-      originalResult as Parameters<typeof thinkFork.steer>[0],
+      steerInput as Parameters<typeof thinkFork.steer>[0],
       action as Parameters<typeof thinkFork.steer>[1]
     );
 

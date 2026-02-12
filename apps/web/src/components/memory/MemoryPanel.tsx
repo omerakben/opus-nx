@@ -2,7 +2,16 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { Badge, Button, Card, CardContent, Input, Skeleton, toast } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  Input,
+  Skeleton,
+  toast,
+  MarkdownContent,
+} from "@/components/ui";
 import { appEvents } from "@/lib/events";
 
 // ============================================================
@@ -604,14 +613,13 @@ export function MemoryPanel({ sessionId }: MemoryPanelProps) {
                       style.bg,
                     )}
                   >
-                    <p className={cn(
-                      "text-[11px] text-[var(--foreground)] leading-relaxed",
-                      !isExpanded && "line-clamp-2"
-                    )}>
-                      {isExpanded ? entry.content : (
-                        <>{entry.content.slice(0, 120)}{entry.content.length > 120 ? "..." : ""}</>
+                    <MarkdownContent
+                      content={entry.content}
+                      size="xs"
+                      className={cn(
+                        !isExpanded && "max-h-16 overflow-y-auto pr-1"
                       )}
-                    </p>
+                    />
                     <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                       <Badge
                         variant="outline"
@@ -719,12 +727,13 @@ export function MemoryPanel({ sessionId }: MemoryPanelProps) {
                     onClick={() => setExpandedSearchId(isExpanded ? null : entry.id)}
                     className="px-3 py-2 rounded-lg bg-[var(--card)] border border-[var(--border)] cursor-pointer transition-colors"
                   >
-                    <p className={cn(
-                      "text-xs text-[var(--foreground)] leading-relaxed",
-                      !isExpanded && "line-clamp-3"
-                    )}>
-                      {entry.content}
-                    </p>
+                    <MarkdownContent
+                      content={entry.content}
+                      size="sm"
+                      className={cn(
+                        !isExpanded && "max-h-24 overflow-y-auto pr-1"
+                      )}
+                    />
                     <div className="mt-1 flex items-center gap-2 flex-wrap">
                       <Badge
                         variant="outline"

@@ -191,7 +191,7 @@ export function useSwarm(authSecret: string, sessionId: string | null) {
             name,
             status: "completed",
             effort: "",
-            thinkingPreview: node.reasoning?.slice(0, 200) ?? "",
+            thinkingPreview: node.reasoning ?? "",
             conclusion: node.response ?? "",
             confidence: node.confidenceScore ?? 0,
             tokensUsed: 0,
@@ -211,7 +211,7 @@ export function useSwarm(authSecret: string, sessionId: string | null) {
           return {
             id: n.id,
             agent: (sr?.agent as string) ?? "unknown",
-            content: (n.response ?? n.reasoning ?? "").slice(0, 150),
+            content: n.response ?? n.reasoning ?? "",
             confidence: n.confidenceScore ?? undefined,
           };
         });

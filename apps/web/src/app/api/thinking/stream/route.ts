@@ -235,15 +235,7 @@ export async function POST(request: Request) {
               .filter((b) => b.type === "thinking")
               .map((b) => (b as { thinking: string }).thinking)
               .join("\n\n");
-
-            if (thinkingContentFull.length > 2000) {
-              console.warn("[Memory] Thinking content truncated for memory storage", {
-                original: thinkingContentFull.length,
-                truncated: 2000,
-                correlationId,
-              });
-            }
-            const thinkingContent = thinkingContentFull.slice(0, 2000);
+            const thinkingContent = thinkingContentFull;
 
             // Collect entries for batch persistence to Supabase
             const entriesToPersist: Parameters<typeof persistMemoryEntries>[0] = [];
@@ -267,15 +259,8 @@ export async function POST(request: Request) {
             }
 
             if (responseText) {
-              if (responseText.length > 1000) {
-                console.warn("[Memory] Response text truncated for memory storage", {
-                  original: responseText.length,
-                  truncated: 1000,
-                  correlationId,
-                });
-              }
               const entry = memory.addToWorkingMemory(
-                responseText.slice(0, 1000),
+                responseText,
                 0.5,
                 "thinking_node",
                 graphResult.node.id
@@ -284,7 +269,7 @@ export async function POST(request: Request) {
                 id: entry.id,
                 sessionId,
                 tier: "main_context",
-                content: responseText.slice(0, 1000),
+                content: responseText,
                 importance: 0.5,
                 source: "thinking_node",
                 sourceId: graphResult.node.id,

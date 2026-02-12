@@ -298,7 +298,7 @@ class SynthesizerAgent(BaseOpusAgent):
                 session_id=self.session_id,
                 node_id=synthesis_id,
                 agent=self.name.value,
-                content_preview=synthesis[:150],
+                content_preview=synthesis,
             ),
         )
 

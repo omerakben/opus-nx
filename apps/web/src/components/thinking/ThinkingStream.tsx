@@ -5,7 +5,13 @@ import { cn, formatNumber } from "@/lib/utils";
 import { TokenCounter } from "./TokenCounter";
 import { ThinkingInput } from "./ThinkingInput";
 import { ReasoningDetail, ModelOutput } from "./ReasoningDetail";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  MarkdownContent,
+} from "@/components/ui";
 import {
   AlertTriangle,
   Brain,
@@ -313,7 +319,7 @@ export function ThinkingStream({
         {compactionSummary && (
           <div className="px-4 py-1.5 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2">
             <Database className="w-3 h-3 text-amber-400 shrink-0" />
-            <span className="text-[11px] text-amber-400 truncate">
+            <span className="text-[11px] text-amber-400 whitespace-pre-wrap break-words">
               Memory consolidated: {compactionSummary}
             </span>
           </div>
@@ -354,10 +360,14 @@ export function ThinkingStream({
             <div className="text-red-400">Error: {error}</div>
           ) : thinking ? (
             <>
-              <div className="text-[var(--foreground)] whitespace-pre-wrap leading-relaxed">
-                {thinking}
+              <div className="space-y-1.5">
+                <MarkdownContent
+                  content={thinking}
+                  size={isMobile ? "xs" : "sm"}
+                  className="text-[var(--foreground)]"
+                />
                 {isStreaming && (
-                  <span className="inline-block w-1.5 h-4 bg-amber-400 animate-pulse ml-0.5 rounded-sm" />
+                  <span className="inline-block w-1.5 h-4 bg-amber-400 animate-pulse rounded-sm" />
                 )}
               </div>
 

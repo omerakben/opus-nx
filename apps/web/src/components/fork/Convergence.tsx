@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef, type KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
-import { Card, CardContent, Badge } from "@/components/ui";
+import { Card, CardContent, Badge, MarkdownContent } from "@/components/ui";
 import { FORK_COLORS, FORK_LABELS, type ForkStyle } from "@/lib/colors";
 import type { ForkResponse } from "@/lib/api";
 import { CheckCircle, XCircle, Circle, CheckCircle2, Sparkles, RotateCcw, Lightbulb, Check } from "lucide-react";
@@ -115,9 +115,11 @@ export function Convergence({ convergence, divergence, onSelectAssumption, onReA
                        point.agreementLevel === "partial" ? "Partial" : "Minimal"}
                     </Badge>
                   </div>
-                  <p className="text-[11px] text-[var(--foreground)] leading-relaxed">
-                    {point.summary}
-                  </p>
+                  <MarkdownContent
+                    content={point.summary}
+                    size="xs"
+                    className="[&_p]:my-0"
+                  />
                   <div className="flex gap-1.5 mt-2">
                     {point.styles.map((style) => (
                       <span
@@ -200,9 +202,11 @@ export function Convergence({ convergence, divergence, onSelectAssumption, onReA
                       {FORK_LABELS[style as ForkStyle]}
                     </span>
                   </div>
-                  <p className="text-[10px] text-[var(--muted-foreground)] ml-4 mt-0.5 line-clamp-2 leading-relaxed">
-                    {position}
-                  </p>
+                  <MarkdownContent
+                    content={position}
+                    size="xs"
+                    className="ml-4 mt-0.5 [&_p]:my-0 [&_p]:text-[var(--muted-foreground)]"
+                  />
                 </div>
               ))}
             </div>

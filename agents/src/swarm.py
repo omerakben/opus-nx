@@ -425,7 +425,7 @@ class SwarmManager:
             "rerun_starting",
             session_id=session_id,
             node_id=node_id,
-            correction_preview=correction[:100],
+            correction_preview=correction,
         )
 
         rerun_agents = ["deep_thinker", "contrarian"]
@@ -434,7 +434,7 @@ class SwarmManager:
             SwarmRerunStarted(
                 session_id=session_id,
                 agents=rerun_agents,
-                correction_preview=correction[:200],
+                correction_preview=correction,
             ),
         )
 

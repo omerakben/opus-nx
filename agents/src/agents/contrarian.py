@@ -265,7 +265,7 @@ class ContrarianAgent(BaseOpusAgent):
                 session_id=self.session_id,
                 challenger=self.name.value,
                 target_node_id=target_node_id,
-                argument_preview=counter_argument[:200],
+                argument_preview=counter_argument,
             ),
         )
 
@@ -312,7 +312,7 @@ class ContrarianAgent(BaseOpusAgent):
                 session_id=self.session_id,
                 node_id=support_id,
                 agent=self.name.value,
-                content_preview=f"SUPPORTS: {reason[:100]}",
+                content_preview=f"SUPPORTS: {reason}",
             ),
         )
 

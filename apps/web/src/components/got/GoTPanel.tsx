@@ -3,7 +3,17 @@
 import { useState, useCallback, useEffect, useMemo, type FormEvent } from "react";
 import { cn } from "@/lib/utils";
 import { getConfidenceColor, getConfidenceTextClass, getConfidenceBgClass } from "@/lib/colors";
-import { Badge, Card, CardContent, CardHeader, CardTitle, Input, NeuralSubmitButton } from "@/components/ui";
+import {
+  Badge,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Input,
+  NeuralSubmitButton,
+  MarkdownContent,
+  MarkdownRawToggle,
+} from "@/components/ui";
 import { GoTGraph } from "./GoTGraph";
 import { transformGoTToFlow } from "@/lib/got-graph-utils";
 import { useGoTStream } from "@/lib/hooks/use-got-stream";
@@ -422,14 +432,14 @@ export function GoTPanel({ sessionId, onSendToVerify }: GoTPanelProps) {
               {recentThoughts.map(t => (
                 <div
                   key={t.id}
-                  className="px-2 py-1 rounded bg-[var(--card)] border border-[var(--border)] text-[10px] text-[var(--muted-foreground)] truncate"
+                  className="px-2 py-1 rounded bg-[var(--card)] border border-[var(--border)] text-[10px] text-[var(--muted-foreground)] whitespace-pre-wrap break-words"
                 >
                   <span className={cn(
                     "inline-block w-1.5 h-1.5 rounded-full mr-1.5",
                     t.state === "verified" ? "bg-emerald-500" :
                     t.state === "rejected" ? "bg-red-500" : "bg-blue-500"
                   )} />
-                  {t.content.slice(0, 100)}
+                  {t.content}
                 </div>
               ))}
             </div>
@@ -486,9 +496,7 @@ export function GoTPanel({ sessionId, onSendToVerify }: GoTPanelProps) {
             </div>
           </CardHeader>
           <CardContent className="px-3 pb-3">
-            <p className="text-xs text-[var(--foreground)] leading-relaxed whitespace-pre-wrap">
-              {selectedThought.content}
-            </p>
+            <MarkdownRawToggle content={selectedThought.content} size="sm" />
           </CardContent>
         </Card>
       )}
@@ -514,9 +522,7 @@ export function GoTPanel({ sessionId, onSendToVerify }: GoTPanelProps) {
               </div>
             </CardHeader>
             <CardContent className="px-3 pb-3">
-              <p className="text-sm text-[var(--foreground)] leading-relaxed">
-                {result.answer}
-              </p>
+              <MarkdownContent content={result.answer} size="base" />
             </CardContent>
           </Card>
 
@@ -559,8 +565,8 @@ export function GoTPanel({ sessionId, onSendToVerify }: GoTPanelProps) {
             <summary className="text-[11px] text-[var(--muted-foreground)] cursor-pointer hover:text-[var(--foreground)] transition-colors">
               View reasoning summary
             </summary>
-            <div className="mt-2 px-3 py-2 rounded-lg bg-[var(--card)] border border-[var(--border)] text-xs text-[var(--muted-foreground)] whitespace-pre-wrap leading-relaxed">
-              {result.reasoningSummary}
+            <div className="mt-2 px-3 py-2 rounded-lg bg-[var(--card)] border border-[var(--border)]">
+              <MarkdownRawToggle content={result.reasoningSummary} size="sm" />
             </div>
           </details>
         </div>

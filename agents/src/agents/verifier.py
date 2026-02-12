@@ -382,7 +382,7 @@ class VerifierAgent(BaseOpusAgent):
                 session_id=self.session_id,
                 node_id=s_id,
                 agent=self.name.value,
-                content_preview=f"Chain score: {chain_score:.2f} ({len(self._step_scores)} steps)",
+                content_preview=summary_content,
             ),
         )
 

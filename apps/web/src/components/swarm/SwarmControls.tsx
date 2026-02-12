@@ -1,7 +1,13 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Button, Card, CardContent, Input } from "@/components/ui";
+import {
+  Button,
+  Card,
+  CardContent,
+  Input,
+  MarkdownContent,
+} from "@/components/ui";
 import { cn } from "@/lib/utils";
 import {
   CheckCircle2,
@@ -82,7 +88,7 @@ export function SwarmControls({ graphNodes, sessionId, onRerunStarted }: SwarmCo
       </div>
 
       <div className="space-y-2">
-        {checkpointableNodes.slice(0, 5).map((node) => {
+        {checkpointableNodes.map((node) => {
           const isExpanded = expandedNodeId === node.id;
           const borderColor = AGENT_COLORS[node.agent] ?? "#6b7280";
           const isDisagreeMode = isExpanded && verdict === "disagree";
@@ -143,12 +149,15 @@ export function SwarmControls({ graphNodes, sessionId, onRerunStarted }: SwarmCo
                 </div>
 
                 {/* Content preview */}
-                <p className={cn(
-                  "text-sm text-[var(--foreground)] leading-relaxed ml-[20px]",
-                  !isExpanded && "line-clamp-2"
-                )}>
-                  {node.content}
-                </p>
+                <div className="ml-[20px]">
+                  <MarkdownContent
+                    content={node.content}
+                    size="sm"
+                    className={cn(
+                      !isExpanded && "max-h-20 overflow-y-auto pr-1"
+                    )}
+                  />
+                </div>
 
                 {/* Expanded: action area */}
                 <div

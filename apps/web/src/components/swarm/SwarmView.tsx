@@ -10,6 +10,8 @@ import {
   Input,
   NeuralSubmitButton,
   Tooltip,
+  MarkdownContent,
+  MarkdownRawToggle,
 } from "@/components/ui";
 import type { ConnectionState } from "@/lib/swarm-client";
 import { useSwarm } from "@/lib/hooks/use-swarm";
@@ -25,8 +27,6 @@ import {
   Sparkles,
   Zap,
 } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 import { AgentCard } from "./AgentCard";
 import { SwarmControls } from "./SwarmControls";
@@ -294,9 +294,7 @@ export function SwarmView({ sessionId }: SwarmViewProps) {
                         </span>
                       )}
                     </div>
-                    <div className="max-w-none [&_h1]:text-base [&_h1]:font-bold [&_h1]:text-[var(--foreground)] [&_h1]:mt-3 [&_h1]:mb-1.5 [&_h2]:text-sm [&_h2]:font-bold [&_h2]:text-[var(--foreground)] [&_h2]:mt-2.5 [&_h2]:mb-1 [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:text-[var(--foreground)] [&_h3]:mt-2 [&_h3]:mb-1 [&_p]:text-xs [&_p]:leading-relaxed [&_p]:text-[var(--foreground)] [&_p]:my-1.5 [&_ul]:text-xs [&_ul]:text-[var(--foreground)] [&_ul]:my-1.5 [&_ul]:pl-4 [&_ul]:list-disc [&_ol]:text-xs [&_ol]:text-[var(--foreground)] [&_ol]:my-1.5 [&_ol]:pl-4 [&_ol]:list-decimal [&_li]:my-0.5 [&_li]:text-[var(--foreground)] [&_strong]:text-[var(--foreground)] [&_strong]:font-bold [&_em]:text-[var(--muted-foreground)] [&_em]:italic [&_code]:text-[11px] [&_code]:text-green-300 [&_code]:bg-green-500/10 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_pre]:bg-[var(--card)] [&_pre]:border [&_pre]:border-[var(--border)] [&_pre]:rounded-md [&_pre]:p-3 [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre_code]:text-[var(--foreground)] [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_hr]:my-3 [&_hr]:border-[var(--border)] [&_blockquote]:border-l-2 [&_blockquote]:border-green-500/30 [&_blockquote]:pl-3 [&_blockquote]:my-2 [&_blockquote]:italic [&_blockquote_p]:text-[var(--muted-foreground)] [&_a]:text-green-400 [&_a]:underline [&_table]:w-full [&_table]:text-xs [&_table]:my-2 [&_table]:border-collapse [&_thead]:border-b [&_thead]:border-[var(--border)] [&_th]:text-left [&_th]:text-[10px] [&_th]:font-semibold [&_th]:text-[var(--muted-foreground)] [&_th]:uppercase [&_th]:tracking-wider [&_th]:px-2 [&_th]:py-1 [&_th]:bg-[var(--card)] [&_td]:text-xs [&_td]:text-[var(--foreground)] [&_td]:px-2 [&_td]:py-1 [&_td]:border-b [&_td]:border-[var(--border)] [&_tr:hover]:bg-[var(--muted)]/30">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{state.synthesis}</ReactMarkdown>
-                    </div>
+                    <MarkdownRawToggle content={state.synthesis} size="sm" />
                   </CardContent>
                 </Card>
               )}
@@ -343,9 +341,11 @@ export function SwarmView({ sessionId }: SwarmViewProps) {
                               {insight.type.replace(/_/g, " ")}
                             </span>
                           </div>
-                          <p className="text-[11px] text-[var(--foreground)] leading-relaxed">
-                            {insight.description}
-                          </p>
+                          <MarkdownContent
+                            content={insight.description}
+                            size="xs"
+                            className="[&_p]:my-0"
+                          />
                           {insight.agents.length > 0 && (
                             <div className="flex gap-1 mt-1.5">
                               {insight.agents.map((agent) => (

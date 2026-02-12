@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useState, useCallback } from "react";
-import { Card, CardContent } from "@/components/ui";
+import { Card, CardContent, MarkdownContent } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import type { AgentStatus } from "@/lib/hooks/use-swarm";
 import { getConfidenceColor } from "@/lib/colors";
@@ -203,13 +203,11 @@ export const AgentCard = memo(function AgentCard({
               <div className="text-[10px] font-medium text-blue-400/90 mb-1 tracking-wide uppercase">
                 Live Reasoning
               </div>
-              <p className="text-xs text-[var(--foreground)]/80 leading-relaxed">
-                {isExpanded
-                  ? agent.thinkingPreview
-                  : agent.thinkingPreview.length > 200
-                    ? agent.thinkingPreview.slice(0, 200) + "..."
-                    : agent.thinkingPreview}
-              </p>
+              <MarkdownContent
+                content={agent.thinkingPreview}
+                size="sm"
+                className="[&_p]:my-0"
+              />
             </div>
           </div>
         )}
@@ -217,12 +215,11 @@ export const AgentCard = memo(function AgentCard({
         {/* Completed: conclusion */}
         {isCompleted && agent.conclusion && (
           <div className="ml-[22px]">
-            <p className={cn(
-              "text-sm text-[var(--foreground)] leading-relaxed",
-              !isExpanded && "line-clamp-3"
-            )}>
-              {agent.conclusion}
-            </p>
+            <MarkdownContent
+              content={agent.conclusion}
+              size="base"
+              className="[&_p]:my-0"
+            />
           </div>
         )}
 
@@ -240,9 +237,11 @@ export const AgentCard = memo(function AgentCard({
               <div className="text-[10px] font-medium text-[var(--muted-foreground)] mb-1 tracking-wide uppercase">
                 Reasoning Process
               </div>
-              <p className="text-[11px] text-[var(--foreground)]/70 leading-relaxed max-h-32 overflow-y-auto scrollbar-thin">
-                {agent.thinkingPreview}
-              </p>
+              <MarkdownContent
+                content={agent.thinkingPreview}
+                size="xs"
+                className="max-h-32 overflow-y-auto scrollbar-thin pr-1 [&_p]:my-0"
+              />
             </div>
           )}
         </div>

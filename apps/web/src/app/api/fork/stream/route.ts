@@ -168,6 +168,7 @@ export async function POST(request: Request) {
 
             const responsePayload = {
               initialFork: {
+                query,
                 branches: result.initialFork.branches,
                 convergencePoints: result.initialFork.convergencePoints,
                 divergencePoints: result.initialFork.divergencePoints,
@@ -216,6 +217,7 @@ export async function POST(request: Request) {
             if (isAborted) { controller.close(); clearInterval(heartbeat); return; }
 
             const responsePayload = {
+              query,
               branches: result.branches,
               convergencePoints: result.convergencePoints,
               divergencePoints: result.divergencePoints,

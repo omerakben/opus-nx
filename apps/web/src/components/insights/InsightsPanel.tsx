@@ -2,7 +2,19 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { InsightCard } from "./InsightCard";
-import { Card, CardHeader, CardTitle, CardContent, Skeleton, Tabs, TabsList, TabsTrigger, TabsContent, Button } from "@/components/ui";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Skeleton,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+  Button,
+  MarkdownContent,
+} from "@/components/ui";
 import type { Insight } from "@/lib/api";
 import { runInsightsAnalysis } from "@/lib/api";
 import { appEvents } from "@/lib/events";
@@ -370,9 +382,11 @@ export function InsightsPanel({
                   )}
                 </div>
                 {analysisMetadata.summary && (
-                  <p className="text-[11px] text-[var(--muted-foreground)] mt-1.5 italic border-t border-amber-500/10 pt-1.5">
-                    {analysisMetadata.summary}
-                  </p>
+                  <MarkdownContent
+                    content={analysisMetadata.summary}
+                    size="xs"
+                    className="mt-1.5 border-t border-amber-500/10 pt-1.5 [&_p]:my-0 [&_p]:italic [&_p]:text-[var(--muted-foreground)]"
+                  />
                 )}
               </div>
             )}

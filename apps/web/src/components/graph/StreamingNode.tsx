@@ -4,6 +4,7 @@ import { memo } from "react";
 import type { NodeProps } from "@xyflow/react";
 import { Handle, Position } from "@xyflow/react";
 import { Brain, Loader2 } from "lucide-react";
+import { MarkdownContent } from "@/components/ui";
 
 interface StreamingNodeData {
   reasoning: string;
@@ -25,7 +26,7 @@ const PHASE_COLORS = {
 function StreamingNodeComponent({ data }: NodeProps) {
   const nodeData = data as unknown as StreamingNodeData;
   const phaseConfig = nodeData.phase ? PHASE_COLORS[nodeData.phase] : PHASE_COLORS.analyzing;
-  const truncatedReasoning = nodeData.reasoning?.slice(0, 120) || "Processing...";
+  const reasoning = nodeData.reasoning || "Processing...";
 
   return (
     <>
@@ -61,10 +62,10 @@ function StreamingNodeComponent({ data }: NodeProps) {
 
         {/* Content preview */}
         <div className="relative px-3 py-2">
-          <p className="text-[10px] text-[var(--muted-foreground)] leading-relaxed line-clamp-3">
-            {truncatedReasoning}
+          <div className="text-[10px] text-[var(--muted-foreground)] leading-relaxed max-h-28 overflow-y-auto pr-1">
+            <MarkdownContent content={reasoning} size="xs" className="[&_p]:my-0" />
             <span className="inline-block w-1.5 h-3 ml-0.5 bg-current opacity-70" style={{ animation: "blink 1s step-end infinite" }} />
-          </p>
+          </div>
         </div>
 
         {/* Token counter */}

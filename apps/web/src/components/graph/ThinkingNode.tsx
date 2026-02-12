@@ -8,8 +8,9 @@ import {
   getConfidenceBgClass,
   getConfidenceTextClass,
 } from "@/lib/colors";
-import { formatNumber, truncate, formatRelativeTime } from "@/lib/utils";
+import { formatNumber, formatRelativeTime } from "@/lib/utils";
 import type { GraphNode } from "@/lib/graph-utils";
+import { MarkdownContent } from "@/components/ui";
 import {
   createCheckpoint,
   type CheckpointVerdict,
@@ -25,8 +26,6 @@ import {
   Check,
   HelpCircle,
   X,
-  ChevronDown,
-  ChevronUp,
   Loader2,
   Send,
   AlertCircle,
@@ -135,7 +134,6 @@ export const ThinkingNode = memo(function ThinkingNode({
     onBranchCreated,
   } = nodeData;
 
-  const [isExpanded, setIsExpanded] = useState(false);
   const [checkpointState, setCheckpointState] = useState<{
     verdict: CheckpointVerdict | null;
     isLoading: boolean;
@@ -157,8 +155,6 @@ export const ThinkingNode = memo(function ThinkingNode({
 
   // Get display text
   const displayText = inputQuery || reasoning;
-  const truncatedText = isExpanded ? displayText : truncate(displayText, 120);
-  const canExpand = displayText.length > 120;
 
   /** Handle checkpoint action */
   const handleCheckpoint = useCallback(
@@ -288,18 +284,9 @@ export const ThinkingNode = memo(function ThinkingNode({
 
         {/* Content */}
         <div className="p-3">
-          <p className={cn("text-sm text-[var(--foreground)]", !isExpanded && "line-clamp-3")}>
-            {truncatedText}
-          </p>
-          {canExpand && (
-            <button
-              onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
-              className="flex items-center gap-0.5 mt-1 text-[10px] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
-            >
-              {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              {isExpanded ? "Collapse" : "Expand"}
-            </button>
-          )}
+          <div className="max-h-64 overflow-y-auto pr-1">
+            <MarkdownContent content={displayText} size="sm" />
+          </div>
         </div>
 
         {/* Checkpoint bar - shows on hover for thinking nodes */}

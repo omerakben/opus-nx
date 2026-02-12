@@ -215,6 +215,7 @@ export interface ForkBranch {
 }
 
 export interface ForkResponse {
+  query?: string;
   branches: ForkBranch[];
   convergencePoints: Array<{
     topic: string;
@@ -319,11 +320,12 @@ export interface SteeringResult {
 export async function steerForkAnalysis(
   originalResult: ForkResponse,
   action: SteeringAction,
+  query?: string,
   analysisId?: string
 ): Promise<ApiResponse<SteeringResult>> {
   return fetchApi<SteeringResult>("/api/fork/steer", {
     method: "POST",
-    body: JSON.stringify({ originalResult, action, analysisId }),
+    body: JSON.stringify({ originalResult, action, query, analysisId }),
   });
 }
 

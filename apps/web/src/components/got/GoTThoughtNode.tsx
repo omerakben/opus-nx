@@ -4,6 +4,7 @@ import { memo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { cn } from "@/lib/utils";
 import type { GoTFlowNode } from "@/lib/got-graph-utils";
+import { MarkdownContent } from "@/components/ui";
 
 const STATE_COLORS: Record<string, { bg: string; text: string; label: string }> = {
   verified: { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Verified" },
@@ -17,9 +18,6 @@ const STATE_COLORS: Record<string, { bg: string; text: string; label: string }> 
 function GoTThoughtNodeComponent({ data }: NodeProps<GoTFlowNode>) {
   const stateStyle = STATE_COLORS[data.state] ?? STATE_COLORS.generated;
   const score = data.score;
-  const truncatedContent = data.content.length > 80
-    ? data.content.slice(0, 80) + "..."
-    : data.content;
 
   return (
     <div
@@ -47,9 +45,13 @@ function GoTThoughtNodeComponent({ data }: NodeProps<GoTFlowNode>) {
 
       {/* Content */}
       <div className="px-2 py-1.5">
-        <p className="text-[10px] text-[var(--foreground)] leading-relaxed line-clamp-3">
-          {truncatedContent}
-        </p>
+        <div className="max-h-32 overflow-y-auto pr-1">
+          <MarkdownContent
+            content={data.content}
+            size="xs"
+            className="[&_p]:my-0"
+          />
+        </div>
       </div>
 
       {/* Depth indicator */}
