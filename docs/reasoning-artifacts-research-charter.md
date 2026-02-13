@@ -133,27 +133,58 @@ The additional novelty is treating human checkpoint feedback as a first-class, m
 
 Phase 1: Data foundation
 
-1. Add artifact and lifecycle tables in `/Users/ozzy-mac/Projects/opus-nx/supabase/migrations/`.
-2. Extend DB access in `/Users/ozzy-mac/Projects/opus-nx/packages/db/src/`.
+1. Add artifact and lifecycle tables in `supabase/migrations/`. **DONE** — migrations 012-014.
+2. Extend DB access in `packages/db/src/`. **DONE** — `reasoning-artifacts.ts`, `structured-reasoning.ts`, `hypothesis-experiments.ts`, `supabase-error.ts`.
 
 Phase 2: Artifact ingestion and retrieval
 
-1. Extend persistence in `/Users/ozzy-mac/Projects/opus-nx/packages/core/src/think-graph.ts`.
-2. Add Voyage-based reasoning embeddings via `/Users/ozzy-mac/Projects/opus-nx/packages/core/src/memory-manager.ts`.
-3. Add rehydration query paths in `/Users/ozzy-mac/Projects/opus-nx/packages/db/src/thinking-nodes.ts`.
+1. Extend persistence in `packages/core/src/think-graph.ts`. **DONE** — reasoning graph persistence with circuit breaker.
+2. Add Voyage-based reasoning embeddings via `packages/core/src/memory-manager.ts`. **DONE** — 1024-dim Voyage-3 embeddings.
+3. Add rehydration query paths in `agents/src/persistence/supabase_sync.py`. **DONE** — `search_reasoning_artifacts`, `search_structured_reasoning_hypotheses_semantic`, `create_session_rehydration_run`.
 
 Phase 3: Swarm integration
 
-1. Add experiment endpoints in `/Users/ozzy-mac/Projects/opus-nx/agents/src/server.py`.
-2. Add rerun and lifecycle event hooks in `/Users/ozzy-mac/Projects/opus-nx/agents/src/swarm.py` and `/Users/ozzy-mac/Projects/opus-nx/agents/src/events/types.py`.
-3. Add explicit checkpoint telemetry in `/Users/ozzy-mac/Projects/opus-nx/agents/src/server.py` checkpoint flows.
+1. Add experiment endpoints in `agents/src/server.py`. **DONE** — experiment CRUD, action logging, experiment listing.
+2. Add rerun and lifecycle event hooks in `agents/src/swarm.py`. **DONE** — `rerun_with_correction`, reasoning rehydration pipeline, lifecycle events.
+3. Add explicit checkpoint telemetry in `agents/src/server.py`. **DONE** — expanded verdict set (agree/disagree/explore/note), experiment_id flow.
 
 Phase 4: UX loop
 
-1. Add promote action in `/Users/ozzy-mac/Projects/opus-nx/apps/web/src/components/thinking/ReasoningDetail.tsx`.
-2. Add experiment panel and compare/retain flow in `/Users/ozzy-mac/Projects/opus-nx/apps/web/src/components/`.
-3. Add API client and websocket updates in `/Users/ozzy-mac/Projects/opus-nx/apps/web/src/lib/api.ts` and `/Users/ozzy-mac/Projects/opus-nx/apps/web/src/lib/hooks/use-swarm.ts`.
-4. Add human-checkpoint UI affordances and checkpoint impact summaries.
+1. Add hypothesis panel in `apps/web/src/components/swarm/SwarmHypothesisPanel.tsx`. **DONE** — promote action, experiment display.
+2. Add experiment API routes in `apps/web/src/app/api/swarm/`. **DONE** — experiment endpoints.
+3. Add API client and hook updates in `apps/web/src/lib/`. **DONE** — `api.ts`, `use-swarm.ts`, `swarm-client.ts`.
+4. Human-checkpoint UI polish and impact summaries. **IN PROGRESS** — basic checkpoint flow works; comparison charts pending.
+
+## Implementation Status
+
+### Hypothesis Readiness
+
+| Hypothesis | Infrastructure | Evaluation | Status |
+|-----------|---------------|-----------|--------|
+| H1: Rehydration quality lift | Rehydration pipeline in `swarm.py`, artifact persistence | Live eval harness (`pnpm eval:live`) with verifier_score tracking | **Ready to test** |
+| H2: Step/hypothesis indexing precision | HNSW indexes, normalized tables, `match_*` RPCs | Retrieval eval (`pnpm eval:retrieval`) with precision@k, MRR | **Ready to test** |
+| H3: Semantic retrieval vs recency | Voyage embeddings, composite scoring (sim+imp+rec+retain) | Retrieval eval scenarios (cross-session, recency tiebreaker) | **Ready to test** |
+| H4: Lifecycle adoption rate | Full lifecycle state machine, experiment actions audit trail | Live eval tracks completion_rate; lifecycle metrics need dashboard | **Partially ready** |
+| H5: Checkpoint quality delta | Checkpoint verdicts, rerun_with_correction, experiment comparison | Need checkpoint ROI eval harness (3-mode comparison) | **Infrastructure ready** |
+| H6: Adaptive vs fixed checkpoint | Checkpoint triggers, session-level metrics | Need checkpoint ROI eval harness | **Infrastructure ready** |
+
+### Test Coverage
+
+| Component | Tests | Coverage |
+|-----------|-------|----------|
+| Core TS engines (9 engines + circuit breaker) | 289 tests across 9 suites | High |
+| DB modules (4 modules) | 146 tests across 8 files | High |
+| Python agents (4 agents + swarm + persistence) | 256 tests, 2 skipped | Medium-high |
+| Evaluation framework | 3 harnesses, 20 benchmark tasks, 8 retrieval scenarios | Functional |
+
+### Evaluation Infrastructure
+
+| Harness | Command | Hypotheses Tested |
+|---------|---------|-------------------|
+| Live eval (dry-run) | `pnpm eval:live:dry` | H1 (verifier score, contradiction rate, synthesis confidence) |
+| Live eval (real) | `pnpm eval:live` | H1, H4 (requires ANTHROPIC_API_KEY) |
+| Retrieval quality | `pnpm eval:retrieval` | H2, H3 (precision@k=0.625, MRR=0.8125 baseline) |
+| Synthetic metrics | `pnpm eval:reasoning` | H1 (deterministic noise, no LLM calls) |
 
 ## Publication-ready WHY-WHAT-HOW-SO-WHAT Summary
 
