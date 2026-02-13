@@ -1,21 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import "@/styles/globals.css";
-import { ensureServerEnv } from "@/lib/server-env";
 import { ClientToaster } from "@/components/ui/client-toaster";
 
-// Validate required runtime env vars as soon as the app boots.
-if (process.env.NEXT_PHASE !== "phase-production-build") {
-  ensureServerEnv();
-}
-
 export const metadata: Metadata = {
-  title: "Opus Nx - Cognitive Architecture Dashboard",
+  title: "Opus Nx - Persistent Reasoning Research Platform",
   description:
-    "Visualize reasoning graphs, stream extended thinking, and explore metacognitive insights",
+    "Open-source platform for persistent reasoning graphs, swarm analysis, and iterative policy improvement",
   keywords: [
     "AI",
     "reasoning",
-    "cognitive architecture",
+    "research platform",
     "Claude",
     "extended thinking",
   ],

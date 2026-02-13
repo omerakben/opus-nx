@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { requiresAuthentication } from "@/lib/route-auth";
 
 /**
  * Verify the HMAC-signed auth cookie using Web Crypto API (Edge-compatible).
@@ -42,27 +43,13 @@ async function verifyAuthCookie(cookieValue: string): Promise<boolean> {
 
 /**
  * Authentication middleware.
- * Checks for a signed `opus-nx-auth` cookie on every request.
- * Unauthenticated users are redirected to /login.
+ * Public landing/docs routes remain accessible without auth.
+ * Workspace and protected APIs require a signed `opus-nx-auth` cookie.
  */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow access to public routes without auth
-  if (
-    pathname === "/login" ||
-    pathname.startsWith("/share/") ||
-    pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/api/demo") ||
-    pathname.startsWith("/api/health") ||
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/favicon") ||
-    pathname.endsWith(".svg") ||
-    pathname.endsWith(".png") ||
-    pathname.endsWith(".ico") ||
-    pathname.endsWith(".jpg") ||
-    pathname.endsWith(".jpeg")
-  ) {
+  if (!requiresAuthentication(pathname)) {
     return NextResponse.next();
   }
 
@@ -70,6 +57,9 @@ export async function proxy(request: NextRequest) {
 
   if (!authCookie || !(await verifyAuthCookie(authCookie.value))) {
     const loginUrl = new URL("/login", request.url);
+    if (pathname.startsWith("/workspace")) {
+      loginUrl.searchParams.set("next", pathname);
+    }
     return NextResponse.redirect(loginUrl);
   }
 

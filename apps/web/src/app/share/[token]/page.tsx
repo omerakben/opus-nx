@@ -92,10 +92,10 @@ export default async function SharedSessionPage({ params }: SharePageProps) {
             Want your own reasoning graph?
           </p>
           <Link
-            href="/login"
+            href="/workspace"
             className="inline-flex items-center rounded-md bg-[var(--accent)] px-3 py-1.5 text-sm font-medium text-[var(--accent-foreground)] hover:opacity-90"
           >
-            Open Opus Nx
+            Open Workspace
           </Link>
         </div>
       </div>

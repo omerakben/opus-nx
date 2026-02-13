@@ -20,7 +20,7 @@ export default function NotFound() {
           href="/"
           className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md bg-[var(--accent)] text-white hover:opacity-90 transition-opacity"
         >
-          Back to Dashboard
+          Back to Home
         </Link>
       </div>
     </div>
