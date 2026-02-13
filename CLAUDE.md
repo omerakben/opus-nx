@@ -8,15 +8,29 @@ Opus Nx is a research system for persistent reasoning artifacts and hypothesis l
 
 **Key Innovation**: Extended thinking becomes persistent "ThinkGraph" nodes you can see, steer, verify, and build upon. A swarm of 6 AI agents (Maestro, DeepThinker, Contrarian, Verifier, Synthesizer, Metacognition) collaborate in real-time via WebSocket streaming.
 
-**Two-Service Architecture**:
-- **Service 1**: Next.js Dashboard on Vercel (`https://opus-nx.vercel.app`)
-- **Service 2**: Python Agent Swarm on Fly.io (`https://opus-nx-agents.fly.dev`)
+**Two-Service Architecture** (cloud) or **all-local via Docker**:
+- **Service 1**: Next.js Dashboard — Vercel (`https://opus-nx.vercel.app`) or local (`localhost:3000`)
+- **Service 2**: Python Agent Swarm — Fly.io (`https://opus-nx-agents.fly.dev`) or local (`localhost:8000`)
+- **Database**: Supabase cloud or local Docker (PostgreSQL 17 + pgvector + PostgREST)
 
 ## Commands
 
-### Development
+### Docker Local Setup (Recommended for Contributors)
 
 ```bash
+./scripts/docker-start.sh              # Start DB + install deps + build + launch dev servers
+./scripts/docker-start.sh --stop       # Stop everything (dev servers + Docker database)
+./scripts/docker-start.sh --reset      # Wipe database volume and start fresh
+./scripts/docker-start.sh --db-only    # Start only the local database
+```
+
+Only requires Docker, Node.js 22+, pnpm, and an `ANTHROPIC_API_KEY`. The script copies `.env.docker` → `.env` with pre-configured local DB credentials (PostgREST JWT tokens, Supabase-compatible URL at `localhost:54321`).
+
+### Development (Supabase Cloud)
+
+```bash
+./scripts/dev-start.sh                 # Full setup + launch (Supabase cloud)
+./scripts/dev-start.sh --docker        # Delegates to docker-start.sh
 pnpm install              # Install dependencies
 pnpm build                # Build all packages (Turborepo)
 pnpm dev                  # Start all dev servers
@@ -38,6 +52,7 @@ uv run pytest                                      # Run Python tests
 pnpm db:migrate           # Run Supabase migrations
 pnpm db:generate          # Regenerate TypeScript types from Supabase
 pnpm check:migrations     # Verify migration drift between supabase/ and packages/db/migrations/
+docker exec -it opus-nx-postgres psql -U postgres -d opus_nx  # Direct SQL access (Docker)
 ```
 
 ### Quality
@@ -73,14 +88,23 @@ packages/
                        GoT Engine, MemoryHierarchy, MemoryManager
   db/               -> Supabase client, query functions, types
   shared/           -> Shared types, utilities, config loaders
+docker/
+  postgres/
+    init.sql        -> Local DB bootstrap (schemas, roles, pgvector extension)
+    run-migrations.sh -> Runs all SQL migrations on first container start
+  nginx/
+    nginx.conf      -> Gateway: strips /rest/v1/ prefix, proxies to PostgREST
 configs/
   agents.yaml       -> Agent definitions (model, tools, prompts) -- 5 agents
   categories.yaml   -> Knowledge taxonomy -- 5 categories
   prompts/          -> System prompts for orchestrator and agents
     orchestrator.md, metacognition.md, research.md, code.md, knowledge.md, planning.md, communication.md
     thinkfork/      -> Per-style prompts: conservative.md, aggressive.md, balanced.md, contrarian.md, comparison.md
+scripts/
+  dev-start.sh      -> Full setup + launch (Supabase cloud, --docker flag available)
+  docker-start.sh   -> Docker local setup: DB + deps + build + launch (one command)
 supabase/
-  migrations/       -> Canonical SQL migrations (mirrored to packages/db/migrations/)
+  migrations/       -> Canonical SQL migrations (14 migrations, 001-014)
 docs/
   build-history/    -> Archived build session prompts and specs
 ```
@@ -137,7 +161,7 @@ Bottom Panel: Thinking stream + query input (ThinkGraph tab only)
 
 ### Data Layer (`packages/db/src/`)
 
-Supabase PostgreSQL with pgvector. Key tables:
+PostgreSQL with pgvector (Supabase cloud or local Docker via PostgREST). Key tables:
 
 - `thinking_nodes` / `reasoning_edges` / `decision_points` -- ThinkGraph storage
 - `metacognitive_insights` -- Self-reflection outputs
@@ -221,10 +245,12 @@ Browser -> wss://opus-nx-agents.fly.dev/ws/{sessionId}?token=HMAC
 
 Migrations must exist in BOTH locations and be identical:
 
-1. `supabase/migrations/` (canonical) -- 9 migrations (001 through 009)
+1. `supabase/migrations/` (canonical) -- 14 migrations (001 through 014)
 2. `packages/db/migrations/` (mirror)
 
 The `pnpm check:migrations` script enforces this.
+
+**Docker local mode**: Migrations run automatically on first `docker compose up` via `docker/postgres/run-migrations.sh`. To re-run after adding new migrations, use `./scripts/docker-start.sh --reset`.
 
 ### TypeScript Strict Mode
 
@@ -234,13 +260,22 @@ All packages use strict TypeScript. Exports use `.js` extensions for ESM compati
 export * from "./thinking-engine.js";  // Note the .js even for .ts files
 ```
 
-### Environment Variables (see `.env.example`)
+### Environment Variables
 
-**Required**
+**Two env templates**:
+- `.env.example` -- For Supabase cloud setup (5 required keys)
+- `.env.docker` -- For Docker local setup (only `ANTHROPIC_API_KEY` required, everything else pre-configured)
+
+**Required (cloud)**
 
 - `ANTHROPIC_API_KEY` -- Required for Claude Opus 4.6
 - `AUTH_SECRET` -- Required for HMAC auth cookie signing (also used as login password)
 - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` -- Database
+
+**Required (Docker local)**
+
+- `ANTHROPIC_API_KEY` -- Only key you need to add
+- All other values are pre-configured in `.env.docker` (local PostgREST JWT tokens, `localhost:54321` URL)
 
 **Swarm Backend**
 
@@ -256,6 +291,23 @@ export * from "./thinking-engine.js";  // Note the .js even for .ts files
 
 - `ANTHROPIC_API_KEY`, `AUTH_SECRET` (must match Vercel), `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 - `CORS_ORIGINS` -- JSON array of allowed origins (default includes `https://opus-nx.vercel.app`)
+
+### Docker Local Architecture
+
+When using `docker-compose.local.yml`, three containers replace Supabase cloud:
+
+```
+Browser → Next.js (host :3000)
+  → packages/db (Supabase JS client, unchanged)
+    → nginx gateway (:54321) strips /rest/v1/ prefix
+      → PostgREST (:3000 internal) validates JWT, switches PG role
+        → PostgreSQL 17 + pgvector (:54322 external)
+```
+
+- **Zero code changes**: Supabase JS client talks to PostgREST via the same REST API
+- **JWT auth**: Pre-signed tokens in `.env.docker` use Supabase's well-known local dev secret
+- **Roles**: `service_role` (full access), `anon` (read-only), `authenticator` (PostgREST connection role)
+- **Data persistence**: Docker volume `pgdata` survives restarts; `--reset` wipes it
 
 ## Research Foundation
 
@@ -277,8 +329,9 @@ Python agent tests: `cd agents && uv run pytest`
 - **LLM**: Claude Opus 4.6 (only model with 50k extended thinking budget)
 - **Dashboard**: Next.js 16, React 19, Tailwind CSS 4, shadcn/ui
 - **Agent Swarm**: Python 3.12, FastAPI, Anthropic SDK, NetworkX
-- **Database**: Supabase (PostgreSQL + pgvector with HNSW indexes)
+- **Database**: PostgreSQL 17 + pgvector (Supabase cloud or local Docker via PostgREST)
+- **Local DB Stack**: pgvector/pgvector:0.8.1-pg17, PostgREST v12.2.3, nginx 1.27-alpine
 - **Visualization**: @xyflow/react (react-flow)
-- **Deployment**: Vercel (dashboard) + Fly.io (agents)
+- **Deployment**: Vercel (dashboard) + Fly.io (agents), or fully local via Docker
 - **Runtime**: Node.js 22+, TypeScript 5.7+
 - **Testing**: Vitest 4, pytest
