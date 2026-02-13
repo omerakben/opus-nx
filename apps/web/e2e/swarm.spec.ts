@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { createHmac } from "node:crypto";
 
 /**
  * Swarm UI E2E tests.
@@ -8,10 +9,31 @@ import { test, expect } from "@playwright/test";
  */
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
+const WORKSPACE_URL = `${BASE_URL}/workspace`;
+
+test.beforeEach(async ({ context }) => {
+  const authSecret = process.env.AUTH_SECRET;
+  test.skip(!authSecret, "Set AUTH_SECRET for workspace e2e authentication");
+
+  const signature = createHmac("sha256", authSecret)
+    .update("opus-nx-authenticated")
+    .digest("hex");
+
+  await context.addCookies([
+    {
+      name: "opus-nx-auth",
+      value: signature,
+      url: BASE_URL,
+      path: "/",
+      httpOnly: true,
+      sameSite: "Lax",
+    },
+  ]);
+});
 
 test.describe("Swarm Tab Visibility", () => {
   test("Swarm tab is visible in right panel", async ({ page }) => {
-    await page.goto(BASE_URL);
+    await page.goto(WORKSPACE_URL);
 
     // The Swarm tab trigger should exist in the right panel
     const swarmTab = page.locator('[data-tour="swarm-tab"]');
@@ -24,7 +46,7 @@ test.describe("SwarmView Idle State", () => {
   test("SwarmView renders idle state with heading and input", async ({
     page,
   }) => {
-    await page.goto(BASE_URL);
+    await page.goto(WORKSPACE_URL);
 
     // Click the Swarm tab to activate it
     const swarmTab = page.locator('[data-tour="swarm-tab"]');
@@ -41,7 +63,7 @@ test.describe("SwarmView Idle State", () => {
   });
 
   test("example queries are visible in idle state", async ({ page }) => {
-    await page.goto(BASE_URL);
+    await page.goto(WORKSPACE_URL);
 
     const swarmTab = page.locator('[data-tour="swarm-tab"]');
     await swarmTab.click();
@@ -67,7 +89,7 @@ test.describe("Swarm API Mocking", () => {
       });
     });
 
-    await page.goto(BASE_URL);
+    await page.goto(WORKSPACE_URL);
 
     // Click Swarm tab
     const swarmTab = page.locator('[data-tour="swarm-tab"]');
@@ -103,7 +125,7 @@ test.describe("Swarm API Mocking", () => {
       });
     });
 
-    await page.goto(BASE_URL);
+    await page.goto(WORKSPACE_URL);
 
     // Click Swarm tab
     const swarmTab = page.locator('[data-tour="swarm-tab"]');
@@ -128,7 +150,7 @@ test.describe("Swarm API Mocking", () => {
 
 test.describe("Agent Legend", () => {
   test("agent legend shows all agent types", async ({ page }) => {
-    await page.goto(BASE_URL);
+    await page.goto(WORKSPACE_URL);
 
     const swarmTab = page.locator('[data-tour="swarm-tab"]');
     await swarmTab.click();
