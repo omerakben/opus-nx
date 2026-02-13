@@ -11,6 +11,6 @@ test.describe("Environment Setup Mode", () => {
   test("public landing renders regardless of env config", async ({ page }) => {
     await page.goto(BASE_URL);
     // Landing page should always render (it uses public env schema)
-    await expect(page.getByText("Opus Nx")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("OPUS NX", { exact: true })).toBeVisible({ timeout: 10_000 });
   });
 });

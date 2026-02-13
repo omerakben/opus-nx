@@ -29,8 +29,8 @@ test.describe("Public Routes", () => {
   test("landing page renders without auth", async ({ page }) => {
     await page.goto(BASE_URL);
     await expect(page).toHaveURL(BASE_URL + "/");
-    // Should see the landing page content
-    await expect(page.getByText("Opus Nx")).toBeVisible({ timeout: 10_000 });
+    // Should see the landing page nav badge
+    await expect(page.getByText("OPUS NX", { exact: true })).toBeVisible({ timeout: 10_000 });
   });
 
   test("login page renders without auth", async ({ page }) => {
@@ -63,12 +63,12 @@ test.describe("Protected Routes", () => {
     // Should NOT redirect to login
     await expect(page).not.toHaveURL(/\/login/);
     // Should see workspace content
-    await expect(page.getByText("Opus Nx")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("Opus Nx", { exact: true }).first()).toBeVisible({ timeout: 10_000 });
   });
 
-  test("protected API returns 401 without auth", async ({ request }) => {
-    const response = await request.get(`${BASE_URL}/api/thinking`);
-    // Should be 401 or 302 (redirect)
-    expect([401, 302, 307]).toContain(response.status());
+  test("protected API redirects to login without auth", async ({ page }) => {
+    // Navigate to a protected API route — middleware redirects to /login
+    await page.goto(`${BASE_URL}/api/thinking`);
+    await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });
   });
 });
