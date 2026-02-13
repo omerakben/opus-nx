@@ -8,7 +8,8 @@
     "build": "NODE_ENV=production next build",
     "start": "next start",
     "lint": "eslint src/ --ext .ts,.tsx --max-warnings 0",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run src/lib/route-auth.test.ts src/lib/server-env.test.ts"
   },
   "dependencies": {
     "@opus-nx/core": "workspace:*",
@@ -39,6 +40,7 @@
     "eslint": "9.39.2",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3",
-    "typescript-eslint": "8.55.0"
+    "typescript-eslint": "8.55.0",
+    "vitest": "^4.0.18"
   }
 }

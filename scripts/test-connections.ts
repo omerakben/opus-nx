@@ -123,8 +123,8 @@ async function testVoyage(): Promise<boolean> {
 
   const apiKey = process.env.VOYAGE_API_KEY;
   if (!apiKey) {
-    log("error", "VOYAGE_API_KEY not set");
-    return false;
+    log("warn", "VOYAGE_API_KEY not set (optional - needed for semantic memory retrieval)");
+    return true;
   }
 
   if (!apiKey.startsWith("pa-")) {
@@ -151,12 +151,12 @@ async function testVoyage(): Promise<boolean> {
       return true;
     } else {
       const error = await response.json();
-      log("error", `Voyage AI error: ${error.detail || response.status}`);
-      return false;
+      log("warn", `Voyage AI error (optional provider): ${error.detail || response.status}`);
+      return true;
     }
   } catch (err) {
-    log("error", `Voyage AI connection failed: ${err}`);
-    return false;
+    log("warn", `Voyage AI connection failed (optional provider): ${err}`);
+    return true;
   }
 }
 
@@ -191,12 +191,12 @@ async function testTavily(): Promise<boolean> {
       return true;
     } else {
       const error = await response.json();
-      log("error", `Tavily error: ${error.detail || response.status}`);
-      return false;
+      log("warn", `Tavily error (optional provider): ${error.detail || response.status}`);
+      return true;
     }
   } catch (err) {
-    log("error", `Tavily connection failed: ${err}`);
-    return false;
+    log("warn", `Tavily connection failed (optional provider): ${err}`);
+    return true;
   }
 }
 
