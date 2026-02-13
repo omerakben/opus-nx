@@ -46,6 +46,12 @@ export {
   getInsightsForNode,
   getInsightCountsByType,
   getAverageInsightConfidence,
+  // Agent runs
+  startAgentRun,
+  completeAgentRun,
+  // Knowledge
+  createKnowledgeEntry,
+  createKnowledgeRelation,
   // Fork analyses
   createForkAnalysis,
   getSessionForkAnalyses as getSessionForkAnalysesDb,

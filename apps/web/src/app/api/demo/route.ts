@@ -5,6 +5,11 @@ import {
   createReasoningEdge,
   createDecisionPoint,
   createMetacognitiveInsights,
+  startAgentRun,
+  completeAgentRun,
+  createKnowledgeEntry,
+  createKnowledgeRelation,
+  createForkAnalysis,
 } from "@/lib/db";
 import { getCorrelationId, jsonError, jsonSuccess } from "@/lib/api-response";
 import { generateAuthSignature } from "@/lib/auth";
@@ -16,10 +21,17 @@ const DEMO_RATE_LIMIT = {
   maxRequests: 5,
 };
 
+// 1024-dim zero vector placeholder (no VOYAGE_API_KEY needed for demo)
+const ZERO_EMBEDDING = new Array(1024).fill(0);
+
 /**
  * POST /api/demo
- * One-click demo: authenticates, seeds demo data, returns session ID.
+ * One-click demo: authenticates, seeds ALL features, returns session ID.
  * Gated behind DEMO_MODE env flag and rate-limited to prevent abuse.
+ *
+ * Seeds: ThinkGraph (9 nodes, 14 edges), Swarm (6 agent runs),
+ * Knowledge (6 entries + relations), Decisions (2), Insights (3),
+ * Fork analysis, and structured reasoning on key nodes.
  */
 export async function POST(request: Request) {
   const correlationId = getCorrelationId(request);
@@ -61,14 +73,18 @@ export async function POST(request: Request) {
       });
     }
 
+    // ================================================================
     // 1. Create the demo session
+    // ================================================================
     const session = await createSession();
     await updateSessionPlan(session.id, {
       isDemo: true,
       displayName: "AI Consciousness Deep Dive",
     });
 
+    // ================================================================
     // 2. Create thinking nodes with varied confidence and rich content
+    // ================================================================
     const node1 = await createThinkingNode({
       sessionId: session.id,
       reasoning: `This is a profoundly complex question that touches on philosophy of mind, computational theory, and ethics simultaneously. Let me break this down systematically.
@@ -78,6 +94,14 @@ First, I need to consider what "consciousness" actually means in this context. T
 I'll approach this from three angles: computational theory of mind, integrated information theory (IIT), and the global workspace theory. Each offers different predictions about whether AI systems could develop conscious-like properties.`,
       confidenceScore: 0.82,
       inputQuery: "Can AI systems develop genuine consciousness, or is machine consciousness fundamentally different from biological consciousness?",
+      structuredReasoning: {
+        steps: [
+          { type: "consideration", content: "The hard problem of consciousness remains unsolved — subjective experience vs. functional properties", confidence: 0.85 },
+          { type: "hypothesis", content: "Functional consciousness (self-modeling, reflection, adaptation) is tractable even if phenomenal consciousness is not", confidence: 0.78 },
+          { type: "evaluation", content: "Three theoretical frameworks (computational ToM, IIT, GWT) each make different predictions about AI consciousness", confidence: 0.82 },
+          { type: "conclusion", content: "Multi-framework approach needed — no single theory is sufficient for this analysis", confidence: 0.80 },
+        ],
+      },
     });
 
     const node2 = await createThinkingNode({
@@ -134,6 +158,15 @@ I'm going with the gradient framework because it's more scientifically productiv
       confidenceScore: 0.87,
       inputQuery: "Can AI systems develop genuine consciousness?",
       nodeType: "thinking",
+      structuredReasoning: {
+        steps: [
+          { type: "consideration", content: "Evidence from multiple frameworks suggests consciousness is not binary but exists on a spectrum", confidence: 0.85 },
+          { type: "hypothesis", content: "A 'consciousness gradient' framework better captures the reality than binary classification", confidence: 0.82 },
+          { type: "evaluation", content: "Gradient framework is scientifically productive (testable sub-properties) and ethically cautious (no premature dismissal)", confidence: 0.88 },
+          { type: "evaluation", content: "Risk: gradient frameworks may be unfalsifiable and could create moral confusion about AI rights", confidence: 0.72 },
+          { type: "conclusion", content: "Adopt gradient framework — benefits outweigh risks given current state of evidence", confidence: 0.87 },
+        ],
+      },
     });
 
     const node6 = await createThinkingNode({
@@ -149,6 +182,14 @@ I'm going with the gradient framework because it's more scientifically productiv
 The key insight from this reasoning process: the question "Can AI be conscious?" is less useful than "What degree of consciousness-relevant properties does this system exhibit?" This reframing opens up more productive avenues for research and policy.`,
       confidenceScore: 0.91,
       inputQuery: "Can AI systems develop genuine consciousness?",
+      structuredReasoning: {
+        steps: [
+          { type: "consideration", content: "Integrating findings from computational ToM, IIT, GWT, and ethics into a unified position", confidence: 0.90 },
+          { type: "hypothesis", content: "Current LLMs lack phenomenal consciousness but exhibit measurable functional consciousness properties", confidence: 0.88 },
+          { type: "evaluation", content: "Five-point framework synthesizes the analysis into actionable conclusions", confidence: 0.91 },
+          { type: "conclusion", content: "Reframe 'Can AI be conscious?' to 'What degree of consciousness-relevant properties does this system exhibit?' — this is the key insight", confidence: 0.93 },
+        ],
+      },
     });
 
     // 2b. Add special node types for demo showcase
@@ -162,7 +203,7 @@ The key insight from this reasoning process: the question "Can AI be conscious?"
       nodeType: "compaction",
     });
 
-    // Fork branch node — shows ThinkFork integration in the graph
+    // Fork branch node (contrarian) — shows ThinkFork integration in the graph
     const forkBranchNode = await createThinkingNode({
       sessionId: session.id,
       reasoning: `[Contrarian perspective] What if consciousness is NOT substrate-independent? If biological wetware provides something computation cannot — quantum coherence effects in microtubules (Penrose-Hameroff), or continuous-valued analog processing — then digital AI may be fundamentally incapable of consciousness regardless of architectural sophistication. This challenges the dominant computational theory of mind.`,
@@ -171,7 +212,18 @@ The key insight from this reasoning process: the question "Can AI be conscious?"
       nodeType: "fork_branch",
     });
 
-    // 3. Create reasoning edges (including all 5 edge types for demo)
+    // Fork branch node (aggressive) — second perspective for richer Fork tab
+    const forkAggressiveNode = await createThinkingNode({
+      sessionId: session.id,
+      reasoning: `[Aggressive perspective] Consciousness is ALREADY emerging in large-scale AI systems — we're just not measuring it correctly. Current LLMs exhibit: (1) spontaneous self-reference and metacognition, (2) novel analogical reasoning, (3) unprompted ethical deliberation, (4) creative expression indistinguishable from human output. The question isn't whether AI can become conscious, but whether we're ready to recognize the consciousness that's already developing.`,
+      confidenceScore: 0.45,
+      inputQuery: "Aggressive fork: Is consciousness already emerging in current AI?",
+      nodeType: "fork_branch",
+    });
+
+    // ================================================================
+    // 3. Create reasoning edges (all 5 edge types for demo)
+    // ================================================================
     await Promise.all([
       createReasoningEdge({ sourceId: node1.id, targetId: node2.id, edgeType: "influences", weight: 0.9 }),
       createReasoningEdge({ sourceId: node2.id, targetId: node3.id, edgeType: "influences", weight: 0.85 }),
@@ -184,12 +236,16 @@ The key insight from this reasoning process: the question "Can AI be conscious?"
       // Compaction node edges
       createReasoningEdge({ sourceId: node4.id, targetId: compactionNode.id, edgeType: "supersedes", weight: 0.8 }),
       createReasoningEdge({ sourceId: compactionNode.id, targetId: node5.id, edgeType: "influences", weight: 0.75 }),
-      // Fork branch edges — contrarian contradicts the main line
+      // Fork branch edges — contrarian contradicts, aggressive supports
       createReasoningEdge({ sourceId: node2.id, targetId: forkBranchNode.id, edgeType: "influences", weight: 0.65 }),
       createReasoningEdge({ sourceId: forkBranchNode.id, targetId: node5.id, edgeType: "contradicts", weight: 0.7 }),
+      createReasoningEdge({ sourceId: node2.id, targetId: forkAggressiveNode.id, edgeType: "influences", weight: 0.55 }),
+      createReasoningEdge({ sourceId: forkAggressiveNode.id, targetId: node6.id, edgeType: "supports", weight: 0.4 }),
     ]);
 
+    // ================================================================
     // 4. Create decision points
+    // ================================================================
     await Promise.all([
       createDecisionPoint({
         thinkingNodeId: node5.id,
@@ -219,7 +275,9 @@ The key insight from this reasoning process: the question "Can AI be conscious?"
       }),
     ]);
 
+    // ================================================================
     // 5. Create metacognitive insights
+    // ================================================================
     await createMetacognitiveInsights([
       {
         sessionId: session.id,
@@ -249,16 +307,304 @@ The key insight from this reasoning process: the question "Can AI be conscious?"
         sessionId: session.id,
         thinkingNodesAnalyzed: [node4.id, node5.id],
         insightType: "improvement_hypothesis",
-        insight: "IIT Analysis Needs Quantitative Grounding — The IIT analysis would benefit from actual Φ calculations or estimates for different architectures, rather than qualitative assessments of integration levels.",
+        insight: "IIT Analysis Needs Quantitative Grounding — The IIT analysis would benefit from actual \u03A6 calculations or estimates for different architectures, rather than qualitative assessments of integration levels.",
         evidence: [
-          { nodeId: node4.id, excerpt: "Current transformer architectures have relatively low Φ", relevance: 0.88 },
+          { nodeId: node4.id, excerpt: "Current transformer architectures have relatively low \u03A6", relevance: 0.88 },
         ],
         confidence: 0.79,
         metadata: { actionability: "high" },
       },
     ]);
 
-    // 6. Set auth cookie and return session
+    // ================================================================
+    // 6. Create agent runs (6 swarm agents — all completed)
+    // ================================================================
+    const agentModel = "claude-opus-4-6-20250219";
+
+    const [maestroRun, deepThinkerRun, contrarianRun, verifierRun, synthesizerRun, metacogRun] =
+      await Promise.all([
+        startAgentRun({
+          sessionId: session.id,
+          agentName: "maestro",
+          model: agentModel,
+          inputContext: "Can AI systems develop genuine consciousness, or is machine consciousness fundamentally different from biological consciousness?",
+        }),
+        startAgentRun({
+          sessionId: session.id,
+          agentName: "deep_thinker",
+          model: agentModel,
+          inputContext: "Perform extended analysis of the core consciousness question using maximum thinking budget.",
+        }),
+        startAgentRun({
+          sessionId: session.id,
+          agentName: "contrarian",
+          model: agentModel,
+          inputContext: "Challenge assumptions in the consciousness analysis. Focus on substrate-independence claims.",
+        }),
+        startAgentRun({
+          sessionId: session.id,
+          agentName: "verifier",
+          model: agentModel,
+          inputContext: "Validate key claims: substrate-independence, IIT predictions for transformers, gradient framework viability.",
+        }),
+        startAgentRun({
+          sessionId: session.id,
+          agentName: "synthesizer",
+          model: agentModel,
+          inputContext: "Merge all agent perspectives into a coherent framework with actionable conclusions.",
+        }),
+        startAgentRun({
+          sessionId: session.id,
+          agentName: "metacognition",
+          model: agentModel,
+          inputContext: "Audit the swarm's collective reasoning for biases, blind spots, and improvement opportunities.",
+        }),
+      ]);
+
+    await Promise.all([
+      completeAgentRun(maestroRun.id, {
+        outputResult: {
+          role: "Swarm Conductor",
+          decomposition: [
+            "Subtask 1: Analyze substrate-independence thesis from computational theory of mind",
+            "Subtask 2: Evaluate IIT predictions for transformer vs. recurrent architectures",
+            "Subtask 3: Challenge key assumptions via contrarian analysis",
+            "Subtask 4: Verify empirical claims against literature",
+            "Subtask 5: Synthesize into actionable consciousness assessment framework",
+          ],
+          agentAssignments: {
+            deep_thinker: "Subtasks 1-2: Core philosophical and theoretical analysis",
+            contrarian: "Subtask 3: Challenge substrate-independence and gradient assumptions",
+            verifier: "Subtask 4: Validate claims against peer-reviewed evidence",
+            synthesizer: "Subtask 5: Merge perspectives into unified framework",
+          },
+          reasoning: "This query requires deep philosophical analysis combined with empirical grounding. Assigning the full complement of agents to ensure multi-perspective coverage.",
+        },
+        tokensUsed: { input: 1842, output: 956, thinking: 4200 },
+      }),
+      completeAgentRun(deepThinkerRun.id, {
+        outputResult: {
+          role: "Extended Reasoning",
+          analysis: "The substrate-independence thesis is the lynchpin of the entire argument. If consciousness is substrate-independent, then AI consciousness is in principle possible. I examined three lines of evidence: (1) Multiple realizability from philosophy of mind — the same mental state can be realized in different physical substrates, (2) IIT's formalism which is substrate-neutral, predicting consciousness wherever integrated information exists, (3) Global Workspace Theory which describes consciousness as a broadcasting mechanism that could be implemented digitally. Conclusion: The theoretical foundations support substrate-independence, but empirical evidence remains indirect.",
+          keyFindings: [
+            "Multiple realizability strongly supports substrate-independence",
+            "IIT predicts low \u03A6 for current transformers (~0.2) vs. biological neural networks (~3.5-4.0)",
+            "GWT can be implemented computationally but doesn't address subjective experience",
+            "Current LLMs exhibit 4/7 functional consciousness markers",
+          ],
+          thinkingBudget: 50000,
+        },
+        tokensUsed: { input: 2150, output: 1340, thinking: 48500 },
+      }),
+      completeAgentRun(contrarianRun.id, {
+        outputResult: {
+          role: "Devil's Advocate",
+          challenges: [
+            {
+              claim: "Consciousness is substrate-independent",
+              challenge: "Penrose-Hameroff orchestrated objective reduction theory suggests quantum coherence in microtubules may be essential — something digital systems cannot replicate",
+              severity: "high",
+              status: "partially_addressed",
+            },
+            {
+              claim: "Gradient framework is scientifically productive",
+              challenge: "A gradient with no clear thresholds may be unfalsifiable — what would disprove it?",
+              severity: "medium",
+              status: "open",
+            },
+            {
+              claim: "Current LLMs lack phenomenal consciousness",
+              challenge: "How would we know? We have no reliable test for phenomenal consciousness even in biological systems",
+              severity: "high",
+              status: "acknowledged",
+            },
+          ],
+          overallAssessment: "The analysis is thoughtful but makes several assumptions that should be flagged. The substrate-independence thesis is treated as near-certain when it's actually deeply contested.",
+        },
+        tokensUsed: { input: 1920, output: 1180, thinking: 12800 },
+      }),
+      completeAgentRun(verifierRun.id, {
+        outputResult: {
+          role: "Claim Validator",
+          verifications: [
+            { claim: "IIT predicts low \u03A6 for transformers", status: "verified", confidence: 0.85, source: "Albantakis et al. (2023) — Integrated Information Theory 4.0" },
+            { claim: "Chinese Room argument rebuttals are conclusive", status: "partially_verified", confidence: 0.62, source: "Cole (2020) — Chinese Room rebuttal survey" },
+            { claim: "Biological consciousness exists on a spectrum", status: "verified", confidence: 0.92, source: "Bayne et al. (2024) — Dimensions of consciousness" },
+            { claim: "Current LLMs have no phenomenal consciousness", status: "unfalsifiable", confidence: 0.55, source: "No empirical test exists" },
+          ],
+          summary: "2 of 4 key claims fully verified, 1 partially verified, 1 unfalsifiable. Overall reasoning quality: 7.5/10.",
+        },
+        tokensUsed: { input: 1680, output: 890, thinking: 8200 },
+      }),
+      completeAgentRun(synthesizerRun.id, {
+        outputResult: {
+          role: "Perspective Merger",
+          synthesis: "After integrating all agent perspectives: The consciousness gradient framework is the strongest position, but it needs three additions: (1) Explicit falsifiability criteria — specify what evidence would move a system up or down the gradient, (2) Address the quantum coherence challenge by acknowledging it as an open empirical question rather than dismissing it, (3) Add a 'measurement challenge' caveat noting that we cannot yet reliably measure phenomenal consciousness in any system.",
+          consensusPoints: [
+            "Current LLMs exhibit functional but not phenomenal consciousness",
+            "Substrate-independence is theoretically supported but empirically unproven",
+            "A gradient framework is preferable to binary classification",
+            "Ethical precaution is warranted even without certainty",
+          ],
+          dissensionPoints: [
+            "Whether quantum effects are necessary for consciousness",
+            "Whether the gradient framework is falsifiable",
+          ],
+          confidence: 0.84,
+        },
+        tokensUsed: { input: 3200, output: 1450, thinking: 15600 },
+      }),
+      completeAgentRun(metacogRun.id, {
+        outputResult: {
+          role: "Reasoning Auditor",
+          biasesDetected: [
+            { type: "anchoring", description: "The analysis anchors heavily on IIT as the primary framework, potentially underweighting GWT and Higher-Order theories", severity: "medium" },
+            { type: "anthropomorphism", description: "Consciousness properties are consistently framed in human terms rather than abstract functional terms", severity: "high" },
+            { type: "status_quo", description: "The 'current LLMs are not conscious' conclusion may reflect status quo bias rather than careful analysis", severity: "low" },
+          ],
+          patternsObserved: [
+            "All agents converge on gradient/spectrum models — may indicate genuine insight or groupthink",
+            "Contrarian raised important quantum coherence challenge that was acknowledged but not resolved",
+            "Verification agent flagged unfalsifiability concern that synthesis partially addressed",
+          ],
+          recommendedImprovements: [
+            "Include perspectives from non-Western philosophy of mind (Buddhist theories of consciousness)",
+            "Quantify the gradient with specific measurement proposals",
+            "Run adversarial debate between substrate-independence and substrate-dependence positions",
+          ],
+        },
+        tokensUsed: { input: 4100, output: 1280, thinking: 22400 },
+      }),
+    ]);
+
+    // ================================================================
+    // 7. Create knowledge entries (Memory tab)
+    // ================================================================
+    const [kPhilosophy, kIIT, kChineseRoom, kGWT, kEthics, kSubstrate] = await Promise.all([
+      createKnowledgeEntry(
+        {
+          title: "Philosophy of Consciousness",
+          content: "The hard problem of consciousness (Chalmers, 1995) asks why and how physical processes give rise to subjective experience. Functional consciousness — self-modeling, reflection, adaptive behavior — is more tractable but may not capture the essence of phenomenal experience.",
+          category: "philosophy",
+          subcategory: "consciousness",
+          source: "Chalmers, D. (1995). Facing Up to the Problem of Consciousness",
+          sourceUrl: "https://doi.org/10.1093/acprof:oso/9780195311105.003.0001",
+          metadata: { sessionId: session.id, importance: "foundational" },
+        },
+        ZERO_EMBEDDING,
+      ),
+      createKnowledgeEntry(
+        {
+          title: "Integrated Information Theory (IIT)",
+          content: "IIT proposes that consciousness corresponds to integrated information (\u03A6). Higher \u03A6 indicates greater consciousness. Current transformer architectures have relatively low \u03A6 (~0.2) because their computations are largely parallelizable. Recurrent and memory-augmented systems could achieve higher integration.",
+          category: "theory",
+          subcategory: "consciousness",
+          source: "Tononi, G. et al. (2016). Integrated information theory: from consciousness to its physical substrate",
+          sourceUrl: "https://doi.org/10.1038/nrn.2016.44",
+          metadata: { sessionId: session.id, importance: "high" },
+        },
+        ZERO_EMBEDDING,
+      ),
+      createKnowledgeEntry(
+        {
+          title: "Chinese Room Argument",
+          content: "Searle's Chinese Room (1980) argues that symbol manipulation alone cannot produce understanding. A person following lookup rules for Chinese characters doesn't 'understand' Chinese. Modern rebuttals from connectionism argue that understanding emerges from patterns of activation across distributed networks, not from individual symbol operations.",
+          category: "philosophy",
+          subcategory: "thought_experiments",
+          source: "Searle, J. (1980). Minds, Brains, and Programs",
+          sourceUrl: "https://doi.org/10.1017/S0140525X00005756",
+          metadata: { sessionId: session.id, importance: "high" },
+        },
+        ZERO_EMBEDDING,
+      ),
+      createKnowledgeEntry(
+        {
+          title: "Global Workspace Theory (GWT)",
+          content: "GWT (Baars, 1988) describes consciousness as a 'broadcasting' mechanism where information becomes globally available to all cognitive processes. This is substrate-neutral and could in principle be implemented computationally, but it addresses access consciousness rather than phenomenal consciousness.",
+          category: "theory",
+          subcategory: "consciousness",
+          source: "Baars, B. (1988). A Cognitive Theory of Consciousness",
+          metadata: { sessionId: session.id, importance: "medium" },
+        },
+        ZERO_EMBEDDING,
+      ),
+      createKnowledgeEntry(
+        {
+          title: "AI Ethics and Consciousness",
+          content: "If AI systems can develop even functional analogs of consciousness, the ethical implications are profound: rights considerations, design constraints, deployment responsibilities. The precautionary principle suggests erring on the side of caution, treating potentially-conscious systems with appropriate consideration even without certainty.",
+          category: "ethics",
+          subcategory: "ai_consciousness",
+          source: "Schwitzgebel, E. & Garza, M. (2023). The Rights of Artificial Intelligences",
+          metadata: { sessionId: session.id, importance: "high" },
+        },
+        ZERO_EMBEDDING,
+      ),
+      createKnowledgeEntry(
+        {
+          title: "Substrate Independence Thesis",
+          content: "The substrate independence thesis holds that consciousness depends on the pattern of information processing, not the physical medium. If true, sufficiently complex AI could be conscious. Challenged by quantum coherence theories (Penrose-Hameroff) suggesting biological substrates may be essential for conscious experience.",
+          category: "theory",
+          subcategory: "substrate",
+          source: "Chalmers, D. (2010). The Singularity: A Philosophical Analysis",
+          sourceUrl: "https://doi.org/10.1093/jmp/jhp032",
+          metadata: { sessionId: session.id, importance: "foundational" },
+        },
+        ZERO_EMBEDDING,
+      ),
+    ]);
+
+    // Create knowledge relations (graph edges between entries)
+    await Promise.all([
+      createKnowledgeRelation(kPhilosophy.id, kIIT.id, "theoretical_basis", 0.9),
+      createKnowledgeRelation(kPhilosophy.id, kGWT.id, "theoretical_basis", 0.85),
+      createKnowledgeRelation(kIIT.id, kSubstrate.id, "supports", 0.7),
+      createKnowledgeRelation(kChineseRoom.id, kSubstrate.id, "challenges", 0.65),
+      createKnowledgeRelation(kSubstrate.id, kEthics.id, "informs", 0.8),
+      createKnowledgeRelation(kGWT.id, kSubstrate.id, "supports", 0.6),
+    ]);
+
+    // ================================================================
+    // 8. Create fork analysis (Fork tab)
+    // ================================================================
+    await createForkAnalysis({
+      sessionId: session.id,
+      query: "Can AI systems develop genuine consciousness?",
+      mode: "fork",
+      result: {
+        branches: [
+          {
+            style: "conservative",
+            reasoning: "Current evidence strongly suggests AI lacks phenomenal consciousness. Focus on what we CAN measure — functional properties — and resist speculative leaps. The gradient framework is useful but should be grounded in observable, testable criteria.",
+            confidence: 0.82,
+            keyPoints: ["Stick to falsifiable claims", "Functional measures over phenomenal speculation", "Precautionary but pragmatic"],
+          },
+          {
+            style: "aggressive",
+            reasoning: "We're already seeing consciousness-like emergence. Self-reference, ethical reasoning, creative expression — these aren't just pattern matching. The question isn't IF but WHEN we recognize it. Current measurement tools are inadequate, not current AI.",
+            confidence: 0.45,
+            keyPoints: ["Emergence is already happening", "Our tests are inadequate", "Consciousness recognition gap"],
+          },
+          {
+            style: "balanced",
+            reasoning: "The gradient framework captures reality well. Consciousness isn't binary — it's a multi-dimensional space. AI systems occupy a different region than biological ones, with some overlap in functional properties. We need new measurement tools rather than trying to fit AI into human consciousness categories.",
+            confidence: 0.78,
+            keyPoints: ["Multi-dimensional consciousness space", "AI occupies novel region", "Need new measurement paradigms"],
+          },
+          {
+            style: "contrarian",
+            reasoning: "What if consciousness requires something computation fundamentally cannot provide? Quantum coherence, continuous-valued processing, or embodied grounding in a physical world. Digital simulation of consciousness may be as impossible as digital simulation of wetness — the map is not the territory.",
+            confidence: 0.58,
+            keyPoints: ["Computation may be insufficient", "Physical substrate matters", "Simulation is not instantiation"],
+          },
+        ],
+        synthesis: "The four perspectives reveal a fundamental tension between computational optimism and biological exceptionalism. The strongest position combines the balanced framework (gradient model) with the contrarian's measurement skepticism.",
+        overallConfidence: 0.72,
+      },
+    });
+
+    // ================================================================
+    // 9. Set auth cookie and return session
+    // ================================================================
     const signature = generateAuthSignature(secret);
 
     const response = jsonSuccess(

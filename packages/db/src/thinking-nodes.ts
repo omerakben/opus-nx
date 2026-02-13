@@ -167,6 +167,7 @@ export async function createThinkingNode(
     signature: input.signature ?? null,
     input_query: input.inputQuery ?? null,
     token_usage: input.tokenUsage ?? {},
+    node_type: input.nodeType ?? "thinking",
   };
 
   const { data, error } = await supabase

@@ -1,6 +1,7 @@
 "use client";
 
 import { GithubIcon, LogOut, HelpCircle, ExternalLink } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 interface HeaderProps {
@@ -21,7 +22,7 @@ export function Header({ isMobile, onReplayTour, isDemoMode }: HeaderProps) {
   if (isMobile) {
     return (
       <header className="h-12 border-b border-[var(--border)] bg-[var(--card)] px-3 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <img
             src="/opus_nx_icon.svg"
             alt="Opus Nx"
@@ -35,7 +36,7 @@ export function Header({ isMobile, onReplayTour, isDemoMode }: HeaderProps) {
           <span className="text-[10px] text-[var(--muted-foreground)]">
             Cognitive Architecture
           </span>
-        </div>
+        </Link>
 
         <div className="flex items-center gap-1">
           {onReplayTour && (
@@ -103,7 +104,7 @@ export function Header({ isMobile, onReplayTour, isDemoMode }: HeaderProps) {
   return (
     <header className="h-14 border-b border-[var(--border)] bg-[var(--card)] px-4 flex items-center justify-between">
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <img
             src="/opus_nx_icon.svg"
             alt="Opus Nx"
@@ -114,7 +115,7 @@ export function Header({ isMobile, onReplayTour, isDemoMode }: HeaderProps) {
           <span className="font-bold text-lg text-[var(--foreground)]">
             Opus Nx
           </span>
-        </div>
+        </Link>
         <span className="text-xs text-[var(--muted-foreground)] bg-[var(--muted)] px-2 py-0.5 rounded-full">
           Cognitive Architecture
         </span>

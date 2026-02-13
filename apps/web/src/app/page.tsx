@@ -115,7 +115,9 @@ export default function HomePage() {
 
             <div className="mt-8 flex flex-wrap gap-3 animate-fade-in-up delay-200">
               <a
-                href="#setup"
+                href="https://github.com/omerakben/opus-nx#quick-start"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#C4654A] to-[#D2765D] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#C4654A]/25 transition hover:opacity-95"
               >
                 Run Locally With Your Keys

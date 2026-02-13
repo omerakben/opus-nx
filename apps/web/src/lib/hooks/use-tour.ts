@@ -84,6 +84,14 @@ const TOUR_STEPS: TourStep[] = [
     placement: "left",
   },
   {
+    id: "memory-panel",
+    target: "[data-tour='memory-tab']",
+    title: "Memory Hierarchy",
+    description:
+      "A MemGPT-inspired 3-tier memory system: working context, recall buffer, and archival storage. Knowledge entries persist across sessions with semantic search and graph relations.",
+    placement: "left",
+  },
+  {
     id: "sessions",
     target: "[data-tour='session-stats']",
     title: "Persistent Reasoning",
