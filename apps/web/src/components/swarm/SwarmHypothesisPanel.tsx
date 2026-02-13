@@ -10,6 +10,16 @@ import type {
 import { cn } from "@/lib/utils";
 import { Lightbulb, RefreshCw } from "lucide-react";
 
+const LIFECYCLE_STATUSES = [
+  "promoted",
+  "checkpointed",
+  "rerunning",
+  "comparing",
+  "retained",
+  "deferred",
+  "archived",
+] as const;
+
 interface SwarmHypothesisPanelProps {
   experiments: SwarmHypothesisExperiment[];
   lifecycle?: SwarmHypothesisLifecycleInfo | null;
@@ -129,6 +139,16 @@ export function SwarmHypothesisPanel({
   const [compareErrors, setCompareErrors] = useState<Record<string, string>>({});
   const [decisionPendingKey, setDecisionPendingKey] = useState<string | null>(null);
   const [decisionErrors, setDecisionErrors] = useState<Record<string, string>>({});
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+
+  const filteredExperiments = statusFilter
+    ? experiments.filter((e) => e.status === statusFilter)
+    : experiments;
+
+  const statusCounts = experiments.reduce<Record<string, number>>((acc, e) => {
+    acc[e.status] = (acc[e.status] ?? 0) + 1;
+    return acc;
+  }, {});
 
   const handleCompare = async (experimentId: string) => {
     if (!onCompareExperiment) return;
@@ -219,6 +239,38 @@ export function SwarmHypothesisPanel({
         )}
       </div>
 
+      {experiments.length > 1 && (
+        <div className="flex flex-wrap gap-1 mb-2">
+          <button
+            type="button"
+            className={cn(
+              "text-[10px] px-1.5 py-0.5 rounded-full transition-colors",
+              statusFilter === null
+                ? "bg-[var(--foreground)]/15 text-[var(--foreground)] font-medium"
+                : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            )}
+            onClick={() => setStatusFilter(null)}
+          >
+            All ({experiments.length})
+          </button>
+          {LIFECYCLE_STATUSES.filter((s) => statusCounts[s]).map((status) => (
+            <button
+              key={status}
+              type="button"
+              className={cn(
+                "text-[10px] px-1.5 py-0.5 rounded-full transition-colors",
+                statusFilter === status
+                  ? statusBadge(status)
+                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              )}
+              onClick={() => setStatusFilter(statusFilter === status ? null : status)}
+            >
+              {formatLabel(status)} ({statusCounts[status]})
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="space-y-2">
         {lifecycle?.degradedMode && (
           <Card className="border-amber-500/40 bg-amber-500/10">
@@ -243,7 +295,15 @@ export function SwarmHypothesisPanel({
           </Card>
         )}
 
-        {experiments.map((experiment) => {
+        {filteredExperiments.length === 0 && statusFilter && (
+          <Card className="border-[var(--border)] bg-[var(--muted)]/20">
+            <CardContent className="p-3 text-xs text-[var(--muted-foreground)]">
+              No experiments with status &ldquo;{formatLabel(statusFilter)}&rdquo;.
+            </CardContent>
+          </Card>
+        )}
+
+        {filteredExperiments.map((experiment) => {
           const metrics = getComparisonMetrics(experiment.comparisonResult);
 
           return (
