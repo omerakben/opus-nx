@@ -279,6 +279,15 @@ export default function HomePage() {
               rel="noopener noreferrer"
               className="text-[#7BA3BE] hover:underline"
             >
+              TUEL AI
+            </a>
+            {" + "}
+            <a
+              href="https://www.anthropic.com/news/claude-opus-4-6"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#D4A574] hover:underline"
+            >
               Claude
             </a>
           </p>

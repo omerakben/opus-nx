@@ -209,7 +209,9 @@ export function LoginClient({ demoEnabled }: LoginClientProps) {
           Built by{" "}
           <a href="https://omerakben.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--foreground)]">Ozzy</a>
           {" + "}
-          <a href="https://tuel.ai" target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--foreground)]">Claude</a>
+          <a href="https://tuel.ai" target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--foreground)]">TUEL AI</a>
+          {" + "}
+          <a href="https://www.anthropic.com/news/claude-opus-4-6" target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--foreground)]">Claude</a>
         </p>
       </div>
     </div>

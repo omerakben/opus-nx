@@ -193,7 +193,9 @@ Priority areas:
 
 **[Ozzy](https://omerakben.com)** — AI Engineer & Full-Stack Developer
 
-**[Claude](https://tuel.ai)** — AI Research Partner
+**[TUEL AI](https://tuel.ai)** — AI Research Platform
+
+**[Claude](https://www.anthropic.com/news/claude-opus-4-6)** — AI Research Partner (Anthropic)
 
 A human + AI collaboration exploring persistent reasoning artifacts.
 

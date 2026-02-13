@@ -82,7 +82,7 @@ echo -e ""
 echo -e "${BOLD}${CYAN}  ╔═══════════════════════════════════════════╗${NC}"
 echo -e "${BOLD}${CYAN}  ║     Opus Nx — Platform Setup & Launcher   ║${NC}"
 echo -e "${BOLD}${CYAN}  ║                                           ║${NC}"
-echo -e "${BOLD}${CYAN}  ║  ${DIM}Built by Ozzy + Claude${NC}${BOLD}${CYAN}                  ║${NC}"
+echo -e "${BOLD}${CYAN}  ║  ${DIM}Built by Ozzy + TUEL AI + Claude${NC}${BOLD}${CYAN}          ║${NC}"
 echo -e "${BOLD}${CYAN}  ╚═══════════════════════════════════════════╝${NC}"
 echo -e ""
 

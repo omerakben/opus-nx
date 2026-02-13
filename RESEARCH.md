@@ -59,6 +59,6 @@ If you use Opus Nx in your research, please cite:
 
 ## Collaboration
 
-Built by **[Ozzy](https://omerakben.com)** + **[Claude](https://tuel.ai)** — a human-AI collaboration exploring what happens when reasoning becomes a first-class, persistent artifact.
+Built by **[Ozzy](https://omerakben.com)** + **[TUEL AI](https://tuel.ai)** + **[Claude](https://www.anthropic.com/news/claude-opus-4-6)** — a human-AI collaboration exploring what happens when reasoning becomes a first-class, persistent artifact.
 
 Contributions welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.

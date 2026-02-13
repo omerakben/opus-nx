@@ -15,9 +15,10 @@ export const metadata: Metadata = {
   ],
   authors: [
     { name: "Ozzy", url: "https://omerakben.com" },
-    { name: "Claude", url: "https://tuel.ai" },
+    { name: "TUEL AI", url: "https://tuel.ai" },
+    { name: "Claude", url: "https://www.anthropic.com/news/claude-opus-4-6" },
   ],
-  creator: "Ozzy + Claude",
+  creator: "Ozzy + TUEL AI + Claude",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "32x32" },

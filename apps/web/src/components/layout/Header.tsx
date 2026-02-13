@@ -62,10 +62,20 @@ export function Header({ isMobile, onReplayTour, isDemoMode }: HeaderProps) {
             target="_blank"
             rel="noopener noreferrer"
             className="h-8 flex items-center gap-1 px-1.5 rounded-md hover:bg-[var(--muted)] transition-colors text-xs text-[var(--muted-foreground)]"
-            title="tuel.ai"
+            title="TUEL AI"
           >
             <ExternalLink className="w-3 h-3" />
-            tuel.ai
+            TUEL AI
+          </a>
+          <a
+            href="https://www.anthropic.com/news/claude-opus-4-6"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="h-8 flex items-center gap-1 px-1.5 rounded-md hover:bg-[var(--muted)] transition-colors text-xs text-[var(--muted-foreground)]"
+            title="Claude"
+          >
+            <ExternalLink className="w-3 h-3" />
+            Claude
           </a>
           <a
             href="https://github.com/omerakben/opus-nx"
@@ -138,10 +148,20 @@ export function Header({ isMobile, onReplayTour, isDemoMode }: HeaderProps) {
           target="_blank"
           rel="noopener noreferrer"
           className="h-8 flex items-center gap-1 px-1.5 rounded-md hover:bg-[var(--muted)] transition-colors text-xs text-[var(--muted-foreground)]"
-          title="tuel.ai"
+          title="TUEL AI"
         >
           <ExternalLink className="w-3 h-3" />
-          tuel.ai
+          TUEL AI
+        </a>
+        <a
+          href="https://www.anthropic.com/news/claude-opus-4-6"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="h-8 flex items-center gap-1 px-1.5 rounded-md hover:bg-[var(--muted)] transition-colors text-xs text-[var(--muted-foreground)]"
+          title="Claude"
+        >
+          <ExternalLink className="w-3 h-3" />
+          Claude
         </a>
         <a
           href="https://github.com/omerakben/opus-nx"
