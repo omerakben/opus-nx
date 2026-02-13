@@ -58,3 +58,15 @@ agents:
       - message_format
       - report_generation
     systemPromptPath: prompts/communication.md
+
+  improver:
+    name: Code Improver
+    model: claude-opus-4-6
+    maxTokens: 16384
+    temperature: 0.3
+    description: "Code refactoring, optimization, quality analysis, and technical debt reduction specialist"
+    tools:
+      - refactoring
+      - optimization
+      - quality_analysis
+    systemPromptPath: prompts/improver.md
