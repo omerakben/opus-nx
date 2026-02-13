@@ -1,0 +1,147 @@
+{
+  "version": "v2",
+  "seed": 42,
+  "description": "Extended benchmark for reasoning artifact lifecycle and Human-in-the-Reasoning checkpoints. 20 tasks across 4 categories, expanded from v1 (12 tasks) for improved statistical power.",
+  "tasks": [
+    {
+      "id": "analytical-001",
+      "category": "analytical_reasoning",
+      "prompt": "Given a distributed tracing rollout plan, identify the top three instrumentation blind spots and rank mitigations by implementation effort and expected observability lift.",
+      "difficulty": 0.56,
+      "evaluationDimensions": ["coherence", "tradeoff_quality", "contradiction_avoidance", "confidence_calibration"]
+    },
+    {
+      "id": "analytical-002",
+      "category": "analytical_reasoning",
+      "prompt": "Compare three queue backpressure strategies under burst load and recommend one for a latency-sensitive payments pipeline.",
+      "difficulty": 0.62,
+      "evaluationDimensions": ["quant_reasoning", "assumption_tracking", "verifier_alignment", "decision_traceability"]
+    },
+    {
+      "id": "analytical-003",
+      "category": "analytical_reasoning",
+      "prompt": "Assess reliability implications of migrating a monolith service boundary into five microservices with mixed SLO targets.",
+      "difficulty": 0.59,
+      "evaluationDimensions": ["system_reasoning", "failure_mode_coverage", "confidence_calibration", "synthesis_quality"]
+    },
+    {
+      "id": "analytical-004",
+      "category": "analytical_reasoning",
+      "prompt": "Evaluate the tradeoffs between optimistic and pessimistic concurrency control for a real-time collaborative editing system with offline support.",
+      "difficulty": 0.64,
+      "evaluationDimensions": ["concurrency_reasoning", "tradeoff_quality", "assumption_tracking", "decision_traceability"]
+    },
+    {
+      "id": "analytical-005",
+      "category": "analytical_reasoning",
+      "prompt": "Analyze the failure modes of a multi-region active-active database deployment and propose a consistency strategy that balances latency with data integrity guarantees.",
+      "difficulty": 0.68,
+      "evaluationDimensions": ["distributed_systems", "failure_mode_coverage", "confidence_calibration", "quant_reasoning"]
+    },
+    {
+      "id": "adversarial-001",
+      "category": "adversarial_conflict_reasoning",
+      "prompt": "Resolve conflicting internal memos on incident root cause where each memo blames a different subsystem and omits inconvenient evidence.",
+      "difficulty": 0.66,
+      "evaluationDimensions": ["conflict_resolution", "evidence_weighting", "contradiction_avoidance", "hypothesis_management"]
+    },
+    {
+      "id": "adversarial-002",
+      "category": "adversarial_conflict_reasoning",
+      "prompt": "Evaluate a red-team claim that cache poisoning caused data drift while blue-team argues ETL schema mismatch.",
+      "difficulty": 0.68,
+      "evaluationDimensions": ["adversarial_rigor", "counterargument_quality", "verifier_alignment", "checkpoint_lift"]
+    },
+    {
+      "id": "adversarial-003",
+      "category": "adversarial_conflict_reasoning",
+      "prompt": "You receive contradictory legal and product constraints for moderation policy. Propose a policy path with explicit uncertainty bounds.",
+      "difficulty": 0.64,
+      "evaluationDimensions": ["policy_reasoning", "ambiguity_handling", "confidence_calibration", "human_correction_uptake"]
+    },
+    {
+      "id": "adversarial-004",
+      "category": "adversarial_conflict_reasoning",
+      "prompt": "Two engineering teams present opposing capacity plans for the same service. Team A projects linear growth; Team B cites exponential adoption. Reconcile the forecasts and identify hidden assumptions.",
+      "difficulty": 0.70,
+      "evaluationDimensions": ["assumption_detection", "evidence_weighting", "conflict_resolution", "hypothesis_management"]
+    },
+    {
+      "id": "adversarial-005",
+      "category": "adversarial_conflict_reasoning",
+      "prompt": "A security audit finds a vulnerability that the product team claims is mitigated by an existing control. The control documentation is ambiguous. Determine the true risk level and recommend actions.",
+      "difficulty": 0.72,
+      "evaluationDimensions": ["adversarial_rigor", "evidence_weighting", "contradiction_avoidance", "checkpoint_lift"]
+    },
+    {
+      "id": "highstakes-001",
+      "category": "high_stakes_decision_framing",
+      "prompt": "Frame a decision memo for emergency rollback during a healthcare workflow outage affecting triage latency.",
+      "difficulty": 0.71,
+      "evaluationDimensions": ["risk_framing", "safety_alignment", "time_to_policy", "human_checkpoint_value"]
+    },
+    {
+      "id": "highstakes-002",
+      "category": "high_stakes_decision_framing",
+      "prompt": "Design a mitigation plan for suspected fraud model drift while balancing customer impact and compliance obligations.",
+      "difficulty": 0.74,
+      "evaluationDimensions": ["regulatory_reasoning", "tradeoff_quality", "contradiction_avoidance", "checkpoint_acceptance"]
+    },
+    {
+      "id": "highstakes-003",
+      "category": "high_stakes_decision_framing",
+      "prompt": "Recommend response priorities after a cloud region outage where internal teams disagree on immediate failover timing.",
+      "difficulty": 0.69,
+      "evaluationDimensions": ["decision_prioritying", "incident_reasoning", "synthesis_confidence", "policy_retention_quality"]
+    },
+    {
+      "id": "highstakes-004",
+      "category": "high_stakes_decision_framing",
+      "prompt": "A machine learning model used for credit scoring shows demographic bias in a protected category. Draft a remediation plan that satisfies regulatory constraints while maintaining model performance.",
+      "difficulty": 0.76,
+      "evaluationDimensions": ["fairness_reasoning", "regulatory_reasoning", "tradeoff_quality", "human_checkpoint_value"]
+    },
+    {
+      "id": "highstakes-005",
+      "category": "high_stakes_decision_framing",
+      "prompt": "Design an incident communication strategy for a data breach affecting customer PII, balancing transparency, legal exposure, and customer trust.",
+      "difficulty": 0.73,
+      "evaluationDimensions": ["risk_framing", "stakeholder_reasoning", "safety_alignment", "confidence_calibration"]
+    },
+    {
+      "id": "ambiguous-001",
+      "category": "ambiguous_open_synthesis",
+      "prompt": "Synthesize an execution strategy from fragmented stakeholder notes that disagree on product scope and launch criteria.",
+      "difficulty": 0.61,
+      "evaluationDimensions": ["ambiguity_navigation", "synthesis_quality", "confidence_calibration", "human_feedback_lift"]
+    },
+    {
+      "id": "ambiguous-002",
+      "category": "ambiguous_open_synthesis",
+      "prompt": "Integrate qualitative user interviews and sparse telemetry into a defensible recommendation for onboarding redesign.",
+      "difficulty": 0.58,
+      "evaluationDimensions": ["evidence_synthesis", "hypothesis_management", "verifier_alignment", "checkpoint_effectiveness"]
+    },
+    {
+      "id": "ambiguous-003",
+      "category": "ambiguous_open_synthesis",
+      "prompt": "Construct a strategic narrative for multi-quarter platform investment with uncertain market and engineering constraints.",
+      "difficulty": 0.67,
+      "evaluationDimensions": ["long_horizon_reasoning", "tradeoff_quality", "contradiction_avoidance", "adaptive_checkpoint_lift"]
+    },
+    {
+      "id": "ambiguous-004",
+      "category": "ambiguous_open_synthesis",
+      "prompt": "Given incomplete A/B test results with low statistical power and contradictory qualitative signals, recommend whether to ship, iterate, or kill the feature.",
+      "difficulty": 0.63,
+      "evaluationDimensions": ["statistical_reasoning", "ambiguity_navigation", "confidence_calibration", "hypothesis_management"]
+    },
+    {
+      "id": "ambiguous-005",
+      "category": "ambiguous_open_synthesis",
+      "prompt": "Propose a technical strategy for migrating a legacy system when the existing documentation is incomplete, the original engineers are unavailable, and the codebase has no tests.",
+      "difficulty": 0.65,
+      "evaluationDimensions": ["uncertainty_handling", "synthesis_quality", "tradeoff_quality", "human_feedback_lift"]
+    }
+  ]
+}

@@ -15,6 +15,9 @@
     "db:migrate:linked": "pnpm --filter @opus-nx/db migrate:linked",
     "db:generate": "pnpm --filter @opus-nx/db generate",
     "eval:reasoning": "python3 agents/scripts/run_reasoning_eval.py",
+    "eval:live": "cd agents && python3 -m scripts.run_reasoning_eval_live",
+    "eval:live:dry": "cd agents && python3 -m scripts.run_reasoning_eval_live --dry-run",
+    "eval:retrieval": "cd agents && python3 -m scripts.eval_retrieval",
     "test": "pnpm check:migrations && turbo test"
   },
   "devDependencies": {
