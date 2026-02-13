@@ -40,8 +40,26 @@ export function watchConfig<T extends z.ZodTypeAny>(
 
 /**
  * Environment configuration
+ *
+ * We intentionally split env validation into:
+ * - public/runtime-safe variables used for booting public routes
+ * - workspace variables required for authenticated reasoning features
  */
-export const EnvSchema = z.object({
+export const PublicRuntimeEnvSchema = z.object({
+  NODE_ENV: z.string().optional(),
+  NEXT_PHASE: z.string().optional(),
+  DEMO_MODE: z.enum(["true", "false"]).optional(),
+});
+
+export type PublicRuntimeEnv = z.infer<typeof PublicRuntimeEnvSchema>;
+
+export function loadPublicRuntimeEnv(
+  env: NodeJS.ProcessEnv = process.env
+): PublicRuntimeEnv {
+  return PublicRuntimeEnvSchema.parse(env);
+}
+
+export const WorkspaceEnvSchema = z.object({
   ANTHROPIC_API_KEY: z.string().min(1),
   AUTH_SECRET: z.string().min(1),
   SUPABASE_URL: z.string().url(),
@@ -51,8 +69,29 @@ export const EnvSchema = z.object({
   TAVILY_API_KEY: z.string().min(1).optional(),
 });
 
-export type Env = z.infer<typeof EnvSchema>;
+export type WorkspaceEnv = z.infer<typeof WorkspaceEnvSchema>;
 
-export function loadEnv(): Env {
-  return EnvSchema.parse(process.env);
+export function loadWorkspaceEnv(
+  env: NodeJS.ProcessEnv = process.env
+): WorkspaceEnv {
+  return WorkspaceEnvSchema.parse(env);
 }
+
+export function getWorkspaceEnvIssues(
+  env: NodeJS.ProcessEnv = process.env
+): string[] {
+  const parsed = WorkspaceEnvSchema.safeParse(env);
+  if (parsed.success) {
+    return [];
+  }
+
+  return parsed.error.issues.map((issue) => {
+    const key = issue.path[0] ?? "env";
+    return `${String(key)}: ${issue.message}`;
+  });
+}
+
+// Backward compatibility aliases for existing imports
+export const EnvSchema = WorkspaceEnvSchema;
+export type Env = WorkspaceEnv;
+export const loadEnv = loadWorkspaceEnv;
