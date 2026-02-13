@@ -13,6 +13,11 @@ export const metadata: Metadata = {
     "Claude",
     "extended thinking",
   ],
+  authors: [
+    { name: "Ozzy", url: "https://omerakben.com" },
+    { name: "Claude", url: "https://tuel.ai" },
+  ],
+  creator: "Ozzy + Claude",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "32x32" },
@@ -20,6 +25,19 @@ export const metadata: Metadata = {
     ],
     shortcut: "/favicon.ico",
     apple: "/favicon.png",
+  },
+  openGraph: {
+    title: "Opus Nx - Persistent Reasoning Research Platform",
+    description:
+      "Open-source platform for persistent reasoning graphs, swarm analysis, and iterative policy improvement",
+    siteName: "Opus Nx",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Opus Nx - Persistent Reasoning Research Platform",
+    description:
+      "Open-source platform for persistent reasoning graphs, swarm analysis, and iterative policy improvement",
   },
 };
 

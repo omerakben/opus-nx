@@ -99,21 +99,21 @@ export default function HomePage() {
               Open-Source Research Direction
             </p>
 
-            <h1 className={`${display.className} text-4xl font-semibold leading-tight sm:text-5xl lg:text-6xl`}>
+            <h1 className={`${display.className} animate-fade-in-up text-4xl font-semibold leading-tight sm:text-5xl lg:text-6xl`}>
               AI reasoning you can <span className="text-[#C4654A]">see</span>,{" "}
               <span className="text-[#7BA3BE]">challenge</span>, and{" "}
               <span className="text-emerald-400">audit</span>.
             </h1>
 
             <p
-              className={`${serif.className} mt-6 max-w-2xl text-lg leading-relaxed text-[var(--muted-foreground)]`}
+              className={`${serif.className} animate-fade-in-up delay-100 mt-6 max-w-2xl text-lg leading-relaxed text-[var(--muted-foreground)]`}
             >
               Opus Nx is now focused on reproducible reasoning research and community-built extensions.
               Keep your own credentials, run locally, and contribute directly to a system designed for
               persistent reasoning artifacts.
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-8 flex flex-wrap gap-3 animate-fade-in-up delay-200">
               <a
                 href="#setup"
                 className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#C4654A] to-[#D2765D] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#C4654A]/25 transition hover:opacity-95"
@@ -133,7 +133,7 @@ export default function HomePage() {
               {FEATURES.map((feature) => (
                 <article
                   key={feature.title}
-                  className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4"
+                  className="animate-fade-in delay-300 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 transition-transform duration-200 hover:-translate-y-0.5 hover:border-[var(--foreground)]/10"
                 >
                   <feature.icon className={`mb-2 h-5 w-5 ${feature.color}`} />
                   <h3 className="text-sm font-semibold">{feature.title}</h3>
@@ -188,9 +188,105 @@ export default function HomePage() {
               the seeded showcase flow.
               {demoEnabled ? " Demo mode is currently enabled for this environment." : ""}
             </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              {["Next.js 16", "Python 3.12", "Supabase", "Claude Opus 4.6", "TypeScript"].map((tech) => (
+                <span key={tech} className="rounded-full border border-[var(--border)] bg-[var(--background)] px-2.5 py-0.5 text-[10px] text-[var(--muted-foreground)]">
+                  {tech}
+                </span>
+              ))}
+            </div>
           </aside>
         </div>
+
+        <div className="mt-16 animate-fade-in delay-400">
+          <div className="mb-6 text-center">
+            <p className="inline-flex items-center gap-2 rounded-full border border-[#7BA3BE]/30 bg-[#7BA3BE]/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-[#7BA3BE]">
+              Research Foundation
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {[
+              {
+                title: "Tree of Thoughts",
+                authors: "Yao et al., 2023",
+                module: "ThinkFork",
+                url: "https://arxiv.org/abs/2305.10601",
+                description: "BFS/DFS search over reasoning trees with state evaluation",
+              },
+              {
+                title: "Let's Verify Step by Step",
+                authors: "Lightman et al., 2023",
+                module: "PRM Verifier",
+                url: "https://arxiv.org/abs/2305.20050",
+                description: "Process supervision — verify each reasoning step independently",
+              },
+              {
+                title: "Graph of Thoughts",
+                authors: "Besta et al., 2023",
+                module: "GoT Engine",
+                url: "https://arxiv.org/abs/2308.09687",
+                description: "Arbitrary thought graph topology with aggregation and refinement",
+              },
+              {
+                title: "MemGPT",
+                authors: "Packer et al., 2023",
+                module: "Memory Hierarchy",
+                url: "https://arxiv.org/abs/2310.08560",
+                description: "3-tier memory hierarchy with paging and auto-eviction",
+              },
+            ].map((paper) => (
+              <a
+                key={paper.title}
+                href={paper.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 transition-colors hover:border-[#7BA3BE]/40"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="text-sm font-semibold">{paper.title}</h3>
+                  <span className="shrink-0 rounded-full bg-[#7BA3BE]/15 px-2 py-0.5 text-[10px] font-medium text-[#7BA3BE]">
+                    {paper.module}
+                  </span>
+                </div>
+                <p className="mt-1 text-[11px] text-[var(--muted-foreground)]">{paper.authors}</p>
+                <p className="mt-2 text-xs leading-relaxed text-[var(--muted-foreground)]">
+                  {paper.description}
+                </p>
+              </a>
+            ))}
+          </div>
+        </div>
       </section>
+
+      <footer className="border-t border-[var(--border)] py-8 px-6">
+        <div className="mx-auto max-w-6xl flex flex-col items-center gap-3 text-center">
+          <p className={`${serif.className} text-sm text-[var(--muted-foreground)]`}>
+            Built by{" "}
+            <a
+              href="https://omerakben.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#C4654A] hover:underline"
+            >
+              Ozzy
+            </a>
+            {" + "}
+            <a
+              href="https://tuel.ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#7BA3BE] hover:underline"
+            >
+              Claude
+            </a>
+          </p>
+          <p className="text-xs text-[var(--muted-foreground)]">
+            Research Platform &middot; MIT License
+          </p>
+        </div>
+      </footer>
     </main>
   );
 }

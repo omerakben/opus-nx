@@ -204,14 +204,14 @@ body {
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.2s ease-out;
+  animation: fadeIn 0.5s ease-out both;
 }
 
 /* Fade in up */
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(16px);
   }
   to {
     opacity: 1;
@@ -220,8 +220,14 @@ body {
 }
 
 .animate-fade-in-up {
-  animation: fadeInUp 0.4s ease-out;
+  animation: fadeInUp 0.6s ease-out both;
 }
+
+/* Animation delay utilities */
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
 
 /* Streaming node pulse */
 @keyframes streamingPulse {

@@ -205,6 +205,12 @@ export function LoginClient({ demoEnabled }: LoginClientProps) {
             Research Platform
           </span>
         </div>
+        <p className="mt-4 text-xs text-[var(--muted-foreground)]">
+          Built by{" "}
+          <a href="https://omerakben.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--foreground)]">Ozzy</a>
+          {" + "}
+          <a href="https://tuel.ai" target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--foreground)]">Claude</a>
+        </p>
       </div>
     </div>
   );

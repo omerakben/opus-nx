@@ -1,6 +1,6 @@
 "use client";
 
-import { GithubIcon, LogOut, HelpCircle } from "lucide-react";
+import { GithubIcon, LogOut, HelpCircle, ExternalLink } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface HeaderProps {
@@ -47,6 +47,26 @@ export function Header({ isMobile, onReplayTour, isDemoMode }: HeaderProps) {
               <HelpCircle className="w-4 h-4" />
             </button>
           )}
+          <a
+            href="https://omerakben.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="h-8 flex items-center gap-1 px-1.5 rounded-md hover:bg-[var(--muted)] transition-colors text-xs text-[var(--muted-foreground)]"
+            title="Ozzy"
+          >
+            <ExternalLink className="w-3 h-3" />
+            Ozzy
+          </a>
+          <a
+            href="https://tuel.ai"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="h-8 flex items-center gap-1 px-1.5 rounded-md hover:bg-[var(--muted)] transition-colors text-xs text-[var(--muted-foreground)]"
+            title="tuel.ai"
+          >
+            <ExternalLink className="w-3 h-3" />
+            tuel.ai
+          </a>
           <a
             href="https://github.com/omerakben/opus-nx"
             target="_blank"
@@ -103,6 +123,26 @@ export function Header({ isMobile, onReplayTour, isDemoMode }: HeaderProps) {
             <HelpCircle className="w-4 h-4" />
           </button>
         )}
+        <a
+          href="https://omerakben.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="h-8 flex items-center gap-1 px-1.5 rounded-md hover:bg-[var(--muted)] transition-colors text-xs text-[var(--muted-foreground)]"
+          title="Ozzy"
+        >
+          <ExternalLink className="w-3 h-3" />
+          Ozzy
+        </a>
+        <a
+          href="https://tuel.ai"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="h-8 flex items-center gap-1 px-1.5 rounded-md hover:bg-[var(--muted)] transition-colors text-xs text-[var(--muted-foreground)]"
+          title="tuel.ai"
+        >
+          <ExternalLink className="w-3 h-3" />
+          tuel.ai
+        </a>
         <a
           href="https://github.com/omerakben/opus-nx"
           target="_blank"

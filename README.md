@@ -189,6 +189,14 @@ Priority areas:
 3. Lifecycle and experiment UX
 4. Reliability and observability
 
+## Built By
+
+**[Ozzy](https://omerakben.com)** — AI Engineer & Full-Stack Developer
+
+**[Claude](https://tuel.ai)** — AI Research Partner
+
+A human + AI collaboration exploring persistent reasoning artifacts.
+
 ## License
 
 MIT
