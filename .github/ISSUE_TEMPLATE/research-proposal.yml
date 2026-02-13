@@ -1,0 +1,82 @@
+name: Research Proposal
+description: Propose a research question or experiment for Opus Nx
+title: "[Research]: "
+labels: ["research"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Opus Nx is a research-first platform. Use this template to propose experiments, new research questions, or evaluation studies. See RESEARCH.md and docs/research-mindset.md for context.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Research Question
+      description: State the research question clearly and concisely.
+      placeholder: Does [intervention] improve [metric] under [conditions]?
+    validations:
+      required: true
+
+  - type: textarea
+    id: background
+    attributes:
+      label: Background and Motivation
+      description: Why is this question important? What prior work or observations motivate it?
+    validations:
+      required: true
+
+  - type: textarea
+    id: approach
+    attributes:
+      label: Proposed Approach
+      description: |
+        Describe the experimental design:
+        - What modules or components are involved?
+        - What is the independent variable (intervention)?
+        - What is the dependent variable (metric)?
+        - What controls or baselines will be used?
+    validations:
+      required: true
+
+  - type: textarea
+    id: evaluation
+    attributes:
+      label: Evaluation Plan
+      description: |
+        How will results be measured and evaluated?
+        - Which metrics (quality, efficiency, retrieval, human impact)?
+        - What constitutes a positive result?
+        - How many trials or samples are needed?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: modules
+    attributes:
+      label: Related Modules
+      description: Which Opus Nx modules are relevant to this research?
+      multiple: true
+      options:
+        - ThinkGraph
+        - ThinkFork
+        - PRM Verifier
+        - GoT Engine
+        - Memory Hierarchy
+        - Agent Swarm
+        - Metacognition
+        - Orchestrator
+        - Evaluation Framework
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: references
+    attributes:
+      label: References
+      description: Link to relevant papers, issues, or prior experiments.
+      placeholder: |
+        - [Paper Title](https://arxiv.org/abs/...)
+        - Related issue: #123
+    validations:
+      required: false

@@ -51,3 +51,46 @@ When proposing major changes, frame them as:
 2. What mechanism is changing.
 3. How it will be evaluated.
 4. So what impact we expect.
+
+## 7. Open Research Questions
+
+The following gaps represent areas where Opus Nx can contribute new findings:
+
+1. **Persistent reasoning retrieval**: What retrieval strategies (semantic, graph-based, hybrid) yield the highest quality lift when reusing prior reasoning artifacts across sessions?
+2. **Multi-agent vs single-model tradeoff**: Under what task complexity thresholds does swarm deliberation outperform a single model with equivalent token budget?
+3. **Process reward model transfer**: Does step-level verification generalize from structured domains (math, logic) to open-ended analysis (research, strategy)?
+4. **Memory eviction policy**: What eviction strategies for the 3-tier memory hierarchy maximize downstream reasoning quality per token spent?
+5. **Checkpoint intervention granularity**: At what frequency and specificity do human-in-the-loop corrections yield the highest quality improvement per intervention?
+6. **Metacognitive drift detection**: Can self-reflection reliably detect reasoning degradation across long sessions before it impacts output quality?
+
+## 8. Benchmarks and Baselines
+
+Evaluation infrastructure lives in `agents/src/evals/` and supports:
+
+- **Live harness**: End-to-end swarm reasoning evaluation against benchmark task sets.
+- **Retrieval benchmarks**: Precision@k, MRR, and cross-session hit rate for the knowledge base and memory hierarchy.
+- **CI integration**: Automated evaluation runs via CI scripts for regression detection.
+
+Run evaluations:
+
+```bash
+cd agents && uv run pytest src/evals/
+```
+
+Key baseline metrics to track:
+
+| Metric | Source | Module |
+|--------|--------|--------|
+| Verifier score (geometric mean) | PRM step-level scoring | `prm-verifier.ts` |
+| Contradiction rate | Multi-agent debate output | `swarm.py` |
+| Synthesis confidence | Synthesizer agent output | `agents/synthesizer.py` |
+| Precision@k | Knowledge retrieval | `memory-manager.ts` |
+| MRR | Cross-session retrieval | `memory-manager.ts` |
+| Token cost per quality unit | Orchestrator routing | `orchestrator.ts` |
+| Checkpoint acceptance rate | Human-in-the-loop flow | Workspace UI |
+
+## 9. Citation and Attribution
+
+If you use Opus Nx in your research, see `RESEARCH.md` in the repository root for the recommended citation format.
+
+Built by [Ozzy](https://omerakben.com) + [Claude](https://tuel.ai)
