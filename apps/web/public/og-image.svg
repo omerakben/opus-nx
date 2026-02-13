@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#0a0a0a"/>
+  <circle cx="200" cy="150" r="300" fill="rgba(196,101,74,0.12)" />
+  <circle cx="900" cy="200" r="250" fill="rgba(123,163,190,0.10)" />
+  <text x="600" y="260" text-anchor="middle" fill="white" font-family="system-ui, sans-serif" font-size="72" font-weight="700">Opus Nx</text>
+  <text x="600" y="330" text-anchor="middle" fill="#999" font-family="Georgia, serif" font-size="28">Persistent Reasoning Research Platform</text>
+  <text x="600" y="400" text-anchor="middle" fill="#C4654A" font-family="system-ui, sans-serif" font-size="18">See · Challenge · Audit</text>
+  <rect x="350" y="460" width="500" height="40" rx="20" fill="rgba(123,163,190,0.15)" stroke="rgba(123,163,190,0.3)" stroke-width="1"/>
+  <text x="600" y="486" text-anchor="middle" fill="#7BA3BE" font-family="system-ui, sans-serif" font-size="14">Open Source · Community-Driven · Research-First</text>
+</svg>
