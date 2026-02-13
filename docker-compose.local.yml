@@ -1,0 +1,75 @@
+# ============================================================
+# Opus Nx — Local Database Stack
+#
+# Replaces Supabase cloud with local PostgreSQL + pgvector.
+# Run alongside `pnpm dev` for the full development platform.
+#
+# Usage:
+#   cp .env.docker .env          # Pre-configured for local DB
+#   # Edit .env → add ANTHROPIC_API_KEY
+#   docker compose -f docker-compose.local.yml up -d
+#   pnpm dev                     # Start Next.js + watchers
+#
+# Ports:
+#   54321 — Supabase-compatible REST API (what your code talks to)
+#   54322 — Direct PostgreSQL access (for psql, pgAdmin, debugging)
+#
+# Data persists in the 'pgdata' Docker volume across restarts.
+# To reset: docker compose -f docker-compose.local.yml down -v
+# ============================================================
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.1-pg17
+    container_name: opus-nx-postgres
+    ports:
+      - "54322:5432"
+    environment:
+      POSTGRES_DB: opus_nx
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./docker/postgres/run-migrations.sh:/docker-entrypoint-initdb.d/02-run-migrations.sh
+      - ./supabase/migrations:/docker-entrypoint-initdb.d/migrations
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d opus_nx"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  postgrest:
+    image: postgrest/postgrest:v12.2.3
+    container_name: opus-nx-postgrest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGRST_DB_URI: postgres://authenticator:postgres@postgres:5432/opus_nx
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      # Must match the secret used to sign JWT tokens in .env.docker
+      PGRST_JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-long
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo -n > /dev/tcp/localhost/3000"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+
+  gateway:
+    image: nginx:1.27-alpine
+    container_name: opus-nx-gateway
+    ports:
+      - "54321:54321"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      postgrest:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+    driver: local

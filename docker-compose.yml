@@ -1,6 +1,10 @@
 # ============================================================
-# Opus NX V2 — Docker Compose
+# Opus Nx — Production Docker Compose
 # Services: Next.js dashboard + Python agent backend
+# Requires: Supabase cloud credentials in .env
+#
+# For local development with Docker database, use instead:
+#   docker compose -f docker-compose.local.yml up -d
 # ============================================================
 
 version: "3.8"

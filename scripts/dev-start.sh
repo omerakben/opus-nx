@@ -48,6 +48,7 @@ SKIP_SETUP=false
 SETUP_ONLY=false
 SKIP_VERIFY=false
 SKIP_PLAYWRIGHT=false
+USE_DOCKER=false
 
 for arg in "$@"; do
   case "$arg" in
@@ -57,11 +58,13 @@ for arg in "$@"; do
     --setup-only)      SETUP_ONLY=true ;;
     --skip-verify)     SKIP_VERIFY=true ;;
     --skip-playwright) SKIP_PLAYWRIGHT=true ;;
+    --docker)          USE_DOCKER=true ;;
     --help|-h)
       echo "Usage: ./scripts/dev-start.sh [OPTIONS]"
       echo ""
       echo "Options:"
       echo "  --inline          Run all services in current terminal (no new tabs)"
+      echo "  --docker          Use local Docker database instead of Supabase cloud"
       echo "  --skip-build      Skip initial pnpm build (use if dist/ is fresh)"
       echo "  --skip-setup      Skip env bootstrap and connection verify"
       echo "  --setup-only      Run setup steps only, don't launch servers"
@@ -70,12 +73,19 @@ for arg in "$@"; do
       echo "  -h, --help        Show this help"
       echo ""
       echo "First time? Just run:  ./scripts/dev-start.sh"
+      echo "  With Docker DB:    ./scripts/dev-start.sh --docker"
       echo "It will guide you through everything."
       exit 0
       ;;
     *) warn "Unknown flag: $arg (ignored)" ;;
   esac
 done
+
+# ── Docker mode redirect ──────────────────────────────────
+if [ "$USE_DOCKER" = true ]; then
+  info "Docker mode selected — delegating to docker-start.sh"
+  exec "$PROJECT_DIR/scripts/docker-start.sh"
+fi
 
 # ── Banner ──────────────────────────────────────────────────
 echo -e ""

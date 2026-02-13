@@ -143,6 +143,50 @@ cd opus-nx
 
 The setup script handles everything: prerequisites check, dependency install, env bootstrap, connection verify, build, and launch. It will prompt you for API credentials on first run.
 
+### Docker Quick Start (Local Database)
+
+Run everything locally with just an Anthropic API key — no Supabase cloud account needed. Data stays on your machine.
+
+**Prerequisites**: Docker, Node.js 22+, pnpm. Optional: Python 3.12+ and [uv](https://docs.astral.sh/uv/) for the agent swarm.
+
+```bash
+git clone https://github.com/omerakben/opus-nx.git
+cd opus-nx
+./scripts/docker-start.sh
+```
+
+The script handles everything: checks prerequisites, copies `.env.docker` to `.env`, prompts for your Anthropic API key, starts a local PostgreSQL + pgvector database in Docker, installs all dependencies, builds the project, and launches the dev servers.
+
+When it's done, open **http://localhost:3000** in your browser.
+
+**Or step by step:**
+
+```bash
+cp .env.docker .env
+# Edit .env → add your ANTHROPIC_API_KEY
+
+docker compose -f docker-compose.local.yml up -d    # Start local DB
+pnpm install && pnpm build && pnpm dev              # Install, build, run
+```
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| Dashboard | `http://localhost:3000` | Next.js web app — open this in your browser |
+| Agent Swarm | `http://localhost:8000` | Python FastAPI backend (auto-starts if uv is installed) |
+| REST API | `http://localhost:54321` | Supabase-compatible DB API (used internally) |
+| PostgreSQL | `localhost:54322` | Direct DB access (psql, pgAdmin) |
+
+```bash
+# Lifecycle
+./scripts/docker-start.sh --stop       # Stop everything (dev servers + database)
+./scripts/docker-start.sh --reset      # Wipe database and start fresh
+./scripts/docker-start.sh --db-only    # Start only the database (no dev servers)
+
+# Database access
+docker exec -it opus-nx-postgres psql -U postgres -d opus_nx  # Direct SQL access
+docker compose -f docker-compose.local.yml logs -f postgres   # Stream DB logs
+```
+
 ### Manual Setup
 
 #### 1) Prerequisites
@@ -208,14 +252,16 @@ Use your own provider accounts and keys.
 ## Key Commands
 
 ```bash
-pnpm dev                # Start all dev servers
-pnpm lint               # Lint all packages
-pnpm typecheck          # Type-check all packages
-pnpm test               # Run tests
-pnpm db:migrate         # Run Supabase migrations
-pnpm setup              # Bootstrap env files
-pnpm setup:verify       # Verify API connections
-./scripts/dev-start.sh  # Full setup + launch (recommended)
+pnpm dev                        # Start all dev servers
+pnpm lint                       # Lint all packages
+pnpm typecheck                  # Type-check all packages
+pnpm test                       # Run tests
+pnpm db:migrate                 # Run Supabase migrations
+pnpm setup                      # Bootstrap env files
+pnpm setup:verify               # Verify API connections
+./scripts/dev-start.sh          # Full setup + launch (recommended)
+./scripts/docker-start.sh       # Docker local DB + dev servers
+./scripts/docker-start.sh --db-only  # Docker DB only (no dev servers)
 ```
 
 Agent tests:
