@@ -5,7 +5,7 @@ import { ClientToaster } from "@/components/ui/client-toaster";
 export const metadata: Metadata = {
   title: "Opus Nx - Persistent Reasoning Research Platform",
   description:
-    "Open-source platform for persistent reasoning graphs, swarm analysis, and iterative policy improvement",
+    "Open-source research platform for reliable, interpretable, and steerable AI reasoning. Persistent reasoning graphs, multi-agent swarm analysis, and step-by-step verification.",
   keywords: [
     "AI",
     "reasoning",
