@@ -17,8 +17,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -34,8 +32,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -53,10 +49,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: uv sync --dev
+      - run: uv sync --extra dev
       - run: uv run ruff check src/
 
   python-test:
@@ -68,8 +66,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: uv sync --dev
+      - run: uv sync --extra dev
       - run: uv run pytest
