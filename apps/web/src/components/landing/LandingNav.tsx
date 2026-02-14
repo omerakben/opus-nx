@@ -1,12 +1,13 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Github } from "lucide-react";
 import { display } from "./fonts";
 
 export function LandingNav() {
   return (
-    <nav className="mb-10 flex flex-wrap items-center justify-between gap-3">
+    <nav aria-label="Main navigation" className="mb-10 flex flex-wrap items-center justify-between gap-3">
       <div className="inline-flex items-center gap-3 rounded-full border border-[var(--border)] bg-[var(--card)] px-3 py-2">
-        <img src="/opus_nx_icon.svg" alt="Opus Nx" width={28} height={28} />
+        <Image src="/opus_nx_icon.svg" alt="Opus Nx" width={28} height={28} />
         <span
           className={`text-sm font-semibold tracking-wide ${display.className}`}
         >

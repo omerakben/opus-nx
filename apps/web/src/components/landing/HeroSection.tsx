@@ -53,7 +53,7 @@ export function HeroSection() {
             className="animate-fade-in delay-300 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 transition-transform duration-200 hover:-translate-y-0.5 hover:border-[var(--foreground)]/10"
           >
             <feature.icon className={`mb-2 h-5 w-5 ${feature.color}`} />
-            <h3 className="text-sm font-semibold">{feature.title}</h3>
+            <h2 className="text-sm font-semibold">{feature.title}</h2>
             <p className="mt-1 text-xs leading-relaxed text-[var(--muted-foreground)]">
               {feature.description}
             </p>
